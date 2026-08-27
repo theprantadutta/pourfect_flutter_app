@@ -12,4 +12,5 @@ library;
 
 export 'board.dart';
 export 'level.dart';
+export 'level_set.dart';
 export 'move.dart';

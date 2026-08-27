@@ -106,6 +106,7 @@ void main() {
         capacity: 4,
         emptyTubeCount: 2,
         forcedMoveRatio: 0.4,
+        meanBranching: 4,
         meanScatter: 2.5,
         maxScatter: 3,
       );
@@ -115,6 +116,7 @@ void main() {
         capacity: base.capacity,
         emptyTubeCount: 1,
         forcedMoveRatio: base.forcedMoveRatio,
+        meanBranching: 4,
         meanScatter: base.meanScatter,
         maxScatter: base.maxScatter,
       );
@@ -128,6 +130,7 @@ void main() {
         capacity: 4,
         emptyTubeCount: 2,
         forcedMoveRatio: forced,
+        meanBranching: 4,
         meanScatter: 2.5,
         maxScatter: 3,
       );
@@ -148,6 +151,7 @@ void main() {
         capacity: 4,
         emptyTubeCount: 2,
         forcedMoveRatio: 0.95,
+        meanBranching: 4,
         meanScatter: 2.0,
         maxScatter: 3,
       );
@@ -157,6 +161,7 @@ void main() {
         capacity: 4,
         emptyTubeCount: 2,
         forcedMoveRatio: 0.05,
+        meanBranching: 4,
         meanScatter: 2.8,
         maxScatter: 4,
       );

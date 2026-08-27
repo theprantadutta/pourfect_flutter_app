@@ -11,9 +11,13 @@ When a decision trades revenue against retention, retention wins.
 ## Commands
 
 ```bash
-dart test test/engine          # engine suite; ~4 min (the 1,000-board sweep)
-dart run tool/check_layering.dart   # layering rules — run before every commit
+dart test test/engine                 # engine suite; ~8 min
+dart run tool/check_layering.dart     # layering rules — before every commit
+dart run tool/validate_levels.dart    # content gate — before every release
 dart analyze lib test tool
+
+dart run tool/generate_levels.dart    # re-bake levels (~4 min); see below
+dart run tool/probe_hint_budget.dart  # re-measure kHintNodeCap
 ```
 
 Engine tests run under plain `dart test`, not `flutter test` — no device, no
@@ -29,14 +33,15 @@ state/    Riverpod. Owns the undo stack, selection, persistence, sync.
 ui/       Widgets. May import engine VALUE TYPES; never engine LOGIC.
 ```
 
-`ui/` may import `board.dart`, `move.dart`, `level.dart` (or the
-`engine_types.dart` barrel). Widgets legitimately need to talk about a `Board`,
-a `Tube`, a `Move` and a `Level`; re-wrapping those into parallel UI DTOs would
-be pure ceremony.
+`ui/` may import `board.dart`, `move.dart`, `level.dart`, `level_set.dart` (or
+the `engine_types.dart` barrel). Widgets legitimately need to talk about a
+`Board`, a `Tube`, a `Move` and a `Level`; re-wrapping those into parallel UI
+DTOs would be pure ceremony. A serialization codec decides nothing about the
+game, so `level_set.dart` belongs on this side too.
 
 `ui/` may **not** import `rules.dart`, `solver.dart`, `generator.dart`,
-`difficulty.dart` or `canonical.dart`. Game decisions belong in `state/`, where
-they are testable without pumping a widget tree.
+`difficulty.dart`, `canonical.dart` or `level_curve.dart`. Game decisions belong
+in `state/`, where they are testable without pumping a widget tree.
 
 `tool/check_layering.dart` enforces both directions and exits non-zero. It is
 not optional — a single convenient import is all it takes, and by the time
@@ -68,13 +73,58 @@ a regression, and the layering check will fail on it.
   "impossible" is exactly how an unsolvable level ships. The generator discards
   undecided boards.
 - **Node caps are set from measurement.** `kGenerationNodeCap` = 1.5M (hardest
-  shipping band peaks at ~602k). `kHintNodeCap` = 300k, to be re-tuned against a
-  real low-end device in stage 7.
+  shipping band peaks at ~602k). `kHintNodeCap` = 300k, measured by
+  `tool/probe_hint_budget.dart` over all 621 positions on the optimal paths of
+  the 20 hardest levels: p50 64 nodes, p99 62k, max 192k. Hints get much cheaper
+  as a player progresses (start p99 192k → end p99 40), so the expensive request
+  is someone opening level 141 and immediately asking.
 - **Generation is random-fill-plus-verify, never reverse-shuffle.** Reverse
   shuffle drifts back toward trivial and yields no honest `minMoves`. Levels are
   baked at build time by `tool/`; the generator never runs on a device.
 - With **1 empty tube, ~99% of random deals are unsolvable**. That statistic is
   the whole argument for verify-don't-trust generation.
+- **The difficulty score is CALIBRATED to 0-100** from a measured raw range of
+  ~45-90. Without that, the raw blend is an interval scale and ratio arithmetic
+  on it ("25% easier") silently means something far more extreme than intended.
+- **`forcedMoveRatio` barely varies on 2-empty boards** (p50 ~0.1 everywhere).
+  It is a rare-event indicator and does little discriminating there despite
+  carrying the largest weight; it comes alive on the 1-empty band (~0.4).
+  `meanBranching` is the continuous view of the same idea and is reported in the
+  curve report. Within a band, what actually separates two boards is move load
+  and scatter.
+
+## Level content
+
+Two artifacts, both committed, both baked by `tool/generate_levels.dart`:
+
+| Artifact | What | Consumer |
+|---|---|---|
+| `assets/levels/levels.bin` | 150-level campaign, ~7.8 KB | bundled in the APK |
+| `generated/daily_pool.json` | 365 dailies, carries `min_moves` | **the backend** — copy into the API repo's seed data |
+| `generated/level_curve.{md,csv}` | the whole curve, for eyeballing | humans |
+
+**Determinism is a hard requirement.** `tool/generate_levels.dart` with default
+flags must reproduce `levels.bin` byte-for-byte, and
+`test/engine/level_asset_test.dart` fails if it does not. Player progress is
+keyed on level id and `minMoves` feeds the server's leaderboard anti-cheat
+floor, so a silent reshuffle would repoint every saved star at a board the
+player never saw and start rejecting legitimate submissions. If you deliberately
+change the curve, bump `kLevelSetVersion` and regenerate in the same commit.
+
+`levelSetVersion` is stored in the asset and must be stored on every
+`LevelProgress` row, locally and server-side. v1 ships no migration logic and
+needs none — the field exists because it cannot be retrofitted.
+
+The campaign curve: four bands, colours rising 3→10, with the final band
+stepping up by REMOVING an empty tube rather than adding colours. Breathers land
+on every tenth level except in the tutorial band and except on a band's last
+level (a band should hand off at its peak). A breather must score 25-40% below
+the running average of the five levels before it — both bounds matter, since a
+ceiling alone produced a level scoring 19 where 57 was allowed.
+
+The daily pool is a **separate artifact with its own seed**, drawn from
+mid-campaign shapes and explicitly disjoint from the campaign by canonical key,
+so nobody is served a daily they already solved.
 
 ## Design direction
 
@@ -134,6 +184,10 @@ re-tuning them. Ship this with the UI, not after.
 ## Monetization
 
 - Rewarded video is the primary driver — treat it as a feature players want.
+- **Confirm the reward RESOLVED before consuming the ad grant.** A hint can come
+  back `SolveUnknown`; charging a player who just watched a video and then
+  showing "no hint available" is a refund request and a one-star review. Check
+  first, then grant — never the other way round.
 - **Undo is always free and unlimited.** It is a retention feature, never a
   monetization one.
 - Interstitials only at natural breaks (after level completion), frequency

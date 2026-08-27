@@ -34,6 +34,7 @@ const _engineLogicFiles = <String>[
   'generator.dart',
   'difficulty.dart',
   'canonical.dart',
+  'level_curve.dart',
 ];
 
 /// Engine files that are plain data. `ui/` may import these freely.
@@ -41,6 +42,9 @@ const _engineValueFiles = <String>[
   'board.dart',
   'move.dart',
   'level.dart',
+  // Data plus its serialization codec. A codec decides nothing about the game,
+  // so a widget reading one breaks no layering intent.
+  'level_set.dart',
   'engine_types.dart',
 ];
 

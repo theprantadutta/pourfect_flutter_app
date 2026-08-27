@@ -92,11 +92,28 @@ const int kGenerationNodeCap = 1500000;
 
 /// Node budget for RUNTIME hints, which run on a background isolate.
 ///
-/// Deliberately far below [kGenerationNodeCap]. A hint is a convenience: the
-/// player's board is mid-play and therefore much easier than the position the
-/// level shipped in, so this decides virtually every real request, and when it
-/// does not, "no hint available" beats a phone chewing for two seconds. Worth
-/// re-tuning against a real low-end device in stage 7.
+/// MEASURED, by `tool/probe_hint_budget.dart`, over all 621 positions along the
+/// optimal paths of the 20 hardest shipped levels — which is exactly the
+/// population a real hint request is drawn from:
+///
+///     nodes   p50 64    p95 8k    p99 62k    max 192k
+///     start (0-5% through the level)    p99 192k
+///     mid   (25-50%)                    p99 8k
+///     end   (75-100%)                   p99 40
+///
+/// So a hint is dramatically cheaper than solving a level from scratch, and
+/// cheaper the further in the player is — the expensive request is someone who
+/// opens level 141 and immediately asks. p99 x 2 recommends 125k; this stays at
+/// 300k, which is 1.6x the observed worst case, because the failure is
+/// asymmetric: a hint is gated behind a rewarded video, and "no hint available"
+/// AFTER watching an ad is a refund request and a one-star review.
+///
+/// Whatever the budget, the hint flow must confirm the hint RESOLVED before
+/// consuming the ad grant. Check first, then grant.
+///
+/// Worst observed desktop latency was 353ms, so budget for roughly 1-2s on a
+/// low-end phone: run it on an isolate and show progress. Re-run the probe
+/// after any content update that adds harder levels.
 const int kHintNodeCap = 300000;
 
 class Solver {

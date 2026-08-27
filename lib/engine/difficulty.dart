@@ -9,8 +9,17 @@
 /// The thing most clones get wrong: they treat `minMoves` as difficulty. It
 /// isn't. A long board with one legal move at every step is tedious, not hard —
 /// the player is just typing. A short board with six plausible-looking moves at
-/// every step is genuinely hard. That is what [DifficultyMetrics.forcedMoveRatio]
-/// captures, and why it carries the largest weight below.
+/// every step is genuinely hard.
+///
+/// MEASURED CAVEAT, worth knowing before trusting the weights. On randomly
+/// dealt 2-empty-tube boards, [DifficultyMetrics.forcedMoveRatio] sits near 0.1
+/// almost everywhere (p10 0.0, p50 0.1, p90 0.2 across 3-10 colours). It is a
+/// rare-event indicator, so despite carrying the largest weight it does little
+/// discriminating there; what actually separates two boards of the SAME shape
+/// is move load and scatter. It comes alive on the 1-empty-tube band, where it
+/// jumps to ~0.4 — which is exactly the band where being boxed in is the point.
+/// [DifficultyMetrics.meanBranching] is reported alongside it as the continuous
+/// view of the same idea, for the curve report.
 library;
 
 import 'board.dart';
@@ -37,9 +46,20 @@ final class DifficultyMetrics {
   /// choice, measured as distinct canonical outcomes rather than raw legal
   /// moves — two empty tubes are one choice, not two.
   ///
-  /// HIGH means the board plays itself (easy, good for the tutorial band).
-  /// LOW means the player is choosing constantly (hard).
+  /// HIGH means the board plays itself. LOW means the player is choosing
+  /// constantly. See the measured caveat at the top of this file.
   final double forcedMoveRatio;
+
+  /// Mean number of distinct canonical outcomes available along the path.
+  ///
+  /// The continuous form of [forcedMoveRatio], and far better behaved: it has
+  /// real variance on every band. Reported in the curve report so the shape of
+  /// the campaign can be judged on evidence rather than on a rare-event
+  /// indicator. Not currently an input to [difficultyScore] — it correlates
+  /// strongly with tube count, so folding it in naively would quietly turn the
+  /// score into a proxy for board SIZE, which is the exact failure this whole
+  /// file exists to avoid.
+  final double meanBranching;
 
   /// Mean number of distinct tubes each colour is spread across at the start.
   final double meanScatter;
@@ -53,6 +73,7 @@ final class DifficultyMetrics {
     required this.capacity,
     required this.emptyTubeCount,
     required this.forcedMoveRatio,
+    required this.meanBranching,
     required this.meanScatter,
     required this.maxScatter,
   });
@@ -61,11 +82,12 @@ final class DifficultyMetrics {
   String toString() =>
       'DifficultyMetrics(minMoves: $minMoves, colours: $colorCount, '
       'empty: $emptyTubeCount, forced: ${forcedMoveRatio.toStringAsFixed(2)}, '
+      'branching: ${meanBranching.toStringAsFixed(1)}, '
       'scatter: ${meanScatter.toStringAsFixed(2)}/$maxScatter)';
 }
 
 /// Measures [board] against its [solution], which must be the OPTIMAL path from
-/// the solver — the forced-move ratio is meaningless along a wandering one.
+/// the solver — the branching statistics are meaningless along a wandering one.
 DifficultyMetrics measureDifficulty(Board board, List<Move> solution) {
   final scatter = _scatterPerColour(board);
   final meanScatter = scatter.isEmpty
@@ -75,34 +97,43 @@ DifficultyMetrics measureDifficulty(Board board, List<Move> solution) {
       ? 0
       : scatter.values.reduce((a, b) => a > b ? a : b);
 
+  final (forcedRatio, meanBranching) = _walkPath(board, solution);
+
   return DifficultyMetrics(
     minMoves: solution.length,
     colorCount: board.colours.length,
     capacity: board.capacity,
     emptyTubeCount: board.emptyTubeCount,
-    forcedMoveRatio: _forcedMoveRatio(board, solution),
+    forcedMoveRatio: forcedRatio,
+    meanBranching: meanBranching,
     meanScatter: meanScatter,
     maxScatter: maxScatter,
   );
 }
 
-/// Walks the optimal path and measures how often the player had a real choice.
+/// Walks the optimal path once, collecting both branching statistics.
 ///
 /// The final (won) state is excluded — there is nothing to decide once the
-/// board is finished, and counting it would bias every level's ratio upward by
-/// the same amount, compressing the range we band on.
-double _forcedMoveRatio(Board board, List<Move> solution) {
-  if (solution.isEmpty) return 1;
+/// board is finished, and counting it would bias every level by the same amount
+/// while compressing the range the bands are cut from.
+(double forcedRatio, double meanBranching) _walkPath(
+  Board board,
+  List<Move> solution,
+) {
+  if (solution.isEmpty) return (1, 0);
 
   var current = board;
   var forced = 0;
+  var branchingTotal = 0;
 
   for (final move in solution) {
-    if (branchingFactor(current) <= 1) forced++;
+    final branching = branchingFactor(current);
+    if (branching <= 1) forced++;
+    branchingTotal += branching;
     current = applyMove(current, move).board;
   }
 
-  return forced / solution.length;
+  return (forced / solution.length, branchingTotal / solution.length);
 }
 
 /// How many distinct tubes each colour occupies at the start.
@@ -116,24 +147,19 @@ Map<ColorId, int> _scatterPerColour(Board board) {
   return counts;
 }
 
-/// Blends [metrics] into a single 0-100 score used to order and band levels.
+/// Weighted blend of [metrics], BEFORE calibration. Range is roughly 45-90 in
+/// practice, not 0-100 — see [difficultyScore], which is the number to use.
 ///
-/// Never shown to the player — it exists so `tool/generate_levels.dart` can
-/// sort a large candidate pool into a curve, and so a band can be re-tuned
-/// after launch by re-sorting rather than regenerating.
-///
-/// Weights, in order of contribution:
-///  * **0.32 branching** — `1 - forcedMoveRatio`. The best predictor of
-///    perceived difficulty; see the note at the top of this file.
+/// Weights, in order of intended contribution:
+///  * **0.32 branching** — `1 - forcedMoveRatio`.
 ///  * **0.22 empty-tube pressure** — `1 / emptyTubeCount`. One empty tube is
 ///    the hardest constraint in the game.
 ///  * **0.18 move load** — `minMoves` per colour, which grows as the solution
 ///    needs more shuffling than a straight sort.
 ///  * **0.16 scatter** — how far each colour is spread at the start.
 ///  * **0.12 colour load** — the crudest signal, and weighted last on purpose:
-///    more colours mostly means a bigger board, not a harder one, and the
-///    palette caps at 10 colours for accessibility anyway.
-double difficultyScore(DifficultyMetrics m) {
+///    more colours mostly means a bigger board, not a harder one.
+double rawDifficultyScore(DifficultyMetrics m) {
   final branching = (1 - m.forcedMoveRatio).clamp(0.0, 1.0);
 
   final emptyPressure = m.emptyTubeCount <= 0
@@ -159,6 +185,42 @@ double difficultyScore(DifficultyMetrics m) {
       0.12 * colourLoad;
 
   return blended * 100;
+}
+
+/// Lowest raw blend observed across every shipping spec, with margin.
+///
+/// Measured over 3-10 colours at both 1 and 2 empty tubes: the floor was 46.9
+/// (3 colours) and the ceiling 88.1 (10 colours, 1 empty). These bounds are
+/// deliberately a little wider than the observation so a slightly unusual board
+/// lands inside the scale rather than clamping.
+const double kRawScoreFloor = 45;
+
+/// Highest raw blend observed across every shipping spec, with margin.
+const double kRawScoreCeiling = 90;
+
+/// Blends [metrics] into a CALIBRATED 0-100 score used to order and band levels.
+///
+/// Never shown to the player — it exists so `tool/generate_levels.dart` can sort
+/// a candidate pool into a curve, and so a band can be re-tuned after launch by
+/// re-sorting rather than regenerating.
+///
+/// WHY CALIBRATION. The raw blend cannot reach 0 or 100: no real board scores
+/// below ~47 or above ~88, because several terms never bottom out together. So
+/// the raw number is an interval scale, not a ratio scale, and arithmetic like
+/// "25% easier" on it is badly misleading — 25% below a raw 82 lands at 61,
+/// which only a 3-colour board can reach, which would make every breather level
+/// a jarring board-size collapse.
+///
+/// Mapping the measured range onto 0-100 makes the scale mean what it looks
+/// like it means: 0 is about as easy as a generated board gets, 100 about as
+/// hard. Ratios become interpretable, which is what the breather rule in
+/// `level_curve.dart` depends on. The transform is affine and therefore order-
+/// preserving — every relative comparison behaves exactly as before.
+double difficultyScore(DifficultyMetrics m) {
+  final raw = rawDifficultyScore(m);
+  final calibrated =
+      (raw - kRawScoreFloor) / (kRawScoreCeiling - kRawScoreFloor) * 100;
+  return calibrated.clamp(0.0, 100.0);
 }
 
 /// Ceiling on simultaneous colours, set by ACCESSIBILITY rather than by search.

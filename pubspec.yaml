@@ -61,6 +61,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  assets:
+    # Baked at build time by tool/generate_levels.dart and committed.
+    # Regenerating must reproduce this byte-for-byte; see level_asset_test.dart.
+    - assets/levels/levels.bin
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
