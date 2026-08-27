@@ -244,6 +244,102 @@ Solved on a background isolate via `Isolate.run`. Three rules, all enforced in
 3. **A hint for a position the player has left is discarded** (`stale`), and
    tapping Hint again while one is solving cancels it.
 
+## The win moment
+
+NOT a dialog. The board transforms: solved tubes glow and stay visible as the
+trophy, empty tubes recede to 25%, and the stars, move count, band track and CTA
+arrive around the board rather than over it. A card would turn the emotional
+payoff of the whole loop into an alert box.
+
+**Duration is earned, not constant.** `WinProfile.full` (1820ms) runs for three
+stars, a personal best, or a band's last level. `WinProfile.brief` (1150ms) runs
+for everything else — same beats, 120ms star spacing, no present-lift. A player
+clearing level 60 on a two-star retry has seen this sixty times.
+
+**Skip must never advance the level.** The skip layer is a separate full-screen
+absorber that removes itself after one tap, so Next always needs its own. If a
+skip also triggered Next the gesture would become muscle memory and players
+would blow through two levels by accident, then correctly blame the game. The
+rule is expressed as LAYOUT, not as a flag somebody has to remember to check.
+
+Three stars must feel meaningfully better than two: only the third star fires a
+wider ring pulse, a richer tone with an octave on top, a stronger haptic, and a
+warm wash across the board glow. Two stars gets none of it, by construction.
+
+## Sound
+
+Every cue is SYNTHESISED at startup (`services/audio/synth.dart`, pure Dart and
+unit-tested). Zero audio assets.
+
+**The pour is where the tuning budget goes.** Players hear it thousands of times
+a session against the win chime's once per level. Soft 7ms attack, short warm
+body, and a pitch that RISES with how full the destination tube is — a filling
+vessel shortens its air column, so a run of four plays as a rising figure rather
+than the same note four times. Random jitter on top stops two identical pours
+sounding stamped. A sampled pour would have exactly one timbre and the ear locks
+onto it within a session.
+
+### Audio session — the part that costs reviews
+
+A large share of puzzle players are listening to music or a podcast. If this
+game grabs audio focus, their playback stops, and "this game killed my Spotify"
+is a one-star nothing else buys back.
+
+- **VERIFIED on Android:** `adb shell dumpsys audio` shows this package in no
+  focus entry at all. No focus request is made, so nothing is interrupted.
+- **Known gap:** the AAudio stream reports `usage=USAGE_MEDIA`, not
+  `USAGE_GAME` — SoLoud opens its own stream natively and bypasses
+  `audio_session`'s attributes. Harmless for mixing.
+- **UNVERIFIED:** the iOS silent switch. The `ambient` category is requested,
+  but since SoLoud demonstrably bypasses the Android attributes it may set its
+  own AVAudioSession category too. **Before any iOS build ships, flip the
+  hardware mute switch and confirm silence.**
+
+## Level select
+
+Every level is a TUBE holding pips for its stars — the game's own object, not a
+numbered square. Bands are sections with name, board shape and progress track,
+so the stage-6 curve becomes something a player can see. Headers are sticky and
+the list opens scrolled to where the player actually is; 150 tiles is too many
+to ask someone on level 96 to hunt through.
+
+**Breathers are not marked.** Labelling one would be condescending and a
+confession that the curve is engineered. They work because they are felt.
+
+**No star gate.** Clearing a level opens the next one, full stop.
+
+## Interaction and motion rules
+
+- **Everything tappable goes through `Pressable`** (scale, haptic, sound), so no
+  control can be added later that quietly forgets its feedback.
+- **Never `MaterialPageRoute`.** Its slide is an OS convention for moving
+  between documents. Opening a level grows the board out of the tile the player
+  touched (`PourfectPageRoute.fromRect`).
+- **Numbers animate.** Counts run up with a decelerating curve so they settle
+  rather than appear. Static digits are what make a screen feel like a form.
+
+## Progress
+
+Persisted locally, works with zero network. The merge is monotonic on BOTH stars
+and best-moves and order-independent, so a worse replay can never take a star
+away — that is the bug that produces "the game deleted my progress".
+
+Every row records `levelSetVersion`. This is what that field was added for.
+
+## APK budget
+
+Measure PER-ABI, the way Play delivers it — never the universal APK.
+
+| Build | Size |
+|---|---|
+| arm64-v8a | 20.3 MB |
+| armeabi-v7a | 16.8 MB |
+| universal (never shipped) | 26.9 MB |
+
+Audio costs ~5.4 MB: SoLoud ships native libs for all three ABIs regardless of
+`--target-platform`, which filters only Flutter's own libs. The App Bundle
+splits them per device.
+
 ## Known gaps
 
 - **Fonts are not bundled.** Type resolves to the platform faces (Roboto /
@@ -251,15 +347,17 @@ Solved on a background isolate via `Isolate.run`. Three rules, all enforced in
   is the single swap point.
 - **No sound yet.** The completion moment currently lands on haptics alone; the
   single chime described in the design direction still needs an asset.
-- **Frame timing is not measured.** `adb shell dumpsys gfxinfo` reports zero
-  frames for this app because Flutter renders through Impeller/Vulkan on its own
-  surface and bypasses Android's HWUI pipeline — that tool cannot see it. A real
-  number needs a DevTools session or an `integration_test` timeline summary.
-  The perf-relevant choices are already made deliberately (no `BackdropFilter`
-  anywhere, computed board geometry instead of GlobalKey lookups, solver off the
-  UI isolate), but none of that is a measurement.
-- Only the game screen exists. Level select, settings, daily, leaderboard and
-  store come after the onboarding feels right.
+- **Frame timing.** `adb shell dumpsys gfxinfo` reports ZERO frames for this app
+  — Impeller renders to its own surface and bypasses Android's HWUI pipeline, so
+  that tool is blind to it. The real measurement is
+  `integration_test/pour_perf_test.dart` driven by `test_driver/perf_driver.dart`:
+
+      flutter drive --driver=test_driver/perf_driver.dart         --target=integration_test/pour_perf_test.dart --profile
+
+  Watch BOTH halves: build time is Dart work (too much per-frame recomputation),
+  raster time is GPU work (shaders, blurs, overdraw — which is why
+  `BackdropFilter` is banned here).
+- **No settings, daily challenge, leaderboard or store screens yet.**
 
 ## Auth — v1 limitation to be honest about
 

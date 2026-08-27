@@ -71,6 +71,14 @@ dev_dependencies:
   # binding, and fast enough to run the 1,000-board solvability sweep.
   test: ^1.25.0
 
+  # On-device frame timing. `adb shell dumpsys gfxinfo` reports zero frames for
+  # a Flutter app — Impeller renders to its own surface and bypasses Android's
+  # HWUI pipeline entirely — so a captured timeline is the only real number.
+  integration_test:
+    sdk: flutter
+  flutter_driver:
+    sdk: flutter
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
