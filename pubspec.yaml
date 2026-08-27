@@ -31,10 +31,18 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
+  # NOTE: cupertino_icons was removed — it cost 257 KB in the release APK and
+  # nothing uses it. Every glyph in this game is drawn by a CustomPainter.
+
   firebase_core: ^4.14.0
+
+  # Analytics. The per-level funnel is how we find the levels that cost us
+  # retention, so it ships WITH the UI, not after it.
+  firebase_analytics: ^12.0.0
+
+  # State management: Riverpod, manual providers only. No code generation, no
+  # build_runner, no mixing styles. See CLAUDE.md.
+  flutter_riverpod: ^3.2.0
 
 dev_dependencies:
   flutter_test:

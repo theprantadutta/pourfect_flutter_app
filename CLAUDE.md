@@ -11,7 +11,9 @@ When a decision trades revenue against retention, retention wins.
 ## Commands
 
 ```bash
-dart test test/engine                 # engine suite; ~8 min
+dart test test/engine                 # engine suite, pure Dart; ~8 min
+flutter test test/state               # state layer (Riverpod needs Flutter)
+dart run tool/cvd_harness.dart        # colour-blindness gate for the palette
 dart run tool/check_layering.dart     # layering rules — before every commit
 dart run tool/validate_levels.dart    # content gate — before every release
 dart analyze lib test tool
@@ -186,10 +188,27 @@ not relaxing, which is the product. Get difficulty from fewer empty tubes,
 higher scatter and lower forced-move ratio instead. Raising this constant
 requires re-running the CVD harness, not just editing the number.
 
-## Analytics (stage 7)
+## Analytics
 
 Behind a thin `AnalyticsService` interface, same shape as the ad service, so it
 is swappable and testable. Firebase Analytics is the first implementation.
+
+**`level_abandon` fires on BACKGROUNDING**, not just on a clean exit. Most
+players who give up close the app or take a call rather than pressing back, so
+a funnel counting only clean exits undercounts abandonment on exactly the hard
+levels it exists to find. `GameScreen` observes `AppLifecycleState` and flushes
+while the process is still alive. Verified on device:
+
+    level_start   {level_id: 1, min_moves: 5, is_retry: 0}
+    level_abandon {level_id: 1, moves: 1, duration_seconds: 13,
+                   reason: backgrounded, progress: 0.2}
+
+Opening a level and backgrounding with zero moves is NOT an abandonment — that
+is a session event, and counting it would smear noise across every funnel.
+
+The debug mirror uses `debugPrint`, not `dart:developer.log`: the latter posts
+to the VM service and never reaches `adb logcat`, so a funnel "verified"
+through it is only verified against DevTools being attached.
 
 Required events: `level_start`, `level_complete` (level_id, moves, stars,
 duration), `level_abandon`, `hint_used`, `undo_used`, `power_up_used`,
@@ -212,6 +231,35 @@ re-tuning them. Ship this with the UI, not after.
 - One IAP: Remove Ads, $1.99. Kills interstitials, keeps rewarded opt-in.
 - Audience skews low-eCPM, so volume and retention beat aggressive placement.
   A 1-star review costs more than an interstitial earns.
+
+## Hints
+
+Solved on a background isolate via `Isolate.run`. Three rules, all enforced in
+`state/hint_controller.dart`:
+
+1. **The board stays interactive.** No modal spinner, no disabled tubes — the
+   progress ring lives in the Hint button alone. The player asked for help, not
+   to be locked out of their own game for a second.
+2. **`HintOutcome.resolved` is the only outcome that may consume a reward.**
+3. **A hint for a position the player has left is discarded** (`stale`), and
+   tapping Hint again while one is solving cancels it.
+
+## Known gaps
+
+- **Fonts are not bundled.** Type resolves to the platform faces (Roboto /
+  Roboto Mono). Bundling a chosen pair is a licence decision; `typography.dart`
+  is the single swap point.
+- **No sound yet.** The completion moment currently lands on haptics alone; the
+  single chime described in the design direction still needs an asset.
+- **Frame timing is not measured.** `adb shell dumpsys gfxinfo` reports zero
+  frames for this app because Flutter renders through Impeller/Vulkan on its own
+  surface and bypasses Android's HWUI pipeline — that tool cannot see it. A real
+  number needs a DevTools session or an `integration_test` timeline summary.
+  The perf-relevant choices are already made deliberately (no `BackdropFilter`
+  anywhere, computed board geometry instead of GlobalKey lookups, solver off the
+  UI isolate), but none of that is a measurement.
+- Only the game screen exists. Level select, settings, daily, leaderboard and
+  store come after the onboarding feels right.
 
 ## Auth — v1 limitation to be honest about
 
