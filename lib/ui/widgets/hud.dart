@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
+import 'pressable.dart';
 
 /// Level identity and move count.
 class BoardHud extends StatelessWidget {
@@ -18,12 +19,16 @@ class BoardHud extends StatelessWidget {
   final int movesUsed;
   final int minMoves;
 
+  /// Back to the level map.
+  final VoidCallback onExit;
+
   const BoardHud({
     super.key,
     required this.levelId,
     required this.bandName,
     required this.movesUsed,
     required this.minMoves,
+    required this.onExit,
   });
 
   @override
@@ -38,6 +43,20 @@ class BoardHud extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // No boxed icon button: a hairline chevron and the level number,
+          // which is all the chrome a board screen should carry.
+          Pressable(
+            onPressed: onExit,
+            semanticLabel: 'Back to levels',
+            child: Padding(
+              padding: EdgeInsets.only(right: tokens.space3, bottom: 4),
+              child: Icon(
+                Icons.chevron_left_rounded,
+                size: 26,
+                color: tokens.textMuted,
+              ),
+            ),
+          ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -95,8 +114,9 @@ class BoardHud extends StatelessWidget {
   }
 }
 
-/// A ghost action button with a real press state.
-class HudAction extends StatefulWidget {
+/// A ghost action button. Press feedback comes from [Pressable], so every
+/// control in the app responds identically.
+class HudAction extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
@@ -114,71 +134,38 @@ class HudAction extends StatefulWidget {
   });
 
   @override
-  State<HudAction> createState() => _HudActionState();
-}
-
-class _HudActionState extends State<HudAction> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
     final tokens = PourfectTokens.of(context);
-    final enabled = widget.onPressed != null && !widget.busy;
 
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: widget.label,
-      child: GestureDetector(
-        onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
-        onTapUp: enabled ? (_) => setState(() => _pressed = false) : null,
-        onTapCancel: enabled ? () => setState(() => _pressed = false) : null,
-        onTap: enabled ? widget.onPressed : null,
-        child: AnimatedScale(
-          // Small, fast, and on release too — a press state that only appears
-          // on tap-down feels unfinished.
-          scale: _pressed ? 0.94 : 1,
-          duration: const Duration(milliseconds: 90),
-          curve: Curves.easeOut,
-          child: AnimatedOpacity(
-            opacity: enabled ? 1 : 0.32,
-            duration: const Duration(milliseconds: 160),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: _pressed ? tokens.surfaceRaised : Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _pressed ? tokens.hairlineStrong : tokens.hairline,
-                    ),
-                  ),
-                  child: Center(
-                    child: widget.busy
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(tokens.accent),
-                            ),
-                          )
-                        : Icon(
-                            widget.icon,
-                            size: 22,
-                            color: tokens.textNumeric,
-                          ),
-                  ),
-                ),
-                SizedBox(height: tokens.space2),
-                Text(widget.label.toUpperCase(), style: labelStyle(tokens)),
-              ],
+    return Pressable(
+      onPressed: busy ? null : onPressed,
+      semanticLabel: label,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: tokens.hairline),
+            ),
+            child: Center(
+              child: busy
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(tokens.accent),
+                      ),
+                    )
+                  : Icon(icon, size: 22, color: tokens.textNumeric),
             ),
           ),
-        ),
+          SizedBox(height: tokens.space2),
+          Text(label.toUpperCase(), style: labelStyle(tokens)),
+        ],
       ),
     );
   }

@@ -44,6 +44,19 @@ dependencies:
   # build_runner, no mixing styles. See CLAUDE.md.
   flutter_riverpod: ^3.2.0
 
+  # Local progress. Must work with zero network — the backend is optional
+  # enrichment and may never block a level from opening.
+  shared_preferences: ^2.3.0
+
+  # Game audio. SoLoud is a low-latency mixer that can load a clip straight
+  # from memory, which is what lets every cue be synthesised at startup
+  # instead of shipped as an asset.
+  flutter_soloud: ^4.0.6
+
+  # Audio SESSION policy — separate concern from playback, and the one that
+  # decides whether we stop somebody's podcast. See CLAUDE.md.
+  audio_session: ^0.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

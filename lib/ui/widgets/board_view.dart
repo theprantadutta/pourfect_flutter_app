@@ -5,13 +5,16 @@
 ///
 ///  * **Balls arc, they do not slide.** A ball rises clear of its tube, travels,
 ///    and drops in — a cubic Bézier whose control points sit directly above each
-///    tube, which makes it leave vertically and enter vertically for free. A
-///    straight line would read as a data structure updating.
+///    tube, which makes it leave vertically and enter vertically for free.
 ///  * **They squash on landing.** A damped spring on the vertical scale, volume
 ///    preserved. This is what makes a ball feel like it has weight.
 ///  * **No BackdropFilter anywhere.** The frosted-glass tubes are a translucent
 ///    fill plus a hairline, not a real blur. A blur behind twelve tubes is the
 ///    fastest way to miss 60fps on the low-end Android this game has to run on.
+///
+/// The board also PARTICIPATES IN THE WIN SEQUENCE rather than being covered by
+/// it: the solved tubes are the trophy, so they glow, the empties recede, and
+/// the whole board presents itself. See `win_profile.dart` for the timing.
 library;
 
 import 'dart:math' as math;
@@ -24,18 +27,46 @@ import '../../state/providers.dart';
 import '../theme/tokens.dart';
 import 'ball.dart';
 import 'board_geometry.dart';
+import 'win_profile.dart';
 
 /// Gap between successive balls leaving in one pour.
-const _pourStagger = Duration(milliseconds: 58);
+const pourStagger = Duration(milliseconds: 58);
 
-/// How long a completed tube glows.
+/// How long a completed tube glows during play (not the win sequence).
 const _flourishDuration = Duration(milliseconds: 720);
 
+/// The board's state during a win sequence, or absent while playing.
+class WinPhase {
+  final WinProfile profile;
+  final double elapsedMs;
+
+  /// True when the run earned the third star's extra warm wash.
+  final bool celebrateThird;
+
+  const WinPhase({
+    required this.profile,
+    required this.elapsedMs,
+    required this.celebrateThird,
+  });
+}
+
 class BoardView extends ConsumerStatefulWidget {
-  /// Called with the tapped tube index.
   final void Function(int tube) onTapTube;
 
-  const BoardView({super.key, required this.onTapTube});
+  /// Non-null while the level-complete sequence is running.
+  final WinPhase? win;
+
+  /// Fires as each ball lands, with how full the destination now is (0..1) and
+  /// whether that landing completed the tube. The screen turns this into sound
+  /// and haptics.
+  final void Function(double fill, bool completed)? onBallLanded;
+
+  const BoardView({
+    super.key,
+    required this.onTapTube,
+    this.win,
+    this.onBallLanded,
+  });
 
   @override
   ConsumerState<BoardView> createState() => _BoardViewState();
@@ -46,16 +77,18 @@ class _BoardViewState extends ConsumerState<BoardView>
   late final AnimationController _pour;
   late final AnimationController _flourish;
 
-  /// The pour currently being animated, or null when the board is at rest.
   PourEvent? _active;
-
-  /// Tube whose completion is being celebrated.
   int? _glowTube;
+
+  /// Balls of the active pour that have already landed, so each fires its cue
+  /// exactly once and the resting layer takes ownership at the right moment.
+  int _landed = 0;
 
   @override
   void initState() {
     super.initState();
     _pour = AnimationController(vsync: this)
+      ..addListener(_checkLandings)
       ..addStatusListener((status) {
         if (status == AnimationStatus.completed && mounted) {
           setState(() => _active = null);
@@ -71,11 +104,36 @@ class _BoardViewState extends ConsumerState<BoardView>
     super.dispose();
   }
 
+  /// Fires the per-ball callback the instant each ball touches down, rather
+  /// than once for the whole pour. The sound and the haptic have to land WITH
+  /// the ball or the weight illusion falls apart.
+  void _checkLandings() {
+    final active = _active;
+    if (active == null) return;
+
+    final travel = PourfectTokens.of(context).pourDuration.inMilliseconds;
+    final elapsed = _pour.value * _pour.duration!.inMilliseconds;
+    final capacity = ref.read(gameControllerProvider)?.board.capacity ?? 4;
+
+    while (_landed < active.ballsMoved) {
+      if (elapsed < _landed * pourStagger.inMilliseconds + travel) break;
+
+      final slot = active.destBaseSlot + _landed;
+      final isLast = _landed == active.ballsMoved - 1;
+      _landed++;
+
+      widget.onBallLanded?.call(
+        (slot + 1) / capacity,
+        isLast && active.completedDestination,
+      );
+      if (mounted) setState(() {});
+    }
+  }
+
   void _startPour(PourEvent event, PourfectTokens tokens) {
-    // Balls leave in quick succession rather than as a block, so a run of three
-    // reads as a pour instead of a lump moving.
+    _landed = 0;
     _pour
-      ..duration = tokens.pourDuration + _pourStagger * (event.ballsMoved - 1)
+      ..duration = tokens.pourDuration + pourStagger * (event.ballsMoved - 1)
       ..forward(from: 0);
     setState(() => _active = event);
 
@@ -90,9 +148,6 @@ class _BoardViewState extends ConsumerState<BoardView>
     final tokens = PourfectTokens.of(context);
     final state = ref.watch(gameControllerProvider);
 
-    // A pour is an EVENT, not a piece of state — listening rather than
-    // comparing in build is what stops an unrelated rebuild replaying the last
-    // animation.
     ref.listen(gameControllerProvider, (previous, next) {
       final pour = next?.pour;
       if (pour == null) return;
@@ -112,28 +167,59 @@ class _BoardViewState extends ConsumerState<BoardView>
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapUp: (details) {
-            final tube = geometry.tubeAt(details.localPosition);
-            if (tube != null) widget.onTapTube(tube);
-          },
+          onTapUp: widget.win != null
+              ? null
+              : (details) {
+                  final tube = geometry.tubeAt(details.localPosition);
+                  if (tube != null) widget.onTapTube(tube);
+                },
           child: SizedBox(
             width: constraints.maxWidth,
             height: constraints.maxHeight,
             child: AnimatedBuilder(
               animation: Listenable.merge([_pour, _flourish]),
-              builder: (context, _) => Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ..._buildTubes(state, geometry, tokens),
-                  ..._buildRestingBalls(state, geometry, tokens),
-                  ..._buildFlyingBalls(state, geometry, tokens),
-                ],
+              builder: (context, _) => Transform.translate(
+                offset: Offset(0, _presentLift()),
+                child: Transform.scale(
+                  scale: _presentScale(),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      ..._buildTubes(state, geometry, tokens),
+                      ..._buildRestingBalls(state, geometry, tokens),
+                      ..._buildFlyingBalls(state, geometry, tokens),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
         );
       },
     );
+  }
+
+  // ---- the board presenting itself ----------------------------------------
+
+  /// Progress through a win beat, 0..1.
+  double _winSpan(int at, int length) {
+    final win = widget.win;
+    if (win == null) return 0;
+    return ((win.elapsedMs - at) / length).clamp(0.0, 1.0);
+  }
+
+  double _presentLift() {
+    final present = widget.win?.profile.present;
+    if (present == null) return 0;
+    return -24 *
+        Curves.easeOutBack.transform(_winSpan(present.at, present.length));
+  }
+
+  double _presentScale() {
+    final present = widget.win?.profile.present;
+    if (present == null) return 1;
+    // Swells to 1.04 and settles back — the gesture of holding something up.
+    return 1 + 0.04 * math.sin(math.pi * _winSpan(present.at, present.length));
   }
 
   // ---- tubes ---------------------------------------------------------------
@@ -152,17 +238,21 @@ class _BoardViewState extends ConsumerState<BoardView>
           isHintSource: state.hintMove?.from == i,
           isHintTarget: state.hintMove?.to == i,
           opacity: _tubeOpacity(state, i),
-          glow: _glowTube == i ? _flourishCurve : 0,
+          warm: math.max(_tubeGlow(i), _winGlow(state, i)),
         ),
       ),
   ];
 
-  /// Tubes that cannot receive the held run dim to 40%.
-  ///
-  /// Not 30%: against a near-black ground the muted jewel tones crush toward
-  /// invisible below about 35%, and a dimmed tube must still read as a tube the
-  /// player could tap to switch selection.
   double _tubeOpacity(GameState state, int tube) {
+    final win = widget.win;
+    if (win != null) {
+      // Empty tubes did not participate in the solve, so they recede and let
+      // the solved ones be the trophy.
+      if (state.board[tube].isEmpty) {
+        return 1 - 0.75 * _winSpan(0, win.profile.glowLength);
+      }
+      return 1;
+    }
     if (state.selectedTube == null) return 1;
     if (state.selectedTube == tube) return 1;
     return state.legalTargets.contains(tube)
@@ -170,10 +260,35 @@ class _BoardViewState extends ConsumerState<BoardView>
         : PourfectTokens.illegalTargetOpacity;
   }
 
+  /// Warm glow on a solved tube during the win sequence, staggered left to
+  /// right so the board reads as settling rather than switching on.
+  double _winGlow(GameState state, int tube) {
+    final win = widget.win;
+    if (win == null || state.board[tube].isEmpty) return 0;
+
+    final rise = _winSpan(
+      tube * win.profile.glowStagger,
+      win.profile.glowLength,
+    );
+    var glow = Curves.easeOut.transform(rise) * 0.6;
+
+    if (win.celebrateThird) {
+      // The third star's warm wash sweeps the board and fades. Only ever on a
+      // three-star run — this is what the extra star buys.
+      final at = win.profile.starAt[2];
+      final wash =
+          _winSpan(at, win.profile.thirdStarFlourishLength) *
+          (1 - _winSpan(at + win.profile.thirdStarFlourishLength, 400));
+      glow += 0.4 * wash;
+    }
+    return glow.clamp(0.0, 1.0);
+  }
+
+  double _tubeGlow(int tube) => _glowTube == tube ? _flourishCurve : 0;
+
   double get _flourishCurve {
     final t = _flourish.value;
     if (t == 0 || t == 1) return 0;
-    // Rise fast, linger, fade. A symmetric curve would feel like a blink.
     return t < 0.25
         ? Curves.easeOut.transform(t / 0.25)
         : Curves.easeInCubic.transform(1 - (t - 0.25) / 0.75);
@@ -192,18 +307,16 @@ class _BoardViewState extends ConsumerState<BoardView>
     for (var tube = 0; tube < state.board.tubeCount; tube++) {
       final balls = state.board[tube].balls;
 
-      // Hide the slots the in-flight balls are heading for; the overlay owns
-      // them until they land.
+      // Slots the in-flight balls are still heading for stay hidden; the
+      // overlay owns them until they touch down.
       var visibleCount = balls.length;
       if (active != null && tube == active.move.to) {
-        visibleCount = math.min(visibleCount, active.destBaseSlot);
+        visibleCount = math.min(visibleCount, active.destBaseSlot + _landed);
       }
 
-      // Slot of the LOWEST ball in the lifted run, or -1 when nothing is held.
-      // The run hovers as a stack: this ball sits at the lift point and the
-      // rest pile up above it, preserving the order they hold in the tube.
       final liftedFrom = _liftedFromSlot(state, tube);
       final opacity = _tubeOpacity(state, tube);
+      final warm = math.max(_tubeGlow(tube), _winGlow(state, tube));
 
       for (var slot = 0; slot < visibleCount; slot++) {
         final centre = geometry.ballCentre(tube, slot);
@@ -226,7 +339,7 @@ class _BoardViewState extends ConsumerState<BoardView>
               colorId: balls[slot],
               size: geometry.ballSize,
               opacity: opacity,
-              glow: _glowTube == tube ? _flourishCurve : 0,
+              glow: warm,
             ),
           ),
         );
@@ -237,10 +350,9 @@ class _BoardViewState extends ConsumerState<BoardView>
 
   /// Lowest slot of the run currently lifted out of [tube], or -1.
   ///
-  /// The WHOLE top run lifts, not just one ball, because the whole run is what
-  /// a pour moves — showing a single ball would misrepresent the move the
-  /// player is about to make.
+  /// The WHOLE top run lifts, because the whole run is what a pour moves.
   int _liftedFromSlot(GameState state, int tube) {
+    if (widget.win != null) return -1;
     if (state.selectedTube != tube) return -1;
     final balls = state.board[tube];
     if (balls.isEmpty) return -1;
@@ -263,8 +375,9 @@ class _BoardViewState extends ConsumerState<BoardView>
 
     final widgets = <Widget>[];
     for (var j = 0; j < active.ballsMoved; j++) {
-      final startMs = j * _pourStagger.inMilliseconds;
+      final startMs = j * pourStagger.inMilliseconds;
       final local = ((elapsedMs - startMs) / travelMs).clamp(0.0, 1.0);
+      if (local >= 1) continue; // landed — the resting layer has it now
 
       final from = geometry.ballCentre(
         active.move.from,
@@ -272,31 +385,9 @@ class _BoardViewState extends ConsumerState<BoardView>
       );
       final to = geometry.ballCentre(active.move.to, active.destBaseSlot + j);
 
-      final Offset position;
-      double squash = 1;
-
-      if (elapsedMs < startMs) {
-        // Waiting its turn, still sitting in the source tube.
-        position = from;
-      } else if (local < 1) {
-        position = _arc(
-          from,
-          to,
-          geometry,
-          active,
-          Curves.easeInOut.transform(local),
-        );
-      } else {
-        position = to;
-        // Damped spring on the vertical scale. Volume is preserved inside
-        // [Ball], so a squashed ball also widens — which is what sells weight.
-        final sinceLandMs = elapsedMs - startMs - travelMs;
-        final u = (sinceLandMs / tokens.settleDuration.inMilliseconds).clamp(
-          0.0,
-          1.0,
-        );
-        squash = 1 - 0.25 * math.exp(-6 * u) * math.cos(12 * u);
-      }
+      final position = elapsedMs < startMs
+          ? from
+          : _arc(from, to, geometry, active, Curves.easeInOut.transform(local));
 
       widgets.add(
         Positioned(
@@ -304,12 +395,7 @@ class _BoardViewState extends ConsumerState<BoardView>
           top: position.dy - geometry.ballSize / 2,
           width: geometry.ballSize,
           height: geometry.ballSize,
-          child: Ball(
-            colorId: active.colour,
-            size: geometry.ballSize,
-            squash: squash,
-            glow: _glowTube == active.move.to ? _flourishCurve : 0,
-          ),
+          child: Ball(colorId: active.colour, size: geometry.ballSize),
         ),
       );
     }
@@ -317,11 +403,8 @@ class _BoardViewState extends ConsumerState<BoardView>
   }
 
   /// Cubic Bézier from [from] to [to] with both control points directly above
-  /// their own tube.
-  ///
-  /// That placement is the whole trick: it forces the ball to leave straight
-  /// up and arrive straight down, so it never appears to pass through a tube
-  /// wall, without any explicit phase splitting.
+  /// their own tube, so the ball leaves straight up and arrives straight down
+  /// and never appears to pass through a tube wall.
   Offset _arc(
     Offset from,
     Offset to,
@@ -338,8 +421,8 @@ class _BoardViewState extends ConsumerState<BoardView>
 
     final c1 = Offset(from.dx, apex);
     final c2 = Offset(to.dx, apex);
-
     final u = 1 - t;
+
     return Offset(
       u * u * u * from.dx +
           3 * u * u * t * c1.dx +
@@ -360,7 +443,10 @@ class _TubeShell extends StatelessWidget {
   final bool isHintSource;
   final bool isHintTarget;
   final double opacity;
-  final double glow;
+
+  /// Completion warmth, 0..1 — from an in-play tube completing or from the win
+  /// sequence.
+  final double warm;
 
   const _TubeShell({
     required this.tokens,
@@ -368,7 +454,7 @@ class _TubeShell extends StatelessWidget {
     required this.isHintSource,
     required this.isHintTarget,
     required this.opacity,
-    required this.glow,
+    required this.warm,
   });
 
   @override
@@ -382,24 +468,29 @@ class _TubeShell extends StatelessWidget {
         duration: tokens.selectDuration,
         decoration: BoxDecoration(
           color: tokens.tubeGlass,
-          // Rounder at the base than the mouth, like a real vessel. A uniform
-          // radius reads as a rounded rectangle, not a tube.
+          // Rounder at the base than the mouth, like a real vessel.
           borderRadius: BorderRadius.vertical(
             top: const Radius.circular(6),
             bottom: Radius.circular(tokens.tubeRadius),
           ),
           border: Border.all(
-            color: highlighted
+            color: warm > 0
+                ? Color.lerp(
+                    tokens.hairline,
+                    tokens.accentWarm.withValues(alpha: 0.62),
+                    warm,
+                  )!
+                : highlighted
                 ? tokens.accent.withValues(alpha: isSelected ? 0.75 : 0.5)
                 : tokens.hairline,
-            width: highlighted ? 1.5 : 1,
+            width: highlighted || warm > 0.2 ? 1.5 : 1,
           ),
           boxShadow: [
-            if (glow > 0)
+            if (warm > 0)
               BoxShadow(
-                color: tokens.accentWarm.withValues(alpha: 0.28 * glow),
-                blurRadius: 22 * glow,
-                spreadRadius: 2 * glow,
+                color: tokens.accentWarm.withValues(alpha: 0.26 * warm),
+                blurRadius: 24 * warm,
+                spreadRadius: 2 * warm,
               ),
             if (isSelected)
               BoxShadow(

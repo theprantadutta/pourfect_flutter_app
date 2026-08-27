@@ -12,6 +12,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../engine/level_set.dart';
 import '../services/analytics/analytics_service.dart';
 import '../services/analytics/firebase_analytics_service.dart';
+import '../services/audio/audio_service.dart';
+import '../services/audio/soloud_audio_service.dart';
 import '../services/haptics/haptics_service.dart';
 import 'game_controller.dart';
 import 'game_state.dart';
@@ -63,6 +65,19 @@ final hapticsServiceProvider = Provider<HapticsService>(
     enabled: () => ref.read(settingsProvider).hapticsEnabled,
   ),
 );
+
+/// Sound. Every cue is synthesised at startup, so this ships no audio assets.
+///
+/// The session policy — mix with other audio, never take focus, obey the iOS
+/// silent switch — lives in the implementation and is the part that decides
+/// whether we stop somebody's podcast.
+final audioServiceProvider = Provider<AudioService>((ref) {
+  final service = SoLoudAudioService(
+    enabled: () => ref.read(settingsProvider).soundEnabled,
+  );
+  ref.onDispose(service.dispose);
+  return service;
+});
 
 final levelRepositoryProvider = Provider<LevelRepository>(
   (ref) => LevelRepository(),

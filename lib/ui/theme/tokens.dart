@@ -45,6 +45,11 @@ class PourfectTokens extends ThemeExtension<PourfectTokens> {
   /// Numerals, timers, counters. Always monospace.
   final Color textNumeric;
 
+  /// The quietest text tier: locked levels, inactive captions. Present so
+  /// "unavailable" can be expressed without dropping opacity on a colour that
+  /// was already muted, which compounds into unreadable.
+  final Color dimText;
+
   // ---- accents -----------------------------------------------------------
 
   /// The single accent. Used sparingly: the selected tube's glow and the
@@ -88,6 +93,7 @@ class PourfectTokens extends ThemeExtension<PourfectTokens> {
     required this.textPrimary,
     required this.textMuted,
     required this.textNumeric,
+    required this.dimText,
     required this.accent,
     required this.accentWarm,
     required this.ballSize,
@@ -117,6 +123,7 @@ class PourfectTokens extends ThemeExtension<PourfectTokens> {
     textPrimary: Color(0xFFE8EAF0),
     textMuted: Color(0xFF7C8698),
     textNumeric: Color(0xFFC3CAD8),
+    dimText: Color(0xFF545C6B),
     accent: Color(0xFF8FC9E8),
     accentWarm: Color(0xFFE4D9B4),
     ballSize: 30,
@@ -152,6 +159,7 @@ class PourfectTokens extends ThemeExtension<PourfectTokens> {
     Color? textPrimary,
     Color? textMuted,
     Color? textNumeric,
+    Color? dimText,
     Color? accent,
     Color? accentWarm,
     double? ballSize,
@@ -174,6 +182,7 @@ class PourfectTokens extends ThemeExtension<PourfectTokens> {
     textPrimary: textPrimary ?? this.textPrimary,
     textMuted: textMuted ?? this.textMuted,
     textNumeric: textNumeric ?? this.textNumeric,
+    dimText: dimText ?? this.dimText,
     accent: accent ?? this.accent,
     accentWarm: accentWarm ?? this.accentWarm,
     ballSize: ballSize ?? this.ballSize,
@@ -201,6 +210,7 @@ class PourfectTokens extends ThemeExtension<PourfectTokens> {
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
       textMuted: Color.lerp(textMuted, other.textMuted, t)!,
       textNumeric: Color.lerp(textNumeric, other.textNumeric, t)!,
+      dimText: Color.lerp(dimText, other.dimText, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
       accentWarm: Color.lerp(accentWarm, other.accentWarm, t)!,
       ballSize: _lerpD(ballSize, other.ballSize, t),

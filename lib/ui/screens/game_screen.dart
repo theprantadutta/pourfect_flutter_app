@@ -1,5 +1,4 @@
-/// The game screen. For now the only screen — the onboarding is the thing that
-/// has to feel right before anything downstream is worth building.
+/// The board screen, and the level-complete sequence that plays on top of it.
 library;
 
 import 'package:flutter/material.dart';
@@ -9,50 +8,61 @@ import '../../services/analytics/analytics_service.dart';
 import '../../state/game_controller.dart';
 import '../../state/hint_controller.dart';
 import '../../state/level_repository.dart';
+import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
-import '../widgets/level_complete_card.dart';
-
-/// How long the completion flourish is allowed to play before the board fades.
-///
-/// Matches the tube glow in `board_view.dart`. The card must not cut across the
-/// moment the player just earned.
-const _flourishHold = Duration(milliseconds: 780);
+import '../widgets/win_overlay.dart';
+import '../widgets/win_profile.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
-  const GameScreen({super.key});
+  final int levelId;
+
+  /// Returns to the level map.
+  final VoidCallback onExit;
+
+  const GameScreen({super.key, required this.levelId, required this.onExit});
 
   @override
   ConsumerState<GameScreen> createState() => _GameScreenState();
 }
 
 class _GameScreenState extends ConsumerState<GameScreen>
-    with WidgetsBindingObserver {
-  bool _showComplete = false;
-  bool _bootstrapped = false;
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  late final AnimationController _win;
+
+  WinProfile _profile = WinProfile.full;
+  CompletionResult? _result;
+
+  /// Cue keys already fired this sequence, so a rebuild cannot retrigger a
+  /// sound.
+  final Set<String> _fired = {};
+
+  /// True once the player has skipped. The skip layer is then removed, which is
+  /// what makes Next require a SEPARATE tap — see [_skipActive].
+  bool _skipped = false;
+
+  bool _started = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _win = AnimationController(vsync: this)..addListener(_onWinTick);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _win.dispose();
     super.dispose();
   }
 
-  /// THE ABANDON PATH THAT ACTUALLY MATTERS.
-  ///
-  /// Most players who give up never press back — they close the app, or a call
-  /// arrives, or they swipe away. A funnel that only counts clean exits
-  /// undercounts abandonment on exactly the hard levels it exists to find, so
-  /// backgrounding is treated as leaving the level and the event is flushed
-  /// while the process is still alive to send it.
+  /// THE ABANDON PATH THAT ACTUALLY MATTERS. Most players who give up close the
+  /// app rather than pressing back, so a funnel counting only clean exits
+  /// undercounts abandonment on exactly the hard levels it exists to find.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
@@ -69,18 +79,147 @@ class _GameScreenState extends ConsumerState<GameScreen>
     }
   }
 
+  // ---- level lifecycle -----------------------------------------------------
+
+  void _startLevel(int id) {
+    final campaign = ref.read(campaignProvider).value;
+    if (campaign == null) return;
+    final level = campaign.byId(id);
+    if (level == null) return;
+
+    _win.stop();
+    _win.value = 0;
+    _fired.clear();
+    setState(() {
+      _skipped = false;
+      _result = null;
+      _started = true;
+    });
+
+    ref
+        .read(gameControllerProvider.notifier)
+        .startLevel(level.level, levelSetVersion: campaign.levelSetVersion);
+  }
+
+  void _onBallLanded(double fill, bool completedTube) {
+    // Pitch rises with how full the tube now is, so a run of four plays as a
+    // rising figure rather than the same note four times.
+    ref.read(audioServiceProvider).pour(fill: fill);
+    if (completedTube) {
+      ref.read(audioServiceProvider).tubeComplete();
+      ref.read(hapticsServiceProvider).tubeCompleted();
+    } else {
+      ref.read(hapticsServiceProvider).ballLanded();
+    }
+  }
+
+  void _onTapTube(int tube) {
+    final outcome = ref.read(gameControllerProvider.notifier).tapTube(tube);
+    if (outcome == TapOutcome.selected ||
+        outcome == TapOutcome.deselected ||
+        outcome == TapOutcome.reselected) {
+      ref.read(audioServiceProvider).select();
+    }
+
+    final state = ref.read(gameControllerProvider);
+    if (state != null && state.isWon && _result == null) {
+      _beginWinSequence(state.level.id, state.movesUsed);
+    }
+  }
+
+  /// Records the result, picks the profile this clear has earned, and runs it.
+  void _beginWinSequence(int levelId, int movesUsed) {
+    final campaign = ref.read(campaignProvider).value;
+    final state = ref.read(gameControllerProvider);
+    if (campaign == null || state == null) return;
+
+    final result = ref
+        .read(progressProvider.notifier)
+        .record(
+          level: state.level,
+          levelSetVersion: campaign.levelSetVersion,
+          movesUsed: movesUsed,
+        );
+
+    // Length is EARNED, not constant. Three stars, a personal best, or the end
+    // of a band gets the full 1820ms; a routine two-star retry on level 60 gets
+    // the same beats in 1150ms.
+    final profile = WinProfile.forOutcome(
+      stars: result.stars,
+      isNewBest: result.isNewBest,
+      isBandFinal: isBandFinalLevel(levelId),
+    );
+
+    setState(() {
+      _result = result;
+      _profile = profile;
+    });
+
+    ref.read(audioServiceProvider).win();
+    ref.read(hapticsServiceProvider).levelCompleted();
+
+    _win
+      ..duration = profile.duration
+      ..forward(from: 0);
+  }
+
+  /// Fires star and personal-best cues as their beats arrive.
+  void _onWinTick() {
+    final result = _result;
+    if (result == null) return;
+
+    final elapsed = _win.value * _profile.total;
+
+    for (var i = 0; i < result.stars && i < _profile.starAt.length; i++) {
+      if (elapsed < _profile.starAt[i]) continue;
+      if (!_fired.add('star$i')) continue;
+
+      ref.read(audioServiceProvider).star(i);
+      // The third star is the one that has to feel different — a stronger
+      // haptic on top of the richer tone.
+      if (i == 2) {
+        ref.read(hapticsServiceProvider).tubeCompleted();
+      } else {
+        ref.read(hapticsServiceProvider).ballLanded();
+      }
+    }
+
+    if (result.isNewBest &&
+        elapsed >= _profile.moves.at + 120 &&
+        _fired.add('best')) {
+      ref.read(audioServiceProvider).newBest();
+      ref.read(hapticsServiceProvider).tubeCompleted();
+    }
+
+    if (mounted) setState(() {});
+  }
+
+  /// Jumps to the end state.
+  ///
+  /// Deliberately does NOT advance the level. If a skip also triggered Next,
+  /// the gesture would become muscle memory and players would blow through two
+  /// levels by accident — then, correctly, blame the game.
+  void _skip() {
+    if (_result == null || _skipped) return;
+    _win.stop();
+    _win.value = 1;
+    setState(() => _skipped = true);
+  }
+
+  bool get _winActive => _result != null;
+
+  /// The skip layer sits above everything and swallows one tap. Once it is
+  /// gone the CTA becomes reachable — the "separate tap" rule expressed as
+  /// layout rather than as a flag somebody has to remember to check.
+  bool get _skipActive => _winActive && !_skipped && _win.value < 1;
+
   Future<void> _onHint() async {
     final hints = ref.read(hintServiceProvider);
-
-    // Tapping hint while one is already solving cancels it. The board was never
-    // blocked, so this is the only affordance needed.
     if (ref.read(gameControllerProvider)?.hintPending ?? false) {
       hints.cancel();
       return;
     }
 
-    // In stage 9 this call is preceded by a rewarded video, and the reward is
-    // debited ONLY on HintOutcome.resolved. Never grant before this returns.
     final outcome = await hints.request();
     if (!mounted) return;
 
@@ -96,34 +235,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     }
   }
 
-  void _onTapTube(int tube) {
-    final controller = ref.read(gameControllerProvider.notifier);
-    final outcome = controller.tapTube(tube);
-
-    if (outcome == TapOutcome.poured ||
-        outcome == TapOutcome.pouredAndCompleted) {
-      final state = ref.read(gameControllerProvider);
-      if (state != null && state.isWon) {
-        ref.read(hapticsServiceProvider).levelCompleted();
-        // Let the tubes settle and glow before the card arrives.
-        Future.delayed(_flourishHold, () {
-          if (mounted) setState(() => _showComplete = true);
-        });
-      }
-    }
-  }
-
-  void _startLevel(int id) {
-    final campaign = ref.read(campaignProvider).value;
-    if (campaign == null) return;
-    final level = campaign.byId(id);
-    if (level == null) return;
-
-    setState(() => _showComplete = false);
-    ref
-        .read(gameControllerProvider.notifier)
-        .startLevel(level.level, levelSetVersion: campaign.levelSetVersion);
-  }
+  // ---- build ---------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -137,42 +249,95 @@ class _GameScreenState extends ConsumerState<GameScreen>
         loading: () => const _Loading(),
         error: (error, _) => _LoadFailed(message: '$error'),
         data: (levelSet) {
-          // Open level 1 once the campaign is available. Level select arrives
-          // after the onboarding feels right.
-          if (!_bootstrapped) {
-            _bootstrapped = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) => _startLevel(1));
+          // Started from HERE, not from initState: the campaign is a future,
+          // and a post-frame callback fires before it resolves. Opening the
+          // level the moment the data actually exists is the only ordering
+          // that cannot race.
+          if (!_started) {
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _startLevel(widget.levelId),
+            );
+            return const _Loading();
           }
           if (state == null) return const _Loading();
 
-          final campaignLevel = levelSet.byId(state.level.id);
-          final bandName = campaignLevel == null
-              ? ''
-              : bandNameFor(campaignLevel.bandIndex);
+          final elapsed = _win.value * _profile.total;
+          final result = _result;
+          final progress = ref.read(progressProvider.notifier);
+          final band = campaignBands().firstWhere(
+            (b) => b.contains(state.level.id),
+          );
+          final clearedNow = progress.clearedIn(
+            band.firstLevel,
+            band.lastLevel,
+          );
 
           return SafeArea(
             child: Stack(
               children: [
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 420),
-                  curve: Curves.easeOut,
-                  opacity: _showComplete ? 0.12 : 1,
-                  child: Column(
-                    children: [
-                      BoardHud(
+                Column(
+                  children: [
+                    // The HUD recedes rather than disappearing — the level
+                    // number is still the answer to "where am I".
+                    AnimatedOpacity(
+                      duration: const Duration(milliseconds: 380),
+                      opacity: _winActive ? 0.34 : 1,
+                      child: BoardHud(
                         levelId: state.level.id,
-                        bandName: bandName,
+                        bandName: band.name,
                         movesUsed: state.movesUsed,
                         minMoves: state.level.minMoves,
+                        onExit: widget.onExit,
                       ),
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: tokens.space4,
-                          ),
-                          child: BoardView(onTapTube: _onTapTube),
+                    ),
+                    Expanded(
+                      flex: _winActive ? 5 : 7,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: tokens.space4,
+                        ),
+                        child: BoardView(
+                          onTapTube: _onTapTube,
+                          onBallLanded: _onBallLanded,
+                          win: result == null
+                              ? null
+                              : WinPhase(
+                                  profile: _profile,
+                                  elapsedMs: elapsed,
+                                  celebrateThird: result.stars >= 3,
+                                ),
                         ),
                       ),
+                    ),
+                    if (result != null)
+                      Expanded(
+                        flex: 5,
+                        child: SingleChildScrollView(
+                          child: WinOverlay(
+                            profile: _profile,
+                            elapsedMs: elapsed,
+                            stars: result.stars,
+                            movesUsed: state.movesUsed,
+                            minMoves: state.level.minMoves,
+                            previousBest: result.previousBest,
+                            isNewBest: result.isNewBest,
+                            bandName: band.name,
+                            bandClearedBefore: (clearedNow - 1).clamp(
+                              0,
+                              band.length,
+                            ),
+                            bandClearedAfter: clearedNow,
+                            bandTotal: band.length,
+                            onNext: levelSet.byId(state.level.id + 1) == null
+                                ? null
+                                : () => _startLevel(state.level.id + 1),
+                            onReplay: () => _startLevel(state.level.id),
+                            onLevels: widget.onExit,
+                            interactive: !_skipActive,
+                          ),
+                        ),
+                      )
+                    else ...[
                       if (state.isStuck && !state.isWon)
                         _StuckBanner(
                           onUndo: () =>
@@ -180,42 +345,27 @@ class _GameScreenState extends ConsumerState<GameScreen>
                         ),
                       BoardControls(
                         onUndo: state.canUndo
-                            ? () => ref
-                                  .read(gameControllerProvider.notifier)
-                                  .undo()
+                            ? () {
+                                ref
+                                    .read(gameControllerProvider.notifier)
+                                    .undo();
+                              }
                             : null,
-                        onRestart: () =>
-                            ref.read(gameControllerProvider.notifier).restart(),
+                        onRestart: () => _startLevel(state.level.id),
                         onHint: _onHint,
                         hintBusy: state.hintPending,
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                if (_showComplete)
-                  TweenAnimationBuilder<double>(
-                    duration: const Duration(milliseconds: 380),
-                    curve: Curves.easeOutCubic,
-                    tween: Tween(begin: 0, end: 1),
-                    builder: (context, t, child) => Opacity(
-                      opacity: t,
-                      child: Transform.translate(
-                        offset: Offset(0, 16 * (1 - t)),
-                        child: child,
-                      ),
-                    ),
-                    child: LevelCompleteCard(
-                      levelId: state.level.id,
-                      stars: state.stars,
-                      movesUsed: state.movesUsed,
-                      minMoves: state.level.minMoves,
-                      onNext: levelSet.byId(state.level.id + 1) == null
-                          ? null
-                          : () => _startLevel(state.level.id + 1),
-                      onReplay: () {
-                        setState(() => _showComplete = false);
-                        ref.read(gameControllerProvider.notifier).restart();
-                      },
+
+                // Swallows exactly one tap, then removes itself.
+                if (_skipActive)
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _skip,
+                      child: const SizedBox.expand(),
                     ),
                   ),
               ],
@@ -228,10 +378,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
 }
 
 /// Surfaced the moment the board has no legal move left.
-///
-/// Leaving a player stuck, quietly, wondering what they missed is how a
-/// relaxing game earns a one-star review. Undo is offered right here, and it is
-/// free.
 class _StuckBanner extends StatelessWidget {
   final VoidCallback onUndo;
 

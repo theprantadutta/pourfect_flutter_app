@@ -34,3 +34,70 @@ class LevelRepository {
 /// once, next to the curve they describe, and the UI reaches them through the
 /// state layer like everything else.
 String bandNameFor(int bandIndex) => kCampaignBands[bandIndex].name;
+
+/// A campaign band, in the shape the UI needs it.
+///
+/// `level_curve.dart` is engine LOGIC and `ui/` may not import it, so the band
+/// definitions are projected here. This is the seam: the curve stays defined
+/// once, next to the generator that builds it.
+class BandInfo {
+  final int index;
+  final String name;
+  final int firstLevel;
+  final int lastLevel;
+
+  /// Human-readable board shape, e.g. "5–7 colours · 2 spare".
+  final String shape;
+
+  const BandInfo({
+    required this.index,
+    required this.name,
+    required this.firstLevel,
+    required this.lastLevel,
+    required this.shape,
+  });
+
+  int get length => lastLevel - firstLevel + 1;
+
+  bool contains(int levelId) => levelId >= firstLevel && levelId <= lastLevel;
+}
+
+/// Every band, in campaign order.
+List<BandInfo> campaignBands() => [
+  for (var i = 0; i < kCampaignBands.length; i++)
+    BandInfo(
+      index: i,
+      name: kCampaignBands[i].name,
+      firstLevel: kCampaignBands[i].firstLevel,
+      lastLevel: kCampaignBands[i].lastLevel,
+      shape: _shapeLabel(kCampaignBands[i]),
+    ),
+];
+
+String _shapeLabel(CampaignBand band) {
+  final colours = band.tiers.map((t) => t.colorCount).toList()..sort();
+  final low = colours.first;
+  final high = colours.last;
+  final spare = band.tiers
+      .map((t) => t.emptyTubeCount)
+      .reduce((a, b) => a < b ? a : b);
+  final maxSpare = band.tiers
+      .map((t) => t.emptyTubeCount)
+      .reduce((a, b) => a > b ? a : b);
+
+  final colourPart = low == high ? '$low colours' : '$low\u2013$high colours';
+  final sparePart = spare == maxSpare
+      ? '$spare spare'
+      : '$spare\u2013$maxSpare spare';
+  return '$colourPart \u00b7 $sparePart';
+}
+
+/// True when [levelId] is the last level of its band — one of the moments the
+/// win sequence runs at full length.
+bool isBandFinalLevel(int levelId) {
+  final band = bandForLevel(levelId);
+  return band != null && band.lastLevel == levelId;
+}
+
+/// Display name of a campaign band.
+String bandNameForLevel(int levelId) => bandForLevel(levelId)?.name ?? '';

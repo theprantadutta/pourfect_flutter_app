@@ -146,12 +146,9 @@ class GameController extends Notifier<GameState?> {
       ),
     );
 
-    if (result.completedDestination) {
-      _haptics.tubeCompleted();
-    } else {
-      _haptics.ballLanded();
-    }
-
+    // No haptic here on purpose: the board view fires one per BALL as it
+    // touches down, so the feedback lands with the ball rather than at the
+    // moment the move was decided.
     if (state!.isWon) _logComplete();
 
     return result.completedDestination
