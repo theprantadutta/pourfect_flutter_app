@@ -62,6 +62,3 @@ macos/Runner/GoogleService-Info.plist
 .env
 .env.*
 !.env.example
-
-# Claude
-.claude/
