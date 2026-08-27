@@ -219,6 +219,60 @@ void main() {
       expect(checked, greaterThan(5));
     });
 
+    test('the onboarding ramp has no cliff', () {
+      // The rail on the failure the first bake shipped: levels 1-15 climbing at
+      // 2.8 points/level while the rest of the game climbed at 0.17-0.4. The
+      // tutorial was the harshest gradient in the entire campaign, which is
+      // exactly backwards — levels 1-15 are where D1 is won or lost.
+      final worst = worstOnboardingJump(_loadCampaign().levels);
+      expect(
+        worst,
+        isNull,
+        reason: worst == null
+            ? ''
+            : 'difficulty jumps ${worst.jump.toStringAsFixed(1)} points from '
+                  'level ${worst.fromLevel} to ${worst.toLevel}',
+      );
+    });
+
+    test('the first eight levels are near-flat and gentle', () {
+      // A player here is learning that a tap pours, that the whole run travels,
+      // and that undo is free. They are not being tested, and should find it
+      // very hard to fail.
+      final opening = _loadCampaign().levels.take(8).toList();
+      for (final level in opening) {
+        expect(
+          level.level.difficultyScore,
+          inInclusiveRange(15, 32),
+          reason: 'level ${level.id} is outside the tutorial window',
+        );
+        expect(level.level.colorCount, lessThanOrEqualTo(4));
+      }
+      expect(
+        opening.last.level.difficultyScore -
+            opening.first.level.difficultyScore,
+        lessThan(15),
+        reason: 'levels 1-8 should be near-flat, not a ramp',
+      );
+    });
+
+    test('bands hand off without a step', () {
+      // Band two should continue band one's line rather than stepping over it.
+      final set = _loadCampaign();
+      for (final band in kCampaignBands.skip(1)) {
+        final last = set.byId(band.firstLevel - 1)!;
+        final first = set.byId(band.firstLevel)!;
+        if (last.isBreather) continue;
+        expect(
+          first.level.difficultyScore - last.level.difficultyScore,
+          lessThan(10),
+          reason:
+              'band "${band.name}" opens ${(first.level.difficultyScore - last.level.difficultyScore).toStringAsFixed(1)} '
+              'points above the level before it',
+        );
+      }
+    });
+
     test('breather flags match the curve definition', () {
       for (final campaignLevel in _loadCampaign().levels) {
         expect(

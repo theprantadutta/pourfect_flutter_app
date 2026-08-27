@@ -108,12 +108,29 @@ flags must reproduce `levels.bin` byte-for-byte, and
 `test/engine/level_asset_test.dart` fails if it does not. Player progress is
 keyed on level id and `minMoves` feeds the server's leaderboard anti-cheat
 floor, so a silent reshuffle would repoint every saved star at a board the
-player never saw and start rejecting legitimate submissions. If you deliberately
-change the curve, bump `kLevelSetVersion` and regenerate in the same commit.
+player never saw and start rejecting legitimate submissions.
+
+`kLevelSetVersion` bumps on any deliberate curve change **once the game has
+shipped**. Pre-launch it stays at 1: the field protects live player progress,
+and bumping it on every pre-release re-bake would turn a safety signal into
+noise. The moment v1 is on Play, that discretion ends.
 
 `levelSetVersion` is stored in the asset and must be stored on every
 `LevelProgress` row, locally and server-side. v1 ships no migration logic and
 needs none — the field exists because it cannot be retrofitted.
+
+**The onboarding zone is the part to protect.** Levels 1-8 sit near-flat in
+18-30 (a player is learning that a tap pours and that undo is free, not being
+tested); 9-15 ease to ~50 and hand off to band two at that level. A hard rail
+asserts no step between consecutive non-breather levels up to 20 exceeds 6
+points — the first bake had the tutorial climbing at 2.8 points/level against
+0.17-0.4 for the whole rest of the game, i.e. the harshest gradient in the
+campaign sat exactly where D1 is won or lost.
+
+Pinned tiers (band one) are generated SLOT BY SLOT against narrow sub-windows,
+not sampled as a pool. A pool only contains what a shape commonly produces, so
+asking 13 four-colour boards to cover 30-52 returns 41-52 — 41 is that shape's
+p10. That is how a 13.6-point cliff appeared between levels 8 and 9.
 
 The campaign curve: four bands, colours rising 3→10, with the final band
 stepping up by REMOVING an empty tube rather than adding colours. Breathers land

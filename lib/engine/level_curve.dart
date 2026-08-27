@@ -56,6 +56,58 @@ const double kBreatherFloorFactor = 0.60;
 /// How many preceding levels the breather rule averages over.
 const int kBreatherLookback = 5;
 
+/// Last level of the ONBOARDING ZONE, where the difficulty rail below applies.
+const int kOnboardingLastLevel = 20;
+
+/// Hard ceiling on the difficulty step between consecutive non-breather levels
+/// inside the onboarding zone.
+///
+/// The first bake got this exactly backwards. Read as a ramp rate it was:
+///
+///     levels   1-15   2.8 points/level
+///     levels  16-60   0.4
+///     levels  61-120  0.17
+///     levels 121-150  0.17
+///
+/// — the tutorial climbing SEVEN TIMES faster than anything after it. That is
+/// the opposite of what the curve is for. Levels 1-15 are where D1 retention is
+/// won or lost, and a player who bounces at level 9 never sees the carefully
+/// graded 90 levels built for them further in. The rail makes the failure
+/// impossible to reintroduce by accident.
+const double kOnboardingMaxJump = 6;
+
+/// One sub-segment of a band: a board shape, optionally pinned to a difficulty
+/// window.
+///
+/// Most tiers are open-ended and simply take the easiest boards above the
+/// running floor, which keeps the ramp gentle. The opening band pins explicit
+/// windows instead, because the tutorial's job is not to be as easy as
+/// possible — it is to occupy a KNOWN, near-flat range so a new player is
+/// learning the controls rather than being tested.
+final class CampaignTier {
+  final LevelSpec spec;
+
+  /// Lowest calibrated difficulty this tier may use, on top of the running
+  /// floor.
+  final double? minScore;
+
+  /// Highest calibrated difficulty this tier may use.
+  final double? maxScore;
+
+  const CampaignTier(this.spec, {this.minScore, this.maxScore});
+
+  bool get hasWindow => minScore != null || maxScore != null;
+
+  int get colorCount => spec.colorCount;
+
+  int get emptyTubeCount => spec.emptyTubeCount;
+
+  @override
+  String toString() =>
+      '${spec.colorCount}c/${spec.emptyTubeCount}e'
+      '${hasWindow ? " [${minScore ?? "-"}, ${maxScore ?? "-"}]" : ""}';
+}
+
 /// One stretch of the campaign, built from ordered difficulty tiers.
 final class CampaignBand {
   final String name;
@@ -66,7 +118,7 @@ final class CampaignBand {
 
   /// Sub-segments in ascending difficulty. Slots are split evenly between them,
   /// so the board grows steadily rather than jumping around within a band.
-  final List<LevelSpec> tiers;
+  final List<CampaignTier> tiers;
 
   /// Spec used for this band's breather levels — deliberately a smaller board
   /// than the band's tiers, because that is what "relief" looks like.
@@ -90,13 +142,29 @@ final class CampaignBand {
 /// colours — one empty tube is the hardest constraint in the game, and it keeps
 /// the board readable at the point where the puzzles are hardest.
 const List<CampaignBand> kCampaignBands = [
+  // The onboarding band, and the only one with pinned windows.
+  //
+  // Levels 1-8 sit in a near-flat 18-30: a new player should find it almost
+  // impossible to fail while they learn that a tap pours, that the whole run
+  // travels, and that undo is free and unlimited. They are not being tested.
+  // Levels 9-15 then ease up to 52 and hand off to "Finding Rhythm" at that
+  // level rather than at 61, so band two continues the line instead of
+  // stepping over it.
   CampaignBand(
     name: 'First Pours',
     firstLevel: 1,
     lastLevel: 15,
     tiers: [
-      LevelSpec(colorCount: 3, emptyTubeCount: 2),
-      LevelSpec(colorCount: 4, emptyTubeCount: 2),
+      CampaignTier(
+        LevelSpec(colorCount: 3, emptyTubeCount: 2),
+        minScore: 18,
+        maxScore: 30,
+      ),
+      CampaignTier(
+        LevelSpec(colorCount: 4, emptyTubeCount: 2),
+        minScore: 30,
+        maxScore: 52,
+      ),
     ],
     breatherSpec: LevelSpec(colorCount: 3, emptyTubeCount: 2),
   ),
@@ -105,9 +173,9 @@ const List<CampaignBand> kCampaignBands = [
     firstLevel: 16,
     lastLevel: 60,
     tiers: [
-      LevelSpec(colorCount: 5, emptyTubeCount: 2),
-      LevelSpec(colorCount: 6, emptyTubeCount: 2),
-      LevelSpec(colorCount: 7, emptyTubeCount: 2),
+      CampaignTier(LevelSpec(colorCount: 5, emptyTubeCount: 2)),
+      CampaignTier(LevelSpec(colorCount: 6, emptyTubeCount: 2)),
+      CampaignTier(LevelSpec(colorCount: 7, emptyTubeCount: 2)),
     ],
     breatherSpec: LevelSpec(colorCount: 4, emptyTubeCount: 2),
   ),
@@ -116,9 +184,9 @@ const List<CampaignBand> kCampaignBands = [
     firstLevel: 61,
     lastLevel: 120,
     tiers: [
-      LevelSpec(colorCount: 8, emptyTubeCount: 2),
-      LevelSpec(colorCount: 9, emptyTubeCount: 2),
-      LevelSpec(colorCount: 10, emptyTubeCount: 2),
+      CampaignTier(LevelSpec(colorCount: 8, emptyTubeCount: 2)),
+      CampaignTier(LevelSpec(colorCount: 9, emptyTubeCount: 2)),
+      CampaignTier(LevelSpec(colorCount: 10, emptyTubeCount: 2)),
     ],
     breatherSpec: LevelSpec(colorCount: 6, emptyTubeCount: 2),
   ),
@@ -127,8 +195,8 @@ const List<CampaignBand> kCampaignBands = [
     firstLevel: 121,
     lastLevel: 150,
     tiers: [
-      LevelSpec(colorCount: 10, emptyTubeCount: 2),
-      LevelSpec(colorCount: 10, emptyTubeCount: 1),
+      CampaignTier(LevelSpec(colorCount: 10, emptyTubeCount: 2)),
+      CampaignTier(LevelSpec(colorCount: 10, emptyTubeCount: 1)),
     ],
     breatherSpec: LevelSpec(colorCount: 8, emptyTubeCount: 2),
   ),
@@ -245,38 +313,68 @@ CampaignBuildResult buildCampaign({
     final tierSlots = _splitEvenly(normalSlots, band.tiers.length);
 
     for (var t = 0; t < band.tiers.length; t++) {
-      final spec = band.tiers[t];
+      final tier = band.tiers[t];
       final slots = tierSlots[t];
       if (slots.isEmpty) continue;
 
-      // A pool larger than the slot count gives the sort something to choose
-      // from; keeping the lowest above the floor yields a gentle ramp rather
-      // than a staircase.
+      // A tier's own floor never drops below the running floor, so a pinned
+      // window can raise the ramp but never walk it backwards.
+      final tierFloor = tier.minScore == null
+          ? floor
+          : max(floor, tier.minScore!);
+
+      // A pool larger than the slot count gives the selection something to
+      // choose from.
       final poolSize = max(slots.length + 6, (slots.length * 1.5).round());
 
       onProgress?.call(
-        'band ${band.name}: tier ${spec.colorCount}c/${spec.emptyTubeCount}e '
-        '-> ${slots.length} levels (pool $poolSize, floor '
-        '${floor.toStringAsFixed(1)})',
+        'band ${band.name}: tier $tier -> ${slots.length} levels '
+        '(pool $poolSize, floor ${tierFloor.toStringAsFixed(1)})',
       );
 
-      final pool = generator.generateBatch(
-        spec,
-        poolSize,
-        minScore: floor,
-        maxAttemptsPerLevel: 60000,
-        seenKeys: seenKeys,
-        stats: stats,
-      )..sort((a, b) => a.score.compareTo(b.score));
+      // A PINNED tier is built SLOT BY SLOT, each aimed at its own narrow
+      // sub-window. Sampling a pool and spreading the picks cannot work here:
+      // a pool only ever contains what the distribution commonly produces, so
+      // asking 13 four-colour boards to cover 30-52 returns 41-52 — 41 is that
+      // shape's 10th percentile, and nothing in the sample reaches below it.
+      // That is precisely how the first re-bake put a 13.6-point cliff between
+      // levels 8 and 9. Targeting each slot forces generation into the tail.
+      //
+      // An OPEN tier still takes the lowest candidates above the floor, which
+      // keeps the ramp gentle and leaves harder boards for later tiers.
+      final List<GeneratedLevel> picks;
+      if (tier.hasWindow) {
+        picks = _generatePinnedTier(
+          generator: generator,
+          tier: tier,
+          floor: tierFloor,
+          count: slots.length,
+          seenKeys: seenKeys,
+          stats: stats,
+        );
+      } else {
+        picks =
+            generator
+                .generateBatch(
+                  tier.spec,
+                  poolSize,
+                  minScore: tierFloor,
+                  maxAttemptsPerLevel: 60000,
+                  seenKeys: seenKeys,
+                  stats: stats,
+                )
+                .toList()
+              ..sort((a, b) => a.score.compareTo(b.score));
+      }
 
       for (var i = 0; i < slots.length; i++) {
         final id = slots[i];
         assigned[id] = CampaignLevel(
-          level: LevelSetCodec.quantiseLevel(pool[i].toLevel(id)),
+          level: LevelSetCodec.quantiseLevel(picks[i].toLevel(id)),
           bandIndex: bandIndex,
           isBreather: false,
         );
-        metrics[id] = pool[i].metrics;
+        metrics[id] = picks[i].metrics;
       }
       floor = assigned[slots.last]!.level.difficultyScore;
     }
@@ -413,6 +511,107 @@ List<Level> buildDailyPool({
   }
 
   return levels;
+}
+
+/// Builds a pinned tier one level at a time, each aimed at its own slice of the
+/// tier's window, so the window is FILLED evenly rather than merely respected.
+///
+/// Each slot's floor also carries the previous level's score, which keeps the
+/// tier monotonic even when a slot has to be widened.
+///
+/// Widening is the graceful-degradation path. Difficulty is not continuous at
+/// the easy end: a 3-colour board has only a handful of reachable scores
+/// (5-6 optimal moves, a coarse scatter term), so a narrow sub-window can be
+/// genuinely unhittable rather than merely rare. Rather than failing the build
+/// on a lattice gap, the search widens toward the tier's full window — and the
+/// onboarding rail stays the hard assertion that catches a real cliff.
+List<GeneratedLevel> _generatePinnedTier({
+  required LevelGenerator generator,
+  required CampaignTier tier,
+  required double floor,
+  required int count,
+  required Set<String> seenKeys,
+  required GenerationStats stats,
+}) {
+  final windowLow = floor;
+  final windowHigh = tier.maxScore ?? double.infinity;
+  final step = windowHigh.isFinite ? (windowHigh - windowLow) / count : 0.0;
+
+  final levels = <GeneratedLevel>[];
+  var previousScore = windowLow;
+
+  for (var i = 0; i < count; i++) {
+    final targetLow = windowLow + i * step;
+    final targetHigh = step > 0 ? windowLow + (i + 1) * step : windowHigh;
+
+    GeneratedLevel? chosen;
+    for (final widen in const [0.0, 0.5, 1.5, 4.0]) {
+      final low = max(previousScore, targetLow - step * widen);
+      final high = windowHigh.isFinite
+          ? min(windowHigh, targetHigh + step * widen)
+          : null;
+      if (high != null && high <= low) continue;
+
+      try {
+        final candidate = generator.generate(
+          tier.spec,
+          minScore: low,
+          maxScore: high,
+          maxAttempts: 40000,
+          stats: stats,
+        );
+        if (!seenKeys.add(canonicalKeyOf(candidate.board))) continue;
+        chosen = candidate;
+        break;
+      } on StateError {
+        continue;
+      }
+    }
+
+    if (chosen == null) {
+      throw StateError(
+        'Could not build pinned level ${i + 1}/$count for tier $tier '
+        'targeting [${targetLow.toStringAsFixed(1)}, '
+        '${targetHigh.toStringAsFixed(1)}]. Widen the tier window or change '
+        'its board shape.',
+      );
+    }
+
+    levels.add(chosen);
+    previousScore = chosen.score;
+  }
+
+  return levels;
+}
+
+/// The worst upward difficulty step between consecutive non-breather levels in
+/// the onboarding zone, or null when the curve is clean.
+///
+/// Breathers are skipped rather than flagged: a breather is a deliberate DIP,
+/// and the level after one is meant to return to the underlying line. What this
+/// guards is that line.
+///
+/// Shared by the validator and the tests so the rail is stated once.
+({int fromLevel, int toLevel, double jump})? worstOnboardingJump(
+  List<CampaignLevel> levels,
+) {
+  CampaignLevel? previous;
+  ({int fromLevel, int toLevel, double jump})? worst;
+
+  for (final level in levels) {
+    if (level.id > kOnboardingLastLevel) break;
+    if (level.isBreather) continue;
+
+    if (previous != null) {
+      final jump = level.level.difficultyScore - previous.level.difficultyScore;
+      if (jump > kOnboardingMaxJump && (worst == null || jump > worst.jump)) {
+        worst = (fromLevel: previous.id, toLevel: level.id, jump: jump);
+      }
+    }
+    previous = level;
+  }
+
+  return worst;
 }
 
 /// Splits [items] into [parts] contiguous groups of near-equal size.

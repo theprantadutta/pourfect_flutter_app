@@ -66,6 +66,7 @@ void main(List<String> args) {
 
   _checkMonotonicWithinBands(levelSet, report);
   _checkBreathers(levelSet, report);
+  _checkOnboardingRamp(levelSet, report);
 
   // ---- daily pool ---------------------------------------------------------
   final dailyFile = File(_dailyPoolPath);
@@ -229,11 +230,12 @@ void _checkBandShapes(LevelSet set, _Report report) {
     }
 
     final band = kCampaignBands[expectedBand];
-    final allowed = campaignLevel.isBreather ? [band.breatherSpec] : band.tiers;
-    final matches = allowed.any(
-      (spec) =>
-          spec.colorCount == level.colorCount &&
-          spec.emptyTubeCount == level.emptyTubeCount,
+    final allowedShapes = campaignLevel.isBreather
+        ? [(band.breatherSpec.colorCount, band.breatherSpec.emptyTubeCount)]
+        : [for (final t in band.tiers) (t.colorCount, t.emptyTubeCount)];
+    final matches = allowedShapes.any(
+      (shape) =>
+          shape.$1 == level.colorCount && shape.$2 == level.emptyTubeCount,
     );
     if (!matches) {
       report.fail(
@@ -305,6 +307,30 @@ void _checkBreathers(LevelSet set, _Report report) {
   } else {
     stdout.writeln('  $found breather levels, all within their windows');
   }
+}
+
+/// The onboarding zone must not contain a difficulty cliff.
+///
+/// This is the rail on the failure the first bake shipped: levels 1-15 climbing
+/// at 2.8 points/level while the rest of the game climbed at 0.17-0.4. Levels
+/// 1-15 are where D1 retention is decided, and a player who bounces at level 9
+/// never reaches the part of the curve built for them.
+void _checkOnboardingRamp(LevelSet set, _Report report) {
+  final worst = worstOnboardingJump(set.levels);
+  if (worst != null) {
+    report.fail(
+      'onboarding difficulty jumps ${worst.jump.toStringAsFixed(1)} points '
+      'from level ${worst.fromLevel} to ${worst.toLevel}, over the '
+      '$kOnboardingMaxJump limit — this is the cliff that costs D1',
+    );
+    return;
+  }
+
+  final opening = set.levels.take(8).map((l) => l.level.difficultyScore);
+  stdout.writeln(
+    '  onboarding ramp clean (levels 1-8: '
+    '${opening.first.toStringAsFixed(1)} - ${opening.last.toStringAsFixed(1)})',
+  );
 }
 
 /// Mirror of `kMaxColours`, restated here so the validator fails loudly if the
