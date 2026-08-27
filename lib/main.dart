@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'firebase_options.dart';
+import 'services/perf/frame_watch.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,11 @@ Future<void> main() async {
       stackTrace: stack,
     );
   }
+
+  // Profile/debug only — reports build and raster percentiles to logcat every
+  // few seconds of play. `dumpsys gfxinfo` cannot see a Flutter app's frames,
+  // so the app measures itself.
+  FrameWatch().start();
 
   runApp(const ProviderScope(child: PourfectApp()));
 }

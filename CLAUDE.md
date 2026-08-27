@@ -326,6 +326,37 @@ away — that is the bug that produces "the game deleted my progress".
 
 Every row records `levelSetVersion`. This is what that field was added for.
 
+## Frame timing
+
+`adb shell dumpsys gfxinfo` reports ZERO frames for this app — Impeller renders
+to its own surface and never touches Android's HWUI pipeline, so that tool is
+blind to it. `integration_test` + `flutter drive` is the documented alternative
+and the harness is in the repo, but it needs the on-device test to reach the
+host VM service and fails here with a connection refused.
+
+What actually works: `FrameWatch` (`services/perf/frame_watch.dart`) uses
+Flutter's own `addTimingsCallback`, so the app measures itself and prints to
+logcat. Profile/debug only.
+
+    flutter build apk --profile --target-platform android-arm64
+    adb logcat | grep '\[frames\]'
+
+**Measured on a Samsung A24 (mid-range), driving real pours and undos:**
+
+| Window | Build p50 / p95 / max | Raster p50 / p95 / max | Janky |
+|---|---|---|---|
+| startup | 1.14 / 2.00 / 18.29 ms | 4.85 / 12.33 / 223.73 ms | 3/241 (1.2%) |
+| steady | 1.13 / 2.07 / 4.56 ms | 4.49 / 6.96 / 11.03 ms | **0/246** |
+| steady | 1.17 / 1.98 / 4.42 ms | 4.56 / 7.36 / 12.99 ms | **0/243** |
+
+Budget is 16.67ms at 60Hz. Steady-state play uses about **1.2ms build + 4.5ms
+raster**, so roughly a third of the frame. The 223ms raster spike in the first
+window is first-frame shader compilation at startup, not gameplay.
+
+Report BOTH halves when investigating: build is Dart work (too much per-frame
+recomputation), raster is GPU work (shaders, saveLayers, overdraw — which is why
+`BackdropFilter` is banned here).
+
 ## APK budget
 
 Measure PER-ABI, the way Play delivers it — never the universal APK.
@@ -347,16 +378,6 @@ splits them per device.
   is the single swap point.
 - **No sound yet.** The completion moment currently lands on haptics alone; the
   single chime described in the design direction still needs an asset.
-- **Frame timing.** `adb shell dumpsys gfxinfo` reports ZERO frames for this app
-  — Impeller renders to its own surface and bypasses Android's HWUI pipeline, so
-  that tool is blind to it. The real measurement is
-  `integration_test/pour_perf_test.dart` driven by `test_driver/perf_driver.dart`:
-
-      flutter drive --driver=test_driver/perf_driver.dart         --target=integration_test/pour_perf_test.dart --profile
-
-  Watch BOTH halves: build time is Dart work (too much per-frame recomputation),
-  raster time is GPU work (shaders, blurs, overdraw — which is why
-  `BackdropFilter` is banned here).
 - **No settings, daily challenge, leaderboard or store screens yet.**
 
 ## Auth — v1 limitation to be honest about
