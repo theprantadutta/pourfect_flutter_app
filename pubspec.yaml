@@ -46,6 +46,9 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  # Pure-Dart engine tests run under `dart test` — no device, no Flutter
+  # binding, and fast enough to run the 1,000-board solvability sweep.
+  test: ^1.25.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
