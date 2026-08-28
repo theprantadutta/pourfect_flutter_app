@@ -49,9 +49,23 @@ app.*.map.json
 
 # ---- Pourfect: secrets & credentials ----
 # Firebase client config (contains project keys; regenerate with flutterfire configure)
-android/app/google-services.json
-ios/Runner/GoogleService-Info.plist
-macos/Runner/GoogleService-Info.plist
+# Firebase config. These carry the project id, app id and Web API key.
+#
+# They are NOT cryptographic secrets — every one of these values ships inside
+# the APK and can be read out of any downloaded build, which is why Firebase
+# leans on Security Rules, App Check and API-key restrictions rather than on
+# hiding them. They stay out of the repo anyway: it is the same convention
+# Snake Classic uses, it keeps an unrestricted key from being scraped out of a
+# public repo and burned on quota, and there is no upside to carrying them.
+#
+# Globs, not fixed paths — a second flavour or platform folder must not
+# quietly reintroduce one.
+**/google-services.json
+**/GoogleService-Info.plist
+**/google_service_client_secret.json
+**/firebase_options.dart
+**/.firebaserc
+firebase.json
 
 # Android signing
 **/android/key.properties
@@ -59,6 +73,13 @@ macos/Runner/GoogleService-Info.plist
 *.keystore
 
 # Local env
+#
+# WARNING: .env is declared as a Flutter ASSET so the app can read it, which
+# means it is bundled into the APK and trivially extractable. Gitignoring it
+# is repo hygiene, NOT secrecy. Nothing that must stay private — a signing
+# key, a service account, an API secret — may ever go in here. Public
+# identifiers and endpoint URLs only.
+*.env
 .env
 .env.*
 !.env.example
