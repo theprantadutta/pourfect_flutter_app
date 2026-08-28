@@ -57,19 +57,19 @@ format shown in the "Create as" column — the format is not editable afterwards
 ### Android
 
 ```
-ANDROID_INTERSTITIAL_LEVEL_COMPLETE = ca-app-pub-________________/__________
-ANDROID_REWARDED_HINT               = ca-app-pub-________________/__________
-ANDROID_REWARDED_EXTRA_TUBE         = ca-app-pub-________________/__________
-ANDROID_REWARDED_LEVEL_SKIP         = ca-app-pub-________________/__________
+ANDROID_INTERSTITIAL_LEVEL_COMPLETE = ca-app-pub-9242904787767394/2104344149
+ANDROID_REWARDED_HINT               = ca-app-pub-9242904787767394/2509714423
+ANDROID_REWARDED_EXTRA_TUBE         = ca-app-pub-9242904787767394/9813489373
+ANDROID_REWARDED_LEVEL_SKIP         = ca-app-pub-9242904787767394/2046679999
 ```
 
 ### iOS
 
 ```
-IOS_INTERSTITIAL_LEVEL_COMPLETE = ca-app-pub-________________/__________
-IOS_REWARDED_HINT               = ca-app-pub-________________/__________
-IOS_REWARDED_EXTRA_TUBE         = ca-app-pub-________________/__________
-IOS_REWARDED_LEVEL_SKIP         = ca-app-pub-________________/__________
+IOS_INTERSTITIAL_LEVEL_COMPLETE = ca-app-pub-9242904787767394/6698195277
+IOS_REWARDED_HINT               = ca-app-pub-9242904787767394/1496955005
+IOS_REWARDED_EXTRA_TUBE         = ca-app-pub-9242904787767394/4833564783
+IOS_REWARDED_LEVEL_SKIP         = ca-app-pub-9242904787767394/1336233558
 ```
 
 ### Create them as
