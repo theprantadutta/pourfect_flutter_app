@@ -450,6 +450,39 @@ already solves ball size against available space and overflowed once at level
 would trade the product's identity for rounding-error revenue. Rewarded video
 stays the primary driver.
 
+## Lazy providers spend before they remember
+
+`monetizationProvider` is lazy — nothing builds it until the first hint is
+asked for — so `build()` and the first spend happen in the same breath. The
+free-hint budget was therefore always measured against a freshly-zeroed
+counter, and **every launch handed out a fresh set of free hints**. The
+rewarded prompt, which is the primary revenue driver, was unreachable for
+anyone willing to reopen the app.
+
+Two rules came out of it, both pinned by tests:
+
+- **Await the restore before spending anything persisted.**
+  `consumeFreeHint` waits on the future `build()` kicked off.
+- **Restores must be monotonic.** Assigning the stored value unconditionally
+  walks the counter backwards when a spend lands mid-load, handing the spent
+  hint straight back.
+
+The funnel would NOT have caught this: `hint_used` fires either way, so the
+analytics looked healthy while the paywall never appeared. Any provider that
+persists a spendable balance has the same shape — check it the same way.
+
+## Ad placements without a feature behind them
+
+`PowerUpUsed` is defined in the analytics events and has **zero call sites**.
+`RewardedPlacement.extraTube` and `RewardedPlacement.levelSkip` exist, have
+live AdMob units, and are preloaded on every launch — but nothing can ever
+show them, because neither power-up is implemented as gameplay.
+
+So two of the four ad units burn a load request per session and can never
+record an impression. Either build the features or stop preloading those
+placements; leaving it as-is makes AdMob's fill-rate reporting meaningless for
+half the inventory.
+
 ## Monetization — verified on device
 
 An arm64 release build on a Samsung A24, 2026-08-28:
