@@ -62,6 +62,12 @@ dependencies:
   package_info_plus: ^8.0.0
   url_launcher: ^6.3.0
 
+  # Ads and the single Remove Ads purchase. Both sit behind interfaces in
+  # services/, so the network or the store can change without touching game
+  # code. See generated/ad_config.md.
+  google_mobile_ads: ^9.1.0
+  in_app_purchase: ^3.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

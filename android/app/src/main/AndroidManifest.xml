@@ -3,6 +3,17 @@
         android:label="Pourfect"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- AdMob APP id. Note the TILDE: an app id uses '~', an ad UNIT id
+             uses '/'. Putting a unit id here crashes on launch with
+             "Invalid application ID"; putting an app id in Dart silently
+             never loads an ad, which is far harder to diagnose.
+
+             This is Google's public TEST app id. Replace from
+             generated/ad_config.md before release. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
