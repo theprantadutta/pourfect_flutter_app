@@ -4,10 +4,12 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/ads/ad_service.dart';
 import '../../services/analytics/analytics_service.dart';
 import '../../state/game_controller.dart';
 import '../../state/hint_controller.dart';
 import '../../state/level_repository.dart';
+import '../../state/monetization_controller.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../theme/tokens.dart';
@@ -80,6 +82,19 @@ class _GameScreenState extends ConsumerState<GameScreen>
   }
 
   // ---- level lifecycle -----------------------------------------------------
+
+  /// Advances after a COMPLETED level, offering an interstitial at the break.
+  ///
+  /// This is the ONLY path that can show an interstitial. Restart and exit go
+  /// straight to `_startLevel`, so there is no code path where quitting or
+  /// replaying a level can produce an ad.
+  Future<void> _advanceFrom(int completedLevelId, int nextLevelId) async {
+    await ref
+        .read(monetizationProvider.notifier)
+        .maybeShowInterstitialAfter(completedLevelId);
+    if (!mounted) return;
+    _startLevel(nextLevelId);
+  }
 
   void _startLevel(int id) {
     final campaign = ref.read(campaignProvider).value;
@@ -213,6 +228,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
   /// layout rather than as a flag somebody has to remember to check.
   bool get _skipActive => _winActive && !_skipped && _win.value < 1;
 
+  /// Asks for a hint, spending a free one or a rewarded video.
+  ///
+  /// THE ORDER HERE IS THE WHOLE POINT. The video plays, the reward is
+  /// confirmed EARNED, and only then is the solver asked. If the solver cannot
+  /// answer, the player is told plainly — and because a rewarded video costs
+  /// attention rather than a balance, nothing of theirs was consumed. The one
+  /// arrangement never to write is "grant, then check".
   Future<void> _onHint() async {
     final hints = ref.read(hintServiceProvider);
     if (ref.read(gameControllerProvider)?.hintPending ?? false) {
@@ -220,19 +242,89 @@ class _GameScreenState extends ConsumerState<GameScreen>
       return;
     }
 
-    final outcome = await hints.request();
+    final levelId = ref.read(gameControllerProvider)?.level.id ?? 0;
+    final money = ref.read(monetizationProvider.notifier);
+
+    var wasRewarded = false;
+    if (!await money.consumeFreeHint()) {
+      if (!mounted) return;
+      if (!await _confirmWatchAd()) return;
+      if (!mounted) return;
+
+      final outcome = await money.offerRewarded(
+        RewardedPlacement.hint,
+        levelId: levelId,
+      );
+      if (!mounted) return;
+
+      if (outcome != RewardOutcome.earned) {
+        _toast(switch (outcome) {
+          RewardOutcome.dismissed => 'No hint — the video was not finished.',
+          RewardOutcome.unavailable => 'No video available right now.',
+          _ => 'Something went wrong. Nothing was used.',
+        });
+        return;
+      }
+      wasRewarded = true;
+    }
+
+    final outcome = await hints.request(wasRewarded: wasRewarded);
     if (!mounted) return;
 
     if (outcome == HintOutcome.unavailable) {
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('No hint available for this position.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      _toast(
+        wasRewarded
+            ? 'No hint for this position — your reward was not used.'
+            : 'No hint available for this position.',
+      );
     }
+  }
+
+  /// Asks before taking the player into a video. Never auto-play an ad.
+  Future<bool> _confirmWatchAd() async {
+    final tokens = PourfectTokens.of(context);
+    final remaining = ref.read(monetizationProvider).freeHintsRemaining;
+
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: tokens.surfaceRaised,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(tokens.panelRadius),
+              side: BorderSide(color: tokens.hairline),
+            ),
+            title: Text('Watch a video for a hint?', style: titleStyle(tokens)),
+            content: Text(
+              remaining > 0 ? 'You have $remaining free hints left.' : 'Your free hints are used up. A short video earns one more.',
+              style: bodyStyle(tokens),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(
+                  'Not now',
+                  style: actionStyle(tokens, color: tokens.textMuted),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(
+                  'Watch',
+                  style: actionStyle(tokens, color: tokens.accent),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  void _toast(String message) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
   }
 
   // ---- build ---------------------------------------------------------------
@@ -330,7 +422,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                             bandTotal: band.length,
                             onNext: levelSet.byId(state.level.id + 1) == null
                                 ? null
-                                : () => _startLevel(state.level.id + 1),
+                                : () => _advanceFrom(
+                                    state.level.id,
+                                    state.level.id + 1,
+                                  ),
                             onReplay: () => _startLevel(state.level.id),
                             onLevels: widget.onExit,
                             interactive: !_skipActive,

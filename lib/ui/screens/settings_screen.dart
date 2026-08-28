@@ -10,6 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../services/analytics/analytics_service.dart';
+import '../../services/iap/billing_service.dart';
+import '../../state/monetization_controller.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../theme/ball_palette.dart';
@@ -38,6 +41,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
     _loadVersion();
+    // The offer being SEEN is the denominator of the purchase funnel. Without
+    // it, a low conversion rate is indistinguishable from nobody finding it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!ref.read(monetizationProvider).adsRemoved) {
+        ref
+            .read(analyticsServiceProvider)
+            .log(
+              const IapViewed(productId: 'remove_ads', placement: 'settings'),
+            );
+      }
+    });
   }
 
   Future<void> _loadVersion() async {
@@ -111,6 +125,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _buyRemoveAds() async {
+    final outcome = await ref
+        .read(monetizationProvider.notifier)
+        .buyRemoveAds(placement: 'settings');
+    if (!mounted) return;
+
+    final message = switch (outcome) {
+      PurchaseOutcome.purchased => 'Thank you. Ads between levels are off.',
+      PurchaseOutcome.alreadyOwned => 'Already purchased — ads are off.',
+      // Backing out is a normal choice, not a failure, and must never be
+      // reported as an error.
+      PurchaseOutcome.cancelled => null,
+      PurchaseOutcome.unavailable =>
+        'The store is not available on this device right now.',
+      PurchaseOutcome.failed =>
+        'The purchase did not go through. You have '
+            'not been charged.',
+    };
+    if (message == null) return;
+
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
+  }
+
+  Future<void> _restore() async {
+    await ref.read(billingServiceProvider).restorePurchases();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Purchases restored, if there were any.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+
   Future<void> _openPrivacy() async {
     final uri = Uri.parse(kPrivacyPolicyUrl);
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -131,6 +185,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final tokens = PourfectTokens.of(context);
     final settings = ref.watch(settingsProvider);
     final controller = ref.read(settingsProvider.notifier);
+    final money = ref.watch(monetizationProvider);
 
     return Scaffold(
       backgroundColor: tokens.surface,
@@ -201,6 +256,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _SymbolPreview(bold: settings.boldSymbols),
 
             SizedBox(height: tokens.space5),
+            _SectionLabel('Support'),
+            _RemoveAdsRow(
+              adsRemoved: money.adsRemoved,
+              price: ref.watch(billingServiceProvider).removeAdsProduct?.price,
+              onBuy: _buyRemoveAds,
+            ),
+            // Play requires a user-visible way to restore a purchase, and a
+            // player who reinstalls needs it to be findable.
+            _ActionRow(
+              title: 'Restore purchases',
+              detail: 'If you bought Remove Ads on this account before.',
+              onTap: _restore,
+            ),
+
+            SizedBox(height: tokens.space5),
             _SectionLabel('Progress'),
             _ActionRow(
               title: 'Reset progress',
@@ -235,6 +305,100 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The single purchase. States plainly what it does AND what it does not, so
+/// nobody buys it expecting hints to become free.
+class _RemoveAdsRow extends StatelessWidget {
+  final bool adsRemoved;
+  final String? price;
+  final VoidCallback onBuy;
+
+  const _RemoveAdsRow({
+    required this.adsRemoved,
+    required this.price,
+    required this.onBuy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+
+    if (adsRemoved) {
+      return Container(
+        padding: EdgeInsets.symmetric(vertical: tokens.space3),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: tokens.hairline)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.check_rounded, size: 18, color: tokens.accentWarm),
+            SizedBox(width: tokens.space2),
+            Expanded(
+              child: Text(
+                'Ads removed — thank you',
+                style: actionStyle(
+                  tokens,
+                  color: tokens.accentWarm,
+                ).copyWith(fontSize: 15),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Pressable(
+      onPressed: onBuy,
+      semanticLabel: 'Remove ads',
+      scale: 0.99,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: tokens.space3),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: tokens.hairline)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Remove ads',
+                    style: actionStyle(tokens).copyWith(fontSize: 15),
+                  ),
+                  SizedBox(height: tokens.space1),
+                  Text(
+                    'Stops the ads between levels, for good. Hint videos stay '
+                    'available if you ever want one.',
+                    style: bodyStyle(tokens)
+                        .copyWith(fontSize: 13, height: 1.45),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: tokens.space3),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: tokens.accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: tokens.accent.withValues(alpha: 0.4)),
+              ),
+              child: Text(
+                // Falls back to a dash rather than a hard-coded price: the
+                // store is the authority on what this costs in each region,
+                // and a wrong price shown next to a real charge is a refund.
+                price ?? '—',
+                style: numericStyle(tokens, size: 14, color: tokens.accent),
               ),
             ),
           ],
