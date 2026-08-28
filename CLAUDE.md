@@ -393,11 +393,10 @@ splits them per device.
   platform default. `kUiFontFamily` in `typography.dart` is the single swap
   point, and `assets/licenses/` still needs the two OFL texts.
 - **No daily challenge or leaderboard screens.** Both wait on the backend.
-- **Everything monetization runs on TEST ids.** Google's public test ad units
-  and no real product. `generated/ad_config.md` is the fill-in template and
-  `services/ads/ad_ids.dart` plus the manifest meta-data are the only things
-  that change. The AdMob APP ids are filled in; the eight unit ids, the two
-  store product ids and the Play license key are not.
+- **No IAP product exists yet.** The Play and App Store product ids and the
+  Play license key are still blank in `generated/ad_config.md`, so Remove Ads
+  shows an em dash instead of a price. That is the correct degraded state, not
+  a bug — but it means the purchase flow itself is still unexercised.
 - **`kPrivacyPolicyUrl` is a placeholder domain**, invented rather than
   confirmed. The policy page exists at `generated/privacy_policy.html`; the URL
   it will live at does not. Play rejects a dead privacy link.
@@ -408,6 +407,48 @@ splits them per device.
 - **The Android activity is still `com.example.pourfect_flutter_app`.** The
   applicationId is correct (`com.pranta.pourfect`) and Play only reads that, so
   this is cosmetic — it shows up in `adb` and in stack traces.
+
+## Ads — live ids, gated on build mode
+
+`ad_ids.dart` holds both sets, and **`kReleaseMode` decides**, not a constant
+somebody flips:
+
+    release           → our live units
+    debug / profile   → Google's test units, always
+
+The direction is the point. A flat "swap when you go live" leaves every
+developer build serving real ads, and tapping your own live ad is the most
+reliable way to get an AdMob account flagged for invalid traffic — weeks to
+appeal, revenue line down throughout. Every developer build is a build
+somebody taps ads in, so relying on discipline is relying on nothing.
+`test/services/ad_ids_test.dart` runs in debug, which is exactly the mode that
+must never serve live ads, so it can prove the rule holds.
+
+**`kAdMobTestDeviceIds` closes the one remaining door.** A release build on a
+developer handset would otherwise take live impressions. The dev Samsung A24
+is registered; read a new id from a PROFILE build so obtaining it costs no
+impression:
+
+    adb logcat | grep "setTestDeviceIds"
+
+The manifest carries the LIVE app id in every build. Test ad UNITS serve under
+any app id, so a second value there would only be one more thing to keep in
+step. Note the format trap: app ids use `~`, unit ids use `/` — and a unit id
+in the manifest crashes on launch while an app id in Dart silently never loads
+an ad, which is much harder to trace.
+
+The four rewarded units are distinct per placement, so AdMob reports fill and
+revenue per placement. Sharing one would make "rewarded earns well" a single
+number that cannot say whether the hint, the extra tube or the skip is doing
+the work.
+
+**No banner ads.** Decided 2026-08-28. A permanent banner is the most
+house-style element available and undercuts the premium positioning that is
+the whole differentiator; it also steals height from `BoardGeometry`, which
+already solves ball size against available space and overflowed once at level
+150. Banner eCPM is roughly two orders of magnitude below rewarded, so it
+would trade the product's identity for rounding-error revenue. Rewarded video
+stays the primary driver.
 
 ## Monetization — verified on device
 
