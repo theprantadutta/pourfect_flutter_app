@@ -46,7 +46,7 @@ class BandInfo {
   final int firstLevel;
   final int lastLevel;
 
-  /// Human-readable board shape, e.g. "5–7 colours · 2 spare".
+  /// Human-readable board shape, e.g. "5–7 colors · 2 spare".
   final String shape;
 
   const BandInfo({
@@ -75,9 +75,9 @@ List<BandInfo> campaignBands() => [
 ];
 
 String _shapeLabel(CampaignBand band) {
-  final colours = band.tiers.map((t) => t.colorCount).toList()..sort();
-  final low = colours.first;
-  final high = colours.last;
+  final colors = band.tiers.map((t) => t.colorCount).toList()..sort();
+  final low = colors.first;
+  final high = colors.last;
   final spare = band.tiers
       .map((t) => t.emptyTubeCount)
       .reduce((a, b) => a < b ? a : b);
@@ -85,11 +85,11 @@ String _shapeLabel(CampaignBand band) {
       .map((t) => t.emptyTubeCount)
       .reduce((a, b) => a > b ? a : b);
 
-  final colourPart = low == high ? '$low colours' : '$low\u2013$high colours';
+  final colorPart = low == high ? '$low colors' : '$low\u2013$high colors';
   final sparePart = spare == maxSpare
       ? '$spare spare'
       : '$spare\u2013$maxSpare spare';
-  return '$colourPart \u00b7 $sparePart';
+  return '$colorPart \u00b7 $sparePart';
 }
 
 /// True when [levelId] is the last level of its band — one of the moments the

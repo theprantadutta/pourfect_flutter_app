@@ -49,8 +49,8 @@ final class MoveResult {
   /// How many balls actually travelled — always at least 1.
   final int ballsMoved;
 
-  /// The colour that travelled.
-  final ColorId colour;
+  /// The color that travelled.
+  final ColorId color;
 
   /// True when the destination tube became complete as a result.
   ///
@@ -61,12 +61,12 @@ final class MoveResult {
     required this.board,
     required this.move,
     required this.ballsMoved,
-    required this.colour,
+    required this.color,
     required this.completedDestination,
   });
 
   @override
   String toString() =>
-      'MoveResult($move, balls: $ballsMoved, colour: $colour, '
+      'MoveResult($move, balls: $ballsMoved, color: $color, '
       'completed: $completedDestination)';
 }

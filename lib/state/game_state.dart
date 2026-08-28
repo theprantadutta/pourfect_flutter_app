@@ -24,7 +24,7 @@ class PourEvent {
   /// How many balls travel.
   final int ballsMoved;
 
-  final ColorId colour;
+  final ColorId color;
 
   /// Slot of the topmost source ball before the move (0 = bottom). The first
   /// ball leaves from here, the next from one below, and so on.
@@ -41,7 +41,7 @@ class PourEvent {
     required this.sequence,
     required this.move,
     required this.ballsMoved,
-    required this.colour,
+    required this.color,
     required this.sourceTopSlot,
     required this.destBaseSlot,
     required this.completedDestination,

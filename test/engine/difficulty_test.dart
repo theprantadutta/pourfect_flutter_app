@@ -60,13 +60,13 @@ void main() {
   });
 
   group('scatter', () {
-    test('is 1.0 per colour when each colour sits in one tube', () {
+    test('is 1.0 per color when each color sits in one tube', () {
       final board = Board.fromLists([
         [0, 0, 0],
         [1, 1, 1, 1],
         [0],
       ], capacity: 4);
-      // Colour 0 is split across two tubes, colour 1 is in one.
+      // Color 0 is split across two tubes, color 1 is in one.
       final metrics = measure(board);
       expect(metrics.maxScatter, 2);
       expect(metrics.meanScatter, closeTo(1.5, 1e-9));
@@ -141,8 +141,8 @@ void main() {
       );
     });
 
-    test('branching outweighs colour count — the whole design claim', () {
-      // A 10-colour board that plays itself must score BELOW a 6-colour board
+    test('branching outweighs color count — the whole design claim', () {
+      // A 10-color board that plays itself must score BELOW a 6-color board
       // full of real decisions. If this ever inverts, the curve is being driven
       // by board size instead of by difficulty and the bands will feel wrong.
       final bigButForced = DifficultyMetrics(
@@ -211,12 +211,12 @@ void main() {
     });
   });
 
-  group('kMaxColours', () {
+  group('kMaxColors', () {
     test('is the accessibility cap, not a search limit', () {
-      // Ten colours plus ten distinguishable glyphs is the ceiling at which a
+      // Ten colors plus ten distinguishable glyphs is the ceiling at which a
       // ball stays readable at ~28px. Raising this is a design decision that
       // needs the CVD harness re-run, not a constant edit.
-      expect(kMaxColours, 10);
+      expect(kMaxColors, 10);
     });
   });
 }

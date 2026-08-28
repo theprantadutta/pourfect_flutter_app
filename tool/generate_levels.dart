@@ -125,7 +125,7 @@ String _curveMarkdown(CampaignBuildResult campaign) {
       )
       ..writeln()
       ..writeln(
-        '| level | colours | empty | minMoves | forced | branch | difficulty | |',
+        '| level | colors | empty | minMoves | forced | branch | difficulty | |',
       )
       ..writeln(
         '|------:|--------:|------:|---------:|-------:|-------:|-----------:|:--|',

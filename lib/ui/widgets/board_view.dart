@@ -398,7 +398,7 @@ class _BoardViewState extends ConsumerState<BoardView>
           width: geometry.ballSize,
           height: geometry.ballSize,
           child: Ball(
-            colorId: active.colour,
+            colorId: active.color,
             size: geometry.ballSize,
             boldGlyph: ref.read(settingsProvider).boldSymbols,
           ),

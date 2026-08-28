@@ -139,7 +139,7 @@ class GameController extends Notifier<GameState?> {
         sequence: _pourSequence,
         move: move,
         ballsMoved: result.ballsMoved,
-        colour: result.colour,
+        color: result.color,
         sourceTopSlot: sourceBefore.length - 1,
         destBaseSlot: destBefore.length,
         completedDestination: result.completedDestination,

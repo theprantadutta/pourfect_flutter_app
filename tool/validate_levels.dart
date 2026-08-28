@@ -244,10 +244,10 @@ void _checkBandShapes(LevelSet set, _Report report) {
       );
     }
 
-    if (level.colorCount > kMaxColoursAllowed) {
+    if (level.colorCount > kMaxColorsAllowed) {
       report.fail(
-        'level ${level.id} uses ${level.colorCount} colours, above the '
-        'accessibility cap of $kMaxColoursAllowed',
+        'level ${level.id} uses ${level.colorCount} colors, above the '
+        'accessibility cap of $kMaxColorsAllowed',
       );
     }
   }
@@ -333,9 +333,9 @@ void _checkOnboardingRamp(LevelSet set, _Report report) {
   );
 }
 
-/// Mirror of `kMaxColours`, restated here so the validator fails loudly if the
-/// engine constant is raised without re-running the colour-blindness harness.
-const int kMaxColoursAllowed = 10;
+/// Mirror of `kMaxColors`, restated here so the validator fails loudly if the
+/// engine constant is raised without re-running the color-blindness harness.
+const int kMaxColorsAllowed = 10;
 
 final class _Report {
   final List<String> failures = [];

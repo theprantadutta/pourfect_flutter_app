@@ -227,7 +227,7 @@ void main() {
 
     test('band shape labels are populated', () {
       for (final band in campaignBands()) {
-        expect(band.shape, contains('colours'));
+        expect(band.shape, contains('colors'));
         expect(band.shape, contains('spare'));
       }
     });

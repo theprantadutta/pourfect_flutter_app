@@ -12,7 +12,7 @@ average of the five levels before them.
 
 Difficulty 18.5 → 49.9. Tiers: 3c/2e, 4c/2e.
 
-| level | colours | empty | minMoves | forced | branch | difficulty | |
+| level | colors | empty | minMoves | forced | branch | difficulty | |
 |------:|--------:|------:|---------:|-------:|-------:|-----------:|:--|
 | 1 | 3 | 2 | 5 | 0.20 | 2.6 | 18.5 |  |
 | 2 | 3 | 2 | 5 | 0.20 | 3.2 | 18.5 |  |
@@ -34,7 +34,7 @@ Difficulty 18.5 → 49.9. Tiers: 3c/2e, 4c/2e.
 
 Difficulty 52.3 → 79.8. Tiers: 5c/2e, 6c/2e, 7c/2e.
 
-| level | colours | empty | minMoves | forced | branch | difficulty | |
+| level | colors | empty | minMoves | forced | branch | difficulty | |
 |------:|--------:|------:|---------:|-------:|-------:|-----------:|:--|
 | 16 | 5 | 2 | 12 | 0.08 | 2.9 | 52.3 |  |
 | 17 | 5 | 2 | 15 | 0.20 | 3.5 | 56.0 |  |
@@ -86,7 +86,7 @@ Difficulty 52.3 → 79.8. Tiers: 5c/2e, 6c/2e, 7c/2e.
 
 Difficulty 80.6 → 92.0. Tiers: 8c/2e, 9c/2e, 10c/2e.
 
-| level | colours | empty | minMoves | forced | branch | difficulty | |
+| level | colors | empty | minMoves | forced | branch | difficulty | |
 |------:|--------:|------:|---------:|-------:|-------:|-----------:|:--|
 | 61 | 8 | 2 | 24 | 0.08 | 5.0 | 80.6 |  |
 | 62 | 8 | 2 | 24 | 0.04 | 6.4 | 80.6 |  |
@@ -153,7 +153,7 @@ Difficulty 80.6 → 92.0. Tiers: 8c/2e, 9c/2e, 10c/2e.
 
 Difficulty 92.0 → 97.5. Tiers: 10c/2e, 10c/1e.
 
-| level | colours | empty | minMoves | forced | branch | difficulty | |
+| level | colors | empty | minMoves | forced | branch | difficulty | |
 |------:|--------:|------:|---------:|-------:|-------:|-----------:|:--|
 | 121 | 10 | 2 | 32 | 0.03 | 7.0 | 92.0 |  |
 | 122 | 10 | 2 | 33 | 0.03 | 6.6 | 92.1 |  |

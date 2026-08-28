@@ -68,7 +68,7 @@ void main() {
 
       test('balls never shrink below glyph legibility', () {
         // Below roughly 20dp the shape on a ball stops being tellable apart,
-        // which would quietly undo the whole colour-blindness exercise.
+        // which would quietly undo the whole color-blindness exercise.
         for (final campaignLevel in set.levels) {
           final board = campaignLevel.level.board;
           final geometry = BoardGeometry.fit(
@@ -108,7 +108,7 @@ void main() {
 
   test('the hardest band really is the shape we designed', () {
     // Guards the stage-6 decision: the last stretch steps up by REMOVING an
-    // empty tube, not by adding colours past the accessibility cap.
+    // empty tube, not by adding colors past the accessibility cap.
     final mastery = set.levels.where((l) => l.id >= 121);
     expect(mastery, hasLength(30));
 

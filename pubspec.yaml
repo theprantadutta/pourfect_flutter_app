@@ -99,6 +99,9 @@ flutter:
     # Baked at build time by tool/generate_levels.dart and committed.
     # Regenerating must reproduce this byte-for-byte; see level_asset_test.dart.
     - assets/levels/levels.bin
+    # Directory, so the OFL text for each bundled face can be dropped in
+    # without a pubspec change. See assets/fonts/ATTRIBUTION.md.
+    - assets/licenses/
 
   fonts:
     # Bundled, not fetched. `google_fonts` exists for runtime fetching, which we

@@ -11,7 +11,7 @@ import 'move.dart';
 /// True when pouring [from] into [to] is legal on [board].
 ///
 /// Legal iff the tubes differ, the source has a ball, the destination has room,
-/// and the destination is either empty or topped with the source's colour.
+/// and the destination is either empty or topped with the source's color.
 bool canMove(Board board, int from, int to) {
   if (from == to) return false;
   if (from < 0 || to < 0 || from >= board.tubeCount || to >= board.tubeCount) {
@@ -56,7 +56,7 @@ MoveResult? tryApplyMove(Board board, Move move) {
 
   final source = board[move.from];
   final dest = board[move.to];
-  final colour = source.top!;
+  final color = source.top!;
 
   final nextSource = Tube(
     source.balls.sublist(0, source.length - count),
@@ -64,7 +64,7 @@ MoveResult? tryApplyMove(Board board, Move move) {
   );
   final nextDest = Tube([
     ...dest.balls,
-    ...List<ColorId>.filled(count, colour),
+    ...List<ColorId>.filled(count, color),
   ], board.capacity);
 
   final next = board
@@ -75,7 +75,7 @@ MoveResult? tryApplyMove(Board board, Move move) {
     board: next,
     move: move,
     ballsMoved: count,
-    colour: colour,
+    color: color,
     completedDestination: nextDest.isComplete,
   );
 }
@@ -112,9 +112,9 @@ List<int> legalDestinationsFrom(Board board, int from) {
 ///
 /// Three reductions, all of which preserve optimality:
 ///
-/// 1. **Never disturb a finished tube.** Each colour has exactly `capacity`
-///    balls, so once a tube is full and single-coloured it holds ALL of that
-///    colour — no other tube can be topped with it, leaving only empty tubes as
+/// 1. **Never disturb a finished tube.** Each color has exactly `capacity`
+///    balls, so once a tube is full and single-colored it holds ALL of that
+///    color — no other tube can be topped with it, leaving only empty tubes as
 ///    destinations, which reduction 2 already rejects. Taking it apart can
 ///    never help.
 /// 2. **Never pour a uniform tube into an empty one.** The source empties and
@@ -125,7 +125,7 @@ List<int> legalDestinationsFrom(Board board, int from) {
 ///    considered as a source, and likewise per destination.
 ///
 /// Ordering is best-first — moves that COMPLETE a tube, then moves onto a
-/// matching colour, then moves into an empty tube. Pouring into an empty tube
+/// matching color, then moves into an empty tube. Pouring into an empty tube
 /// is usually wasteful (it spends the scarcest resource on the board), so it is
 /// tried last and prunes hardest.
 List<Move> usefulMoves(Board board) {
@@ -133,7 +133,7 @@ List<Move> usefulMoves(Board board) {
   final ontoMatching = <Move>[];
   final intoEmpty = <Move>[];
 
-  final base = baseForMaxColour(board.maxColour);
+  final base = baseForMaxColor(board.maxColor);
   final codes = [for (final t in board.tubes) tubeCode(t.balls, base)];
 
   final seenSource = <int>{};

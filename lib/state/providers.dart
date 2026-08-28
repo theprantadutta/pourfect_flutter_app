@@ -30,7 +30,7 @@ class Settings {
 
   /// Draws the accessibility glyphs larger and at full contrast.
   ///
-  /// The glyphs are ALWAYS present — they are not a mode a colour-blind player
+  /// The glyphs are ALWAYS present — they are not a mode a color-blind player
   /// has to discover in a menu, which is the mistake this genre usually makes.
   /// What this controls is emphasis: at the default weight they sit quietly
   /// inside the ball so the board stays calm, and turning this on trades that

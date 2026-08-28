@@ -25,7 +25,7 @@ import 'solver.dart';
 
 /// The shape of a level to generate.
 final class LevelSpec {
-  /// Distinct colours; also the number of filled tubes, since each colour
+  /// Distinct colors; also the number of filled tubes, since each color
   /// contributes exactly [capacity] balls.
   final int colorCount;
 
@@ -46,7 +46,7 @@ final class LevelSpec {
 
   @override
   String toString() =>
-      'LevelSpec(colours: $colorCount, capacity: $capacity, '
+      'LevelSpec(colors: $colorCount, capacity: $capacity, '
       'empty: $emptyTubeCount)';
 }
 
@@ -91,7 +91,7 @@ final class GeneratedLevel {
 /// Why a candidate board was thrown away. Counted by the CLI so a spec that
 /// generates badly is visible rather than just slow.
 enum RejectionReason {
-  /// A tube came out already full and single-coloured.
+  /// A tube came out already full and single-colored.
   bornComplete,
 
   /// The deal happened to be already sorted.
@@ -257,8 +257,8 @@ class LevelGenerator {
   /// empties.
   Board _deal(LevelSpec spec) {
     final balls = <ColorId>[
-      for (var colour = 0; colour < spec.colorCount; colour++)
-        ...List<ColorId>.filled(spec.capacity, colour),
+      for (var color = 0; color < spec.colorCount; color++)
+        ...List<ColorId>.filled(spec.capacity, color),
     ]..shuffle(random);
 
     final tubes = <Tube>[

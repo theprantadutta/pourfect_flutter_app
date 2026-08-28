@@ -1,15 +1,15 @@
-/// The ball palette: ten colours, each paired with a distinct shape glyph.
+/// The ball palette: ten colors, each paired with a distinct shape glyph.
 ///
 /// PURE DART, deliberately. No Flutter import, so `tool/cvd_harness.dart` can
-/// read it and render the colour-blindness proof sheet without a device. The
+/// read it and render the color-blindness proof sheet without a device. The
 /// Flutter theme wraps these into `Color`; this file stays the single source of
 /// truth for both.
 ///
 /// TWO RULES THIS FILE EXISTS TO ENFORCE:
 ///
-/// 1. **Colour is never the only cue.** Every ball carries a colour AND a
+/// 1. **Color is never the only cue.** Every ball carries a color AND a
 ///    glyph, always both — not a mode a player has to discover in settings. A
-///    meaningful share of puzzle players are colour-blind, and in this genre it
+///    meaningful share of puzzle players are color-blind, and in this genre it
 ///    is the single most common accessibility complaint in reviews.
 /// 2. **Ten is the ceiling.** Past ten, the glyphs stop being tellable apart at
 ///    ball size and the muted palette runs out of separable hues. Raising it is
@@ -19,10 +19,10 @@
 /// The palette is tuned for a near-black ground and deliberately muted: this is
 /// a relaxing game, not a toy. Saturation is kept moderate and LIGHTNESS does
 /// much of the separating work, because lightness is the one channel no form of
-/// colour blindness takes away.
+/// color blindness takes away.
 library;
 
-/// A shape drawn on the ball, in addition to its colour.
+/// A shape drawn on the ball, in addition to its color.
 ///
 /// Chosen for silhouette contrast rather than prettiness: filled against
 /// hollow, angular against round, one stroke against two. A glyph does not need
@@ -68,7 +68,7 @@ final class BallStyle {
 
 /// The ten ball styles, indexed by the engine's `ColorId`.
 ///
-/// Order is meaningful: a level using N colours uses ids 0..N-1, so the FIRST
+/// Order is meaningful: a level using N colors uses ids 0..N-1, so the FIRST
 /// entries are the ones a new player meets. The opening three are the most
 /// widely separated set in the palette — the tutorial should never be where
 /// somebody discovers they cannot tell two balls apart.
@@ -85,7 +85,7 @@ const List<BallStyle> kBallPalette = [
   BallStyle('indigo', 0x3B4E8C, BallGlyph.hexagon),
 ];
 
-/// Ceiling on simultaneous colours. Mirrors the engine's `kMaxColours`.
+/// Ceiling on simultaneous colors. Mirrors the engine's `kMaxColors`.
 const int kPaletteSize = 10;
 
 /// Ground the palette is tuned against — the deep-calm-dark surface.

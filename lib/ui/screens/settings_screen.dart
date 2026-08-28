@@ -89,7 +89,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               'Erase everything',
               // The destructive action reads as destructive. Rose is the
               // palette's own warm red, so this stays inside the game's
-              // language rather than importing a system alert colour.
+              // language rather than importing a system alert color.
               style: actionStyle(tokens, color: const Color(0xFFC85F72)),
             ),
           ),
@@ -185,9 +185,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _SectionLabel('Visibility'),
             _ToggleRow(
               title: 'Bold symbols',
+              // Names the condition explicitly. "Bold symbols" is the honest
+              // label — the shapes are always there and this only changes
+              // emphasis — but somebody who needs it will scan a settings list
+              // for the words they already know, not for our framing.
               detail:
-                  'Every ball always carries a shape as well as a colour. '
-                  'This makes those shapes larger and higher contrast.',
+                  'Larger, higher-contrast shapes on each ball. Helpful for '
+                  'color vision deficiency. Every ball always carries a shape '
+                  'as well as a color, so this only changes how strongly it '
+                  'is drawn.',
               value: settings.boldSymbols,
               onChanged: controller.setBoldSymbols,
             ),
@@ -311,7 +317,7 @@ class _ToggleRow extends StatelessWidget {
 }
 
 /// A hairline switch, not Material's. The stock one arrives with its own
-/// colour language and ripple; this one is made of the same tokens as
+/// color language and ripple; this one is made of the same tokens as
 /// everything else on screen.
 class _Switch extends StatelessWidget {
   final bool value;

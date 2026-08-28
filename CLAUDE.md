@@ -13,7 +13,7 @@ When a decision trades revenue against retention, retention wins.
 ```bash
 dart test test/engine                 # engine suite, pure Dart; ~8 min
 flutter test test/state               # state layer (Riverpod needs Flutter)
-dart run tool/cvd_harness.dart        # colour-blindness gate for the palette
+dart run tool/cvd_harness.dart        # color-blindness gate for the palette
 dart run tool/check_layering.dart     # layering rules — before every commit
 dart run tool/validate_levels.dart    # content gate — before every release
 dart analyze lib test tool
@@ -24,6 +24,21 @@ dart run tool/probe_hint_budget.dart  # re-measure kHintNodeCap
 
 Engine tests run under plain `dart test`, not `flutter test` — no device, no
 Flutter binding. That is a deliberate consequence of the layering rule below.
+
+## US English, everywhere
+
+**"color", never "colour"** — in the store listing, in every user-facing string,
+and in every identifier and comment in the codebase. This is not a style
+preference: "color sort" carries materially more search volume than the British
+spelling, and organic search is our only acquisition channel.
+
+The codebase was swept once (319 occurrences) and it must stay swept. Before
+committing:
+
+    grep -ri "colour" --include="*.dart" --include="*.md" lib test tool
+
+It also happens to match Flutter's own `Color`, so the engine no longer mixes
+`ColorId` with `maxColour` the way it did.
 
 ## Layering — the rule that matters most
 
@@ -61,7 +76,7 @@ a regression, and the layering check will fail on it.
 
 ## Engine notes
 
-- **Colour ids are opaque ints.** The engine never knows what a colour looks
+- **Color ids are opaque ints.** The engine never knows what a color looks
   like. `ui/theme` is the only place mapping an id to a palette entry and glyph.
 - **Moves carry the whole contiguous top run**, clamped by destination free
   space. This is a rule, not an optimisation — moving one ball at a time is the
@@ -131,11 +146,11 @@ campaign sat exactly where D1 is won or lost.
 
 Pinned tiers (band one) are generated SLOT BY SLOT against narrow sub-windows,
 not sampled as a pool. A pool only contains what a shape commonly produces, so
-asking 13 four-colour boards to cover 30-52 returns 41-52 — 41 is that shape's
+asking 13 four-color boards to cover 30-52 returns 41-52 — 41 is that shape's
 p10. That is how a 13.6-point cliff appeared between levels 8 and 9.
 
-The campaign curve: four bands, colours rising 3→10, with the final band
-stepping up by REMOVING an empty tube rather than adding colours. Breathers land
+The campaign curve: four bands, colors rising 3→10, with the final band
+stepping up by REMOVING an empty tube rather than adding colors. Breathers land
 on every tenth level except in the tutorial band and except on a band's last
 level (a band should hand off at its peak). A breather must score 25-40% below
 the running average of the five levels before it — both bounds matter, since a
@@ -178,10 +193,10 @@ Tap-to-select, tap-to-pour.
 
 ### Accessibility
 
-Every ball carries **colour AND a distinct shape glyph, always both** — not a
+Every ball carries **color AND a distinct shape glyph, always both** — not a
 mode that swaps one for the other.
 
-**Maximum 10 simultaneous colours** (`kMaxColours`). This is an accessibility
+**Maximum 10 simultaneous colors** (`kMaxColors`). This is an accessibility
 ceiling, not a search limit: past ten, glyphs stop being tellable apart at ball
 size and the muted palette runs out of separable hues. A board you squint at is
 not relaxing, which is the product. Get difficulty from fewer empty tubes,

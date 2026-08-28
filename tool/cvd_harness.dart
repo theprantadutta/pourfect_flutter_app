@@ -1,23 +1,23 @@
-// Colour-blindness proof sheet for the ball palette.
+// Color-blindness proof sheet for the ball palette.
 //
 //   dart run tool/cvd_harness.dart
 //   -> generated/cvd_harness.html
 //
 // Run this BEFORE committing any palette change, and re-run it before raising
-// the colour ceiling. Ten simultaneous colours is already at the edge of what
+// the color ceiling. Ten simultaneous colors is already at the edge of what
 // stays separable, and a palette that looks fine to a trichromat can be
-// unplayable for the ~8% of men with a colour vision deficiency — in this genre
+// unplayable for the ~8% of men with a color vision deficiency — in this genre
 // that is the single most common accessibility complaint in store reviews.
 //
-// WHAT THIS ACTUALLY CHECKS. Not "do the colours look different" — under
-// dichromacy ten muted colours CANNOT all be strongly separable, and pretending
+// WHAT THIS ACTUALLY CHECKS. Not "do the colors look different" — under
+// dichromacy ten muted colors CANNOT all be strongly separable, and pretending
 // otherwise would be the whole failure. It checks two things instead:
 //
-//   1. How much work colour still does, per pair, per deficiency (CIEDE2000).
-//   2. Whether the pairs colour FAILS on are carried by their glyphs — two
-//      near-identical colours must not also have near-identical silhouettes.
+//   1. How much work color still does, per pair, per deficiency (CIEDE2000).
+//   2. Whether the pairs color FAILS on are carried by their glyphs — two
+//      near-identical colors must not also have near-identical silhouettes.
 //
-// A pair that is weak on colour AND weak on shape is a hard failure. That is
+// A pair that is weak on color AND weak on shape is a hard failure. That is
 // the pair a player cannot resolve at all, and the tool exits non-zero on it.
 
 import 'dart:io';
@@ -27,10 +27,10 @@ import 'package:pourfect_flutter_app/ui/theme/ball_palette.dart';
 
 const _outputPath = 'generated/cvd_harness.html';
 
-/// Below this CIEDE2000 distance, colour is doing little useful work and the
+/// Below this CIEDE2000 distance, color is doing little useful work and the
 /// glyph has to carry the pair. ~10 is roughly "obvious at a glance for a small
 /// object", well above the ~2.3 just-noticeable threshold for large flat areas.
-const double _weakColourDelta = 10;
+const double _weakColorDelta = 10;
 
 /// Ball diameter in logical pixels, matching the board at 10-12 tubes on a
 /// typical phone. Everything is drawn at this size so the sheet shows the
@@ -73,10 +73,10 @@ void main(List<String> args) {
     results[entry.key] = pairs;
 
     for (final pair in pairs) {
-      if (pair.delta < _weakColourDelta && pair.glyphsAlike) {
+      if (pair.delta < _weakColorDelta && pair.glyphsAlike) {
         hardFailures.add(
           '${entry.key}: ${kBallPalette[pair.a].name} vs '
-          '${kBallPalette[pair.b].name} — colour ΔE '
+          '${kBallPalette[pair.b].name} — color ΔE '
           '${pair.delta.toStringAsFixed(1)} AND similar glyph silhouettes '
           '(${kBallPalette[pair.a].glyph.name}/'
           '${kBallPalette[pair.b].glyph.name})',
@@ -84,7 +84,7 @@ void main(List<String> args) {
       }
     }
 
-    final weak = pairs.where((p) => p.delta < _weakColourDelta).length;
+    final weak = pairs.where((p) => p.delta < _weakColorDelta).length;
     report.writeln(
       '${entry.key.padRight(14)} min ΔE ${pairs.first.delta.toStringAsFixed(1).padLeft(5)}   '
       'median ${pairs[pairs.length ~/ 2].delta.toStringAsFixed(1).padLeft(5)}   '
@@ -93,7 +93,7 @@ void main(List<String> args) {
   }
 
   stdout
-    ..writeln('Ball palette — ${kBallPalette.length} colours\n')
+    ..writeln('Ball palette — ${kBallPalette.length} colors\n')
     ..write(report.toString());
 
   _write(_outputPath, _buildHtml(sims, results, hardFailures));
@@ -105,17 +105,17 @@ void main(List<String> args) {
       stderr.writeln('  - $failure');
     }
     stderr.writeln(
-      '\nA pair weak on BOTH colour and shape is unresolvable. Change one of '
-      'the two colours, or give one of them a glyph from a different '
+      '\nA pair weak on BOTH color and shape is unresolvable. Change one of '
+      'the two colors, or give one of them a glyph from a different '
       'silhouette group.',
     );
     exit(1);
   }
-  stdout.writeln('\nNo pair is weak on both colour and shape.');
+  stdout.writeln('\nNo pair is weak on both color and shape.');
 }
 
 // ---------------------------------------------------------------------------
-// Colour-vision simulation
+// Color-vision simulation
 //
 // Machado, Oliveira & Fernandes (2009) severity-1.0 matrices. Applied in LINEAR
 // RGB — running them on gamma-encoded sRGB is a common shortcut that noticeably
@@ -184,7 +184,7 @@ List<double> _labOf(int rgb) {
   return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
 }
 
-/// CIEDE2000 colour difference. Worth the length over the simpler CIE76: at the
+/// CIEDE2000 color difference. Worth the length over the simpler CIE76: at the
 /// small separations this palette lives at, CIE76 badly overstates differences
 /// in the blue region, which is exactly where several of these balls sit.
 double _ciede2000(List<double> lab1, List<double> lab2) {
@@ -273,7 +273,7 @@ double _ciede2000(List<double> lab1, List<double> lab2) {
 // ---------------------------------------------------------------------------
 
 /// Coarse silhouette family. Two glyphs in the same family read as similar at
-/// ball size, so a colour pair that is weak under simulation must not also
+/// ball size, so a color pair that is weak under simulation must not also
 /// share one.
 String _glyphGroup(BallGlyph glyph) => switch (glyph) {
   BallGlyph.dot || BallGlyph.ring || BallGlyph.hexagon => 'round',
@@ -296,15 +296,15 @@ String _buildHtml(
 
   body.writeln('''
 <h1>Pourfect ball palette</h1>
-<p class="lede">Ten colours, each paired with a distinct shape glyph, shown at
+<p class="lede">Ten colors, each paired with a distinct shape glyph, shown at
 ${_ballSizeDp.toInt()}dp — the size a ball actually renders at on a 10-tube
-board. Colour is never the only cue: under dichromacy ten muted colours cannot
-all stay separable, so the glyph carries the pairs colour loses.</p>
+board. Color is never the only cue: under dichromacy ten muted colors cannot
+all stay separable, so the glyph carries the pairs color loses.</p>
 ''');
 
   if (hardFailures.isEmpty) {
     body.writeln(
-      '<p class="verdict pass">No pair is weak on both colour and shape.</p>',
+      '<p class="verdict pass">No pair is weak on both color and shape.</p>',
     );
   } else {
     body.writeln(
@@ -326,7 +326,7 @@ all stay separable, so the glyph carries the pairs colour loses.</p>
 
     body.writeln('<section><h2>$name</h2>');
 
-    // Balls on the real surface colour, at real size.
+    // Balls on the real surface color, at real size.
     body.writeln('<div class="board">');
     for (var i = 0; i < kBallPalette.length; i++) {
       body.writeln(_ballSvg(simulated[i], kBallPalette[i].glyph, _ballSizeDp));
@@ -351,7 +351,7 @@ all stay separable, so the glyph carries the pairs colour loses.</p>
     }
     body.writeln('</div>');
 
-    final weak = pairs.where((p) => p.delta < _weakColourDelta).toList();
+    final weak = pairs.where((p) => p.delta < _weakColorDelta).toList();
     body.writeln(
       '<p class="stat">min ΔE <b>${pairs.first.delta.toStringAsFixed(1)}</b>'
       ' · median <b>${pairs[pairs.length ~/ 2].delta.toStringAsFixed(1)}</b>'
@@ -379,7 +379,7 @@ all stay separable, so the glyph carries the pairs colour loses.</p>
   return '''
 <!doctype html>
 <html><head><meta charset="utf-8">
-<title>Pourfect ball palette — colour vision proof sheet</title>
+<title>Pourfect ball palette — color vision proof sheet</title>
 <style>
   :root { color-scheme: dark; }
   body {
@@ -423,9 +423,9 @@ all stay separable, so the glyph carries the pairs colour loses.</p>
 
 /// One ball: a filled circle with its glyph drawn on top.
 ///
-/// The glyph is drawn in a translucent dark ink rather than a fixed colour, so
+/// The glyph is drawn in a translucent dark ink rather than a fixed color, so
 /// it stays legible on both the palest and the deepest balls without needing a
-/// per-colour override.
+/// per-color override.
 String _ballSvg(int rgb, BallGlyph glyph, double size) {
   const vb = 100.0;
   const c = vb / 2;

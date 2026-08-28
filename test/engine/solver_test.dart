@@ -67,7 +67,7 @@ void main() {
       var solvedCount = 0;
 
       for (var i = 0; i < 250; i++) {
-        final board = _randomBoard(random, colours: 5, capacity: 4, empties: 2);
+        final board = _randomBoard(random, colors: 5, capacity: 4, empties: 2);
         final outcome = solver.solve(board);
         if (outcome is! Solved) continue;
         solvedCount++;
@@ -100,7 +100,7 @@ void main() {
       var compared = 0;
 
       for (var i = 0; i < 120; i++) {
-        final board = _randomBoard(random, colours: 4, capacity: 3, empties: 2);
+        final board = _randomBoard(random, colors: 4, capacity: 3, empties: 2);
         final expected = _bruteForceOptimal(board);
         final outcome = solver.solve(board);
 
@@ -130,7 +130,7 @@ void main() {
       var compared = 0;
 
       for (var i = 0; i < 40; i++) {
-        final board = _randomBoard(random, colours: 5, capacity: 4, empties: 2);
+        final board = _randomBoard(random, colors: 5, capacity: 4, empties: 2);
         final expected = _bruteForceOptimal(board);
         final outcome = solver.solve(board);
 
@@ -173,7 +173,7 @@ void main() {
       // unsolvable level would ship.
       final random = Random(64);
       for (var i = 0; i < 60; i++) {
-        final board = _randomBoard(random, colours: 8, capacity: 4, empties: 2);
+        final board = _randomBoard(random, colors: 8, capacity: 4, empties: 2);
         const stingy = Solver(nodeCap: 30);
         final outcome = stingy.solve(board);
         if (outcome is Unsolvable) {
@@ -187,7 +187,7 @@ void main() {
       var upgraded = 0;
 
       for (var i = 0; i < 40; i++) {
-        final board = _randomBoard(random, colours: 6, capacity: 4, empties: 2);
+        final board = _randomBoard(random, colors: 6, capacity: 4, empties: 2);
         if (const Solver(nodeCap: 20).solve(board) is! SolveUnknown) continue;
         if (const Solver().solve(board) is! SolveUnknown) upgraded++;
       }
@@ -217,7 +217,7 @@ void main() {
       var checked = 0;
 
       for (var i = 0; i < 60; i++) {
-        final board = _randomBoard(random, colours: 5, capacity: 4, empties: 2);
+        final board = _randomBoard(random, colors: 5, capacity: 4, empties: 2);
         final outcome = solver.solve(board);
         if (outcome is! Solved || outcome.moves.isEmpty) continue;
 
@@ -268,7 +268,7 @@ void main() {
   });
 
   group('input validation', () {
-    test('rejects a board whose colour counts break the invariant', () {
+    test('rejects a board whose color counts break the invariant', () {
       final board = Board.fromLists([
         [0, 0, 0],
         [1],
@@ -284,7 +284,7 @@ void main() {
       // solver explores while every rules test still passed.
       final random = Random(8);
       for (var i = 0; i < 400; i++) {
-        final board = _randomBoard(random, colours: 5, capacity: 4, empties: 2);
+        final board = _randomBoard(random, colors: 5, capacity: 4, empties: 2);
         expect(
           debugGenerateMoves(board),
           usefulMoves(board),
@@ -319,16 +319,16 @@ int? _bruteForceOptimal(Board start) {
 
 Board _randomBoard(
   Random random, {
-  required int colours,
+  required int colors,
   required int capacity,
   required int empties,
 }) {
   final balls = <ColorId>[
-    for (var c = 0; c < colours; c++) ...List<ColorId>.filled(capacity, c),
+    for (var c = 0; c < colors; c++) ...List<ColorId>.filled(capacity, c),
   ]..shuffle(random);
 
   return Board([
-    for (var i = 0; i < colours; i++)
+    for (var i = 0; i < colors; i++)
       Tube(balls.sublist(i * capacity, (i + 1) * capacity), capacity),
     for (var i = 0; i < empties; i++) Tube.empty(capacity),
   ]);

@@ -99,7 +99,7 @@ final class LevelSet {
 /// header  magic[4] formatVersion:u8 levelSetVersion:u16 levelCount:u16
 /// level   id:u16 bandIndex:u8 flags:u8 capacity:u8 tubeCount:u8
 ///         minMoves:u16 difficultyScore:u16 forcedMoveRatio:u16
-///         tube*   ballCount:u8 colour:u8 * ballCount
+///         tube*   ballCount:u8 color:u8 * ballCount
 /// ```
 abstract final class LevelSetCodec {
   /// Fixed-point scale for `difficultyScore` (0-100 → 0-10000).
@@ -136,8 +136,8 @@ abstract final class LevelSetCodec {
 
       for (final tube in board.tubes) {
         out.addByte(tube.length);
-        for (final colour in tube.balls) {
-          out.addByte(colour);
+        for (final color in tube.balls) {
+          out.addByte(color);
         }
       }
     }

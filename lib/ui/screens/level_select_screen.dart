@@ -462,7 +462,7 @@ class _LevelTile extends StatelessWidget {
     final tokens = PourfectTokens.of(context);
     final solved = progress != null;
 
-    final borderColour = solved
+    final borderColor = solved
         ? tokens.accentWarm.withValues(alpha: 0.34)
         : isCurrent
         ? tokens.accent.withValues(alpha: 0.75)
@@ -499,7 +499,7 @@ class _LevelTile extends StatelessWidget {
                   top: Radius.circular(3),
                   bottom: Radius.circular(12),
                 ),
-                border: Border.all(color: borderColour),
+                border: Border.all(color: borderColor),
                 boxShadow: [
                   if (isCurrent)
                     BoxShadow(
@@ -542,9 +542,9 @@ class _LevelTile extends StatelessWidget {
     );
   }
 
-  Widget _pip(Color colour) => Container(
+  Widget _pip(Color color) => Container(
     width: 9,
     height: 9,
-    decoration: BoxDecoration(color: colour, shape: BoxShape.circle),
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
   );
 }

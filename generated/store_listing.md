@@ -8,7 +8,7 @@ we have. Two audiences read this text and they are not the same:
   lines of the full description and nothing else unless those two lines earn it.
 
 So the keywords are placed where they are indexed, and the prose is written so a
-person who is tired of ads and unsolvable levels recognises themselves in it.
+person who is tired of ads and unsolvable levels recognizes themselves in it.
 
 ---
 
@@ -52,9 +52,9 @@ Three claims, each doing a different job:
 ## Full description — 4000 characters max
 
 ```
-A calm colour sorting puzzle you can play anywhere.
+A calm color sorting puzzle you can play anywhere.
 
-Pour the balls between tubes until each one holds a single colour. That's the
+Pour the balls between tubes until each one holds a single color. That's the
 whole game. No timers, no lives, no waiting to play again.
 
 
@@ -87,18 +87,18 @@ your podcast or your playlist to play a sound effect.
 
 DESIGNED TO BE SEEN CLEARLY
 
-Every ball carries a distinct shape as well as a colour, so the game stays
-playable if you are colour blind. It isn't a mode you have to find in a menu —
+Every ball carries a distinct shape as well as a color, so the game stays
+playable if you are color blind. It isn't a mode you have to find in a menu —
 it's how the game is drawn. There's a bold-symbols setting if you want the
 shapes larger still.
 
 
 150 LEVELS THAT ACTUALLY BUILD
 
-- First Pours — three and four colours, gentle enough to learn on.
-- Finding Rhythm — five to seven colours, where it starts to click.
-- Deep Water — eight to ten colours, real puzzles now.
-- Mastery — ten colours and only one spare tube. Room for nothing sloppy.
+- First Pours — three and four colors, gentle enough to learn on.
+- Finding Rhythm — five to seven colors, where it starts to click.
+- Deep Water — eight to ten colors, real puzzles now.
+- Mastery — ten colors and only one spare tube. Room for nothing sloppy.
 
 The difficulty was tuned level by level, with easier levels deliberately placed
 along the way so it never becomes a grind.
@@ -122,7 +122,7 @@ Pour, sort, relax.
   is for the minority who tap through.
 - **Keywords appear in sentences, not in a list.** A comma-separated keyword
   dump reads as spam to a person and Play has discounted them for years. "ball
-  sort", "colour sorting", "offline", "no wifi", "puzzle", "colour blind" all
+  sort", "color sorting", "offline", "no wifi", "puzzle", "color blind" all
   appear in prose that a human would actually say.
 - **Headers are shouty capitals, not emoji.** Emoji bullets are the house style
   of exactly the games we are differentiating from.
@@ -134,10 +134,10 @@ Pour, sort, relax.
 
 ## Before this goes live
 
-- [ ] **Decide British vs American spelling and be consistent.** The draft uses
-      "colour"; the title alternate uses "Color". US English will index better
-      for the larger market — if we switch, switch everywhere including the
-      in-app strings.
+- [x] **US English throughout.** Settled: "color", not "colour" — "color sort"
+      carries materially more search volume. Swept across the listing, every
+      in-app string, and the whole codebase (319 occurrences), so nothing can
+      drift back.
 - [ ] **Privacy policy must be live** at the URL in Settings
       (`pourfect.pranta.dev/privacy`) before the listing can be published. Play
       rejects a dead link.

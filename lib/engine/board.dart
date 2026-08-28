@@ -8,11 +8,11 @@
 /// Nothing in `engine/` may import Flutter or Riverpod.
 library;
 
-/// A ball colour, as an opaque integer.
+/// A ball color, as an opaque integer.
 ///
-/// The engine never knows what a colour looks like. `ui/theme` is the only
+/// The engine never knows what a color looks like. `ui/theme` is the only
 /// place that maps a [ColorId] onto a palette entry and its accessibility
-/// glyph — keeping it an int here is what lets the solver treat colours as
+/// glyph — keeping it an int here is what lets the solver treat colors as
 /// interchangeable symbols, and lets the palette change without touching a
 /// line of game logic.
 typedef ColorId = int;
@@ -24,7 +24,7 @@ typedef ColorId = int;
 /// new [Tube] rather than mutating one in place, so the undo stack can simply
 /// hold previous boards.
 final class Tube {
-  /// Bottom-to-top ball colours. Always unmodifiable.
+  /// Bottom-to-top ball colors. Always unmodifiable.
   final List<ColorId> balls;
 
   /// How many balls this tube can hold. Uniform across a [Board].
@@ -46,11 +46,7 @@ final class Tube {
     }
     for (final c in balls) {
       if (c < 0) {
-        throw ArgumentError.value(
-          c,
-          'balls',
-          'colour ids must be non-negative',
-        );
+        throw ArgumentError.value(c, 'balls', 'color ids must be non-negative');
       }
     }
     return Tube._(List<ColorId>.unmodifiable(balls), capacity);
@@ -75,21 +71,21 @@ final class Tube {
   /// originate from.
   ColorId? get top => balls.isEmpty ? null : balls.last;
 
-  /// How many same-coloured balls sit contiguously at the top.
+  /// How many same-colored balls sit contiguously at the top.
   ///
   /// This is the size of the run a move would carry — the game moves the whole
   /// run, not one ball, which is what makes it feel good to play.
   int get topRunLength {
     if (balls.isEmpty) return 0;
-    final colour = balls.last;
+    final color = balls.last;
     var n = 0;
-    for (var i = balls.length - 1; i >= 0 && balls[i] == colour; i--) {
+    for (var i = balls.length - 1; i >= 0 && balls[i] == color; i--) {
       n++;
     }
     return n;
   }
 
-  /// True when the tube is empty, or holds exactly one colour.
+  /// True when the tube is empty, or holds exactly one color.
   ///
   /// A uniform-but-not-full tube is "clean but unfinished"; see [isComplete].
   bool get isUniform {
@@ -101,17 +97,17 @@ final class Tube {
     return true;
   }
 
-  /// True when the tube is full AND single-coloured — a finished tube.
+  /// True when the tube is full AND single-colored — a finished tube.
   ///
   /// The win condition is every tube being empty or complete, and the UI uses
   /// this to trigger the settle-and-glow flourish on the tube that just closed.
   bool get isComplete => isFull && isUniform;
 
-  /// Distinct colours present, as a bitmask (`1 << colourId`).
+  /// Distinct colors present, as a bitmask (`1 << colorId`).
   ///
-  /// The solver's heuristic needs "how many tubes hold colour c" far more often
+  /// The solver's heuristic needs "how many tubes hold color c" far more often
   /// than it needs the balls themselves; a mask makes that a popcount.
-  int get colourMask {
+  int get colorMask {
     var mask = 0;
     for (final c in balls) {
       mask |= 1 << c;
@@ -173,7 +169,7 @@ final class Board {
     return Board._(List<Tube>.unmodifiable(tubes), capacity);
   }
 
-  /// Convenience constructor from raw bottom-first colour lists.
+  /// Convenience constructor from raw bottom-first color lists.
   ///
   /// `Board.fromLists([[0, 0, 1], [1, 1, 0], []], capacity: 3)`
   factory Board.fromLists(List<List<ColorId>> tubes, {required int capacity}) =>
@@ -192,12 +188,12 @@ final class Board {
     return n;
   }
 
-  /// The distinct colours on the board.
-  Set<ColorId> get colours => {for (final t in tubes) ...t.balls};
+  /// The distinct colors on the board.
+  Set<ColorId> get colors => {for (final t in tubes) ...t.balls};
 
-  /// Highest colour id present, or -1 on an empty board. Sizes the solver's
-  /// per-colour scratch buffers.
-  int get maxColour {
+  /// Highest color id present, or -1 on an empty board. Sizes the solver's
+  /// per-color scratch buffers.
+  int get maxColor {
     var max = -1;
     for (final t in tubes) {
       for (final c in t.balls) {
@@ -216,7 +212,7 @@ final class Board {
     return n;
   }
 
-  /// THE WIN CONDITION: every tube is either empty, or full and single-coloured.
+  /// THE WIN CONDITION: every tube is either empty, or full and single-colored.
   ///
   /// This is an invariant of the board value rather than a rule that needs
   /// applying — which is why it lives here and stays reachable from the UI.
@@ -241,7 +237,7 @@ final class Board {
   /// cached solution.
   Board withExtraEmptyTube() => Board([...tubes, Tube.empty(capacity)]);
 
-  /// Deep bottom-first colour lists — the serialization form shared by the
+  /// Deep bottom-first color lists — the serialization form shared by the
   /// baked level asset and the backend daily-challenge seed.
   List<List<ColorId>> toLists() => [
     for (final t in tubes) List<ColorId>.of(t.balls),

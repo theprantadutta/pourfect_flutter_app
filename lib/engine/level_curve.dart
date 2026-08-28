@@ -39,7 +39,7 @@ const int kDailyPoolSize = 365;
 ///
 /// This is a ratio on the CALIBRATED score, which is why `difficulty.dart`
 /// calibrates at all — the same ratio on the raw blend would demand a
-/// 3-colour board and turn every breather into a jarring size collapse.
+/// 3-color board and turn every breather into a jarring size collapse.
 const double kBreatherReliefFactor = 0.75;
 
 /// A breather must ALSO score no lower than this fraction of the running
@@ -48,7 +48,7 @@ const double kBreatherReliefFactor = 0.75;
 /// Without a floor, `maxScore` alone accepts anything under the bar, and the
 /// first candidate under it is usually far under: the first bake put level 50
 /// at 19.2 against a ceiling of 56.9 — a 6-move board dropped in after a run of
-/// 7-colour puzzles. That is not a breather, it is a hole in the curve. The
+/// 7-color puzzles. That is not a breather, it is a hole in the curve. The
 /// window turns "at least 25% easier" into "meaningfully but not absurdly
 /// easier".
 const double kBreatherFloorFactor = 0.60;
@@ -137,9 +137,9 @@ final class CampaignBand {
 
 /// The campaign curve.
 ///
-/// Colour counts rise across the whole run and never exceed [kMaxColours]. The
+/// Color counts rise across the whole run and never exceed [kMaxColors]. The
 /// final band gets its step up from REMOVING an empty tube rather than adding
-/// colours — one empty tube is the hardest constraint in the game, and it keeps
+/// colors — one empty tube is the hardest constraint in the game, and it keeps
 /// the board readable at the point where the puzzles are hardest.
 const List<CampaignBand> kCampaignBands = [
   // The onboarding band, and the only one with pinned windows.
@@ -226,7 +226,7 @@ const double kDailyMaxScore = 80;
 ///    the game — a breather there would relieve nothing; and
 ///  * the LAST level of any band, because a band should hand off at its peak.
 ///    Ending "Finding Rhythm" on an easy level and opening "Deep Water" three
-///    colours higher is the exact difficulty cliff the breathers exist to
+///    colors higher is the exact difficulty cliff the breathers exist to
 ///    prevent.
 bool isBreatherLevel(int id) {
   if (id % 10 != 0) return false;
@@ -280,9 +280,9 @@ final class CampaignBuildResult {
 ///
 /// The ordering strategy, and why it is not just "sort everything by score":
 ///
-///  * Slots are filled TIER BY TIER, in ascending colour count, so board size
+///  * Slots are filled TIER BY TIER, in ascending color count, so board size
 ///    grows steadily. Sorting the whole band by score instead would leave a
-///    7-colour board at level 20 and a 5-colour board at level 55 — monotonic
+///    7-color board at level 20 and a 5-color board at level 55 — monotonic
 ///    on paper, erratic to play.
 ///  * Each tier generates a pool and keeps the LOWEST-scoring candidates above
 ///    a running floor. The floor carries across tiers AND across bands, so the
@@ -335,7 +335,7 @@ CampaignBuildResult buildCampaign({
       // A PINNED tier is built SLOT BY SLOT, each aimed at its own narrow
       // sub-window. Sampling a pool and spreading the picks cannot work here:
       // a pool only ever contains what the distribution commonly produces, so
-      // asking 13 four-colour boards to cover 30-52 returns 41-52 — 41 is that
+      // asking 13 four-color boards to cover 30-52 returns 41-52 — 41 is that
       // shape's 10th percentile, and nothing in the sample reaches below it.
       // That is precisely how the first re-bake put a 13.6-point cliff between
       // levels 8 and 9. Targeting each slot forces generation into the tail.
@@ -520,7 +520,7 @@ List<Level> buildDailyPool({
 /// tier monotonic even when a slot has to be widened.
 ///
 /// Widening is the graceful-degradation path. Difficulty is not continuous at
-/// the easy end: a 3-colour board has only a handful of reachable scores
+/// the easy end: a 3-color board has only a handful of reachable scores
 /// (5-6 optimal moves, a coarse scatter term), so a narrow sub-window can be
 /// genuinely unhittable rather than merely rare. Rather than failing the build
 /// on a lattice gap, the search widens toward the tier's full window — and the

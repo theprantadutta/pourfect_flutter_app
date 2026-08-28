@@ -34,27 +34,27 @@ void main() {
       expect(() => bandIndexForLevel(0), throwsArgumentError);
     });
 
-    test('no band or breather spec exceeds the colour cap', () {
+    test('no band or breather spec exceeds the color cap', () {
       for (final band in kCampaignBands) {
         for (final tier in band.tiers) {
           expect(
             tier.colorCount,
-            lessThanOrEqualTo(kMaxColours),
-            reason: 'band "${band.name}" declares ${tier.colorCount} colours',
+            lessThanOrEqualTo(kMaxColors),
+            reason: 'band "${band.name}" declares ${tier.colorCount} colors',
           );
         }
-        expect(band.breatherSpec.colorCount, lessThanOrEqualTo(kMaxColours));
+        expect(band.breatherSpec.colorCount, lessThanOrEqualTo(kMaxColors));
       }
     });
 
-    test('colour counts never decrease from band to band', () {
+    test('color counts never decrease from band to band', () {
       var previousMax = 0;
       for (final band in kCampaignBands) {
         final counts = band.tiers.map((t) => t.colorCount).toList();
         expect(
           counts,
           orderedEquals(counts.toList()..sort()),
-          reason: 'band "${band.name}" tiers are not in ascending colour order',
+          reason: 'band "${band.name}" tiers are not in ascending color order',
         );
         expect(counts.first, greaterThanOrEqualTo(previousMax));
         previousMax = counts.last;
@@ -93,7 +93,7 @@ void main() {
 
     test('never lands on the last level of a band', () {
       // A band should hand off at its peak. Ending easy and opening the next
-      // band several colours higher is the exact cliff breathers exist to
+      // band several colors higher is the exact cliff breathers exist to
       // prevent.
       for (final band in kCampaignBands) {
         expect(
@@ -176,10 +176,10 @@ void main() {
     test('maps the measured raw range onto 0-100', () {
       expect(kRawScoreFloor, lessThan(kRawScoreCeiling));
 
-      DifficultyMetrics metrics(double forced, int colours, int empty) =>
+      DifficultyMetrics metrics(double forced, int colors, int empty) =>
           DifficultyMetrics(
-            minMoves: colours * 3,
-            colorCount: colours,
+            minMoves: colors * 3,
+            colorCount: colors,
             capacity: 4,
             emptyTubeCount: empty,
             forcedMoveRatio: forced,

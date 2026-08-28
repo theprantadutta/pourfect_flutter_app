@@ -28,7 +28,7 @@ const String kMonoFontFamily = 'JetBrainsMono';
 
 /// Small uppercase label: section headers, HUD captions.
 ///
-/// Wide tracking and a muted colour on purpose — these should sit behind the
+/// Wide tracking and a muted color on purpose — these should sit behind the
 /// board, not compete with it.
 TextStyle labelStyle(PourfectTokens tokens) => TextStyle(
   fontFamily: kUiFontFamily,

@@ -75,7 +75,7 @@ void main() {
     // 1,000 boards across the shipping bands. Split per band so a failure
     // localises and no single test outruns the default timeout.
     test(
-      'tutorial band — 4 colours, 2 empty (250 boards)',
+      'tutorial band — 4 colors, 2 empty (250 boards)',
       () => _sweep(
         'tutorial',
         const LevelSpec(colorCount: 4, emptyTubeCount: 2),
@@ -86,7 +86,7 @@ void main() {
     );
 
     test(
-      'early band — 6 colours, 2 empty (250 boards)',
+      'early band — 6 colors, 2 empty (250 boards)',
       () => _sweep(
         'early',
         const LevelSpec(colorCount: 6, emptyTubeCount: 2),
@@ -97,7 +97,7 @@ void main() {
     );
 
     test(
-      'mid band — 8 colours, 2 empty (250 boards)',
+      'mid band — 8 colors, 2 empty (250 boards)',
       () => _sweep(
         'mid',
         const LevelSpec(colorCount: 8, emptyTubeCount: 2),
@@ -108,7 +108,7 @@ void main() {
     );
 
     test(
-      'late band — 10 colours, 2 empty (150 boards)',
+      'late band — 10 colors, 2 empty (150 boards)',
       () => _sweep(
         'late',
         const LevelSpec(colorCount: 10, emptyTubeCount: 2),
@@ -119,7 +119,7 @@ void main() {
     );
 
     test(
-      'hardest band — 10 colours, 1 empty (100 boards)',
+      'hardest band — 10 colors, 1 empty (100 boards)',
       () => _sweep(
         'hardest',
         const LevelSpec(colorCount: 10, emptyTubeCount: 1),

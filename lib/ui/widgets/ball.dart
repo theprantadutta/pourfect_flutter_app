@@ -1,4 +1,4 @@
-/// The ball: a coloured disc carrying its accessibility glyph.
+/// The ball: a colored disc carrying its accessibility glyph.
 ///
 /// Geometry here MIRRORS `tool/cvd_harness.dart` exactly, in the same
 /// normalised 100x100 space. The harness is the artifact the palette was signed
@@ -32,7 +32,7 @@ class Ball extends StatelessWidget {
   ///
   /// The glyph is ALWAYS drawn — it is not a mode to discover in a menu. This
   /// only controls emphasis, for a player who needs the shape rather than the
-  /// colour to carry the whole distinction. See Settings.
+  /// color to carry the whole distinction. See Settings.
   final bool boldGlyph;
 
   const Ball({
@@ -63,7 +63,7 @@ class Ball extends StatelessWidget {
             height: height,
             child: CustomPaint(
               painter: _BallPainter(
-                colour: ballColour(colorId),
+                color: ballColor(colorId),
                 glyph: ballGlyph(colorId),
                 glow: glow,
                 bold: boldGlyph,
@@ -77,13 +77,13 @@ class Ball extends StatelessWidget {
 }
 
 class _BallPainter extends CustomPainter {
-  final Color colour;
+  final Color color;
   final BallGlyph glyph;
   final double glow;
   final bool bold;
 
   _BallPainter({
-    required this.colour,
+    required this.color,
     required this.glyph,
     required this.glow,
     required this.bold,
@@ -99,7 +99,7 @@ class _BallPainter extends CustomPainter {
         centre,
         size.width * 0.5 + 6 * glow,
         Paint()
-          ..color = colour.withValues(alpha: 0.35 * glow)
+          ..color = color.withValues(alpha: 0.35 * glow)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, 8 * glow),
       );
     }
@@ -114,9 +114,9 @@ class _BallPainter extends CustomPainter {
           center: const Alignment(-0.35, -0.45),
           radius: 0.95,
           colors: [
-            Color.lerp(colour, const Color(0xFFFFFFFF), 0.16)!,
-            colour,
-            Color.lerp(colour, const Color(0xFF000000), 0.22)!,
+            Color.lerp(color, const Color(0xFFFFFFFF), 0.16)!,
+            color,
+            Color.lerp(color, const Color(0xFF000000), 0.22)!,
           ],
           stops: const [0, 0.55, 1],
         ).createShader(rect),
@@ -125,7 +125,7 @@ class _BallPainter extends CustomPainter {
     _paintGlyph(canvas, size);
   }
 
-  /// Glyphs are drawn in translucent ink rather than a per-colour foreground,
+  /// Glyphs are drawn in translucent ink rather than a per-color foreground,
   /// so one rule works on the palest ball and the deepest without a lookup
   /// table that would inevitably fall out of sync with the palette.
   void _paintGlyph(Canvas canvas, Size size) {
@@ -225,7 +225,7 @@ class _BallPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BallPainter old) =>
-      old.colour != colour ||
+      old.color != color ||
       old.glyph != glyph ||
       old.glow != glow ||
       old.bold != bold;

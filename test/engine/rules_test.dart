@@ -33,7 +33,7 @@ void main() {
       expect(canMove(board, 0, 1), isFalse);
     });
 
-    test('rejects a colour mismatch', () {
+    test('rejects a color mismatch', () {
       final board = Board.fromLists([
         [0],
         [1],
@@ -41,7 +41,7 @@ void main() {
       expect(canMove(board, 0, 1), isFalse);
     });
 
-    test('allows any colour into an empty tube', () {
+    test('allows any color into an empty tube', () {
       final board = Board.fromLists([
         [3],
         [],
@@ -49,7 +49,7 @@ void main() {
       expect(canMove(board, 0, 1), isTrue);
     });
 
-    test('allows a matching top colour', () {
+    test('allows a matching top color', () {
       final board = Board.fromLists([
         [1, 2],
         [0, 2],
@@ -68,7 +68,7 @@ void main() {
   });
 
   group('applyMove moves the whole contiguous run', () {
-    test('carries every same-coloured ball from the top', () {
+    test('carries every same-colored ball from the top', () {
       final board = Board.fromLists([
         [1, 2, 2, 2],
         [],
@@ -76,7 +76,7 @@ void main() {
       final result = applyMove(board, const Move(0, 1));
 
       expect(result.ballsMoved, 3, reason: 'the run of three 2s moves at once');
-      expect(result.colour, 2);
+      expect(result.color, 2);
       expect(result.board[0].balls, [1]);
       expect(result.board[1].balls, [2, 2, 2]);
     });
@@ -126,7 +126,7 @@ void main() {
       expect(
         result.completedDestination,
         isFalse,
-        reason: 'full but not single-coloured is not a finished tube',
+        reason: 'full but not single-colored is not a finished tube',
       );
     });
 
@@ -160,7 +160,7 @@ void main() {
     test('ballsThatWouldMove agrees with what applyMove does', () {
       final random = Random(7);
       for (var i = 0; i < 300; i++) {
-        final board = _randomBoard(random, colours: 4, capacity: 4, empties: 2);
+        final board = _randomBoard(random, colors: 4, capacity: 4, empties: 2);
         for (final move in legalMoves(board)) {
           final predicted = ballsThatWouldMove(board, move.from, move.to);
           expect(applyMove(board, move).ballsMoved, predicted);
@@ -188,7 +188,7 @@ void main() {
       expect(
         board.isWon,
         isFalse,
-        reason: 'a colour split across two tubes is not sorted',
+        reason: 'a color split across two tubes is not sorted',
       );
     });
 
@@ -264,7 +264,7 @@ void main() {
     test('is always a subset of legalMoves', () {
       final random = Random(11);
       for (var i = 0; i < 400; i++) {
-        final board = _randomBoard(random, colours: 5, capacity: 4, empties: 2);
+        final board = _randomBoard(random, colors: 5, capacity: 4, empties: 2);
         final legal = legalMoves(board).toSet();
         for (final move in usefulMoves(board)) {
           expect(
@@ -384,16 +384,16 @@ void main() {
 /// the solvability filter, so tests see messy positions too.
 Board _randomBoard(
   Random random, {
-  required int colours,
+  required int colors,
   required int capacity,
   required int empties,
 }) {
   final balls = <ColorId>[
-    for (var c = 0; c < colours; c++) ...List<ColorId>.filled(capacity, c),
+    for (var c = 0; c < colors; c++) ...List<ColorId>.filled(capacity, c),
   ]..shuffle(random);
 
   return Board([
-    for (var i = 0; i < colours; i++)
+    for (var i = 0; i < colors; i++)
       Tube(balls.sublist(i * capacity, (i + 1) * capacity), capacity),
     for (var i = 0; i < empties; i++) Tube.empty(capacity),
   ]);

@@ -6,11 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'firebase_options.dart';
+import 'services/licenses.dart';
 import 'services/perf/frame_watch.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   configureSystemChrome();
+  registerFontLicenses();
 
   // THE GAME IS FULLY PLAYABLE OFFLINE and no network call may ever block it.
   // Firebase only powers analytics and, later, optional cloud sync — so a

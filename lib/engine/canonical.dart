@@ -8,7 +8,7 @@
 /// therefore appears in the raw search space up to n! times over.
 ///
 /// Collapsing that permutation space is the single biggest speedup in the
-/// solver — far larger than the heuristic or the move ordering. On a 10-colour,
+/// solver — far larger than the heuristic or the move ordering. On a 10-color,
 /// 12-tube board the raw space is ~479 million orderings of every position;
 /// canonicalising cuts the visited set to the positions that actually differ.
 /// Do not "optimise" this away.
@@ -18,11 +18,11 @@ import 'board.dart';
 
 /// Encodes one tube's bottom-first contents as a single integer.
 ///
-/// Digits are `colour + 1` in base [base], so 0 is never a digit and a shorter
+/// Digits are `color + 1` in base [base], so 0 is never a digit and a shorter
 /// tube can never collide with a longer one that shares its suffix — the length
 /// is carried implicitly by the magnitude. An empty tube encodes to 0.
 ///
-/// [base] must be at least `maxColour + 2`.
+/// [base] must be at least `maxColor + 2`.
 int tubeCode(List<ColorId> balls, int base) {
   var code = 0;
   for (final c in balls) {
@@ -31,8 +31,8 @@ int tubeCode(List<ColorId> balls, int base) {
   return code;
 }
 
-/// The base required to encode colours up to [maxColour] with [tubeCode].
-int baseForMaxColour(int maxColour) => maxColour + 2;
+/// The base required to encode colors up to [maxColor] with [tubeCode].
+int baseForMaxColor(int maxColor) => maxColor + 2;
 
 /// Canonical key for [board]: order-independent, collision-free.
 ///
@@ -41,7 +41,7 @@ int baseForMaxColour(int maxColour) => maxColour + 2;
 /// the capacity/base prefix makes a cross-shape comparison fail loudly rather
 /// than collide silently.
 String canonicalKey(Board board) {
-  final base = baseForMaxColour(board.maxColour);
+  final base = baseForMaxColor(board.maxColor);
   final codes = [for (final t in board.tubes) tubeCode(t.balls, base)]..sort();
   return '${board.capacity}:$base:${_packCodes(codes)}';
 }
@@ -51,7 +51,7 @@ String canonicalKey(Board board) {
 /// Fast path: when every code fits in a single UTF-16 code unit, the codes
 /// become the string's code units directly — one allocation, no formatting.
 /// Slow path: a marker plus a delimited join, so an unusually large
-/// capacity/colour combination stays correct rather than silently truncating.
+/// capacity/color combination stays correct rather than silently truncating.
 /// The two paths cannot collide because '#' is not a valid fast-path prefix
 /// (code 35 would require a tube encoding to 35, which the marker precedes).
 String _packCodes(List<int> sortedCodes) {
@@ -63,7 +63,7 @@ String _packCodes(List<int> sortedCodes) {
   return String.fromCharCodes(sortedCodes);
 }
 
-/// Canonical key over raw bottom-first colour lists, for the solver's inner
+/// Canonical key over raw bottom-first color lists, for the solver's inner
 /// loop and for the generator's duplicate check.
 ///
 /// [base] is fixed for the duration of a single solve, so the prefix that

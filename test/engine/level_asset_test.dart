@@ -153,12 +153,12 @@ void main() {
       );
     });
 
-    test('never exceeds the accessibility colour cap', () {
+    test('never exceeds the accessibility color cap', () {
       for (final campaignLevel in _loadCampaign().levels) {
         expect(
           campaignLevel.level.colorCount,
           lessThanOrEqualTo(10),
-          reason: 'level ${campaignLevel.id} breaks the 10-colour cap',
+          reason: 'level ${campaignLevel.id} breaks the 10-color cap',
         );
       }
     });

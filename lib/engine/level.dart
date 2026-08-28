@@ -70,11 +70,11 @@ final class Level {
   /// Balls per tube.
   int get capacity => board.capacity;
 
-  /// How many distinct colours the level uses.
-  int get colorCount => board.colours.length;
+  /// How many distinct colors the level uses.
+  int get colorCount => board.colors.length;
 
   /// How many tubes start empty. The strongest difficulty lever we have:
-  /// dropping from 2 to 1 is a far bigger jump than adding a colour.
+  /// dropping from 2 to 1 is a far bigger jump than adding a color.
   int get emptyTubeCount => board.emptyTubeCount;
 
   /// Total tubes, filled plus empty.
@@ -124,6 +124,6 @@ final class Level {
 
   @override
   String toString() =>
-      'Level($id, colours: $colorCount, empty: $emptyTubeCount, '
+      'Level($id, colors: $colorCount, empty: $emptyTubeCount, '
       'minMoves: $minMoves, difficulty: ${difficultyScore.toStringAsFixed(1)})';
 }

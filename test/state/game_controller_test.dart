@@ -25,7 +25,7 @@ Level oneMoveLevel() => Level(
   forcedMoveRatio: 1,
 );
 
-/// Two colours interleaved with a spare tube — several legal moves available.
+/// Two colors interleaved with a spare tube — several legal moves available.
 Level openLevel() => Level(
   id: 2,
   board: Board.fromLists([
@@ -128,7 +128,7 @@ void main() {
 
       final pour = state().pour;
       expect(pour.ballsMoved, 1);
-      expect(pour.colour, 1);
+      expect(pour.color, 1);
       expect(pour.sourceTopSlot, 3);
       expect(pour.destBaseSlot, 0);
     });

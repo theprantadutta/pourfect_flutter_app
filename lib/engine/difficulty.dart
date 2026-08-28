@@ -13,7 +13,7 @@
 ///
 /// MEASURED CAVEAT, worth knowing before trusting the weights. On randomly
 /// dealt 2-empty-tube boards, [DifficultyMetrics.forcedMoveRatio] sits near 0.1
-/// almost everywhere (p10 0.0, p50 0.1, p90 0.2 across 3-10 colours). It is a
+/// almost everywhere (p10 0.0, p50 0.1, p90 0.2 across 3-10 colors). It is a
 /// rare-event indicator, so despite carrying the largest weight it does little
 /// discriminating there; what actually separates two boards of the SAME shape
 /// is move load and scatter. It comes alive on the 1-empty-tube band, where it
@@ -31,7 +31,7 @@ final class DifficultyMetrics {
   /// Optimal solution length.
   final int minMoves;
 
-  /// Distinct colours in play.
+  /// Distinct colors in play.
   final int colorCount;
 
   /// Balls per tube.
@@ -39,7 +39,7 @@ final class DifficultyMetrics {
 
   /// Tubes that start empty. The strongest single lever: going from 2 to 1
   /// removes most of the player's room to manoeuvre and is a much bigger jump
-  /// than adding a colour.
+  /// than adding a color.
   final int emptyTubeCount;
 
   /// Fraction of states along the optimal path offering at most ONE meaningful
@@ -61,10 +61,10 @@ final class DifficultyMetrics {
   /// file exists to avoid.
   final double meanBranching;
 
-  /// Mean number of distinct tubes each colour is spread across at the start.
+  /// Mean number of distinct tubes each color is spread across at the start.
   final double meanScatter;
 
-  /// Worst-case scatter for any single colour at the start.
+  /// Worst-case scatter for any single color at the start.
   final int maxScatter;
 
   const DifficultyMetrics({
@@ -80,7 +80,7 @@ final class DifficultyMetrics {
 
   @override
   String toString() =>
-      'DifficultyMetrics(minMoves: $minMoves, colours: $colorCount, '
+      'DifficultyMetrics(minMoves: $minMoves, colors: $colorCount, '
       'empty: $emptyTubeCount, forced: ${forcedMoveRatio.toStringAsFixed(2)}, '
       'branching: ${meanBranching.toStringAsFixed(1)}, '
       'scatter: ${meanScatter.toStringAsFixed(2)}/$maxScatter)';
@@ -89,7 +89,7 @@ final class DifficultyMetrics {
 /// Measures [board] against its [solution], which must be the OPTIMAL path from
 /// the solver — the branching statistics are meaningless along a wandering one.
 DifficultyMetrics measureDifficulty(Board board, List<Move> solution) {
-  final scatter = _scatterPerColour(board);
+  final scatter = _scatterPerColor(board);
   final meanScatter = scatter.isEmpty
       ? 0.0
       : scatter.values.reduce((a, b) => a + b) / scatter.length;
@@ -101,7 +101,7 @@ DifficultyMetrics measureDifficulty(Board board, List<Move> solution) {
 
   return DifficultyMetrics(
     minMoves: solution.length,
-    colorCount: board.colours.length,
+    colorCount: board.colors.length,
     capacity: board.capacity,
     emptyTubeCount: board.emptyTubeCount,
     forcedMoveRatio: forcedRatio,
@@ -136,12 +136,12 @@ DifficultyMetrics measureDifficulty(Board board, List<Move> solution) {
   return (forced / solution.length, branchingTotal / solution.length);
 }
 
-/// How many distinct tubes each colour occupies at the start.
-Map<ColorId, int> _scatterPerColour(Board board) {
+/// How many distinct tubes each color occupies at the start.
+Map<ColorId, int> _scatterPerColor(Board board) {
   final counts = <ColorId, int>{};
   for (final tube in board.tubes) {
-    for (final colour in tube.balls.toSet()) {
-      counts[colour] = (counts[colour] ?? 0) + 1;
+    for (final color in tube.balls.toSet()) {
+      counts[color] = (counts[color] ?? 0) + 1;
     }
   }
   return counts;
@@ -154,11 +154,11 @@ Map<ColorId, int> _scatterPerColour(Board board) {
 ///  * **0.32 branching** — `1 - forcedMoveRatio`.
 ///  * **0.22 empty-tube pressure** — `1 / emptyTubeCount`. One empty tube is
 ///    the hardest constraint in the game.
-///  * **0.18 move load** — `minMoves` per colour, which grows as the solution
+///  * **0.18 move load** — `minMoves` per color, which grows as the solution
 ///    needs more shuffling than a straight sort.
-///  * **0.16 scatter** — how far each colour is spread at the start.
-///  * **0.12 colour load** — the crudest signal, and weighted last on purpose:
-///    more colours mostly means a bigger board, not a harder one.
+///  * **0.16 scatter** — how far each color is spread at the start.
+///  * **0.12 color load** — the crudest signal, and weighted last on purpose:
+///    more colors mostly means a bigger board, not a harder one.
 double rawDifficultyScore(DifficultyMetrics m) {
   final branching = (1 - m.forcedMoveRatio).clamp(0.0, 1.0);
 
@@ -166,31 +166,31 @@ double rawDifficultyScore(DifficultyMetrics m) {
       ? 1.0
       : (1.0 / m.emptyTubeCount).clamp(0.0, 1.0);
 
-  // Moves per colour runs about 1.0 on a near-sorted board up to about 3.0 on a
+  // Moves per color runs about 1.0 on a near-sorted board up to about 3.0 on a
   // thoroughly shuffled one; normalise that window to 0-1.
-  final movesPerColour = m.colorCount == 0 ? 0.0 : m.minMoves / m.colorCount;
-  final moveLoad = ((movesPerColour - 1.0) / 2.0).clamp(0.0, 1.0);
+  final movesPerColor = m.colorCount == 0 ? 0.0 : m.minMoves / m.colorCount;
+  final moveLoad = ((movesPerColor - 1.0) / 2.0).clamp(0.0, 1.0);
 
-  // A colour sits in at least 1 tube and at most `capacity` of them.
+  // A color sits in at least 1 tube and at most `capacity` of them.
   final scatterSpan = (m.capacity - 1).clamp(1, 1 << 30);
   final scatter = ((m.meanScatter - 1.0) / scatterSpan).clamp(0.0, 1.0);
 
-  final colourLoad = (m.colorCount / kMaxColours).clamp(0.0, 1.0);
+  final colorLoad = (m.colorCount / kMaxColors).clamp(0.0, 1.0);
 
   final blended =
       0.32 * branching +
       0.22 * emptyPressure +
       0.18 * moveLoad +
       0.16 * scatter +
-      0.12 * colourLoad;
+      0.12 * colorLoad;
 
   return blended * 100;
 }
 
 /// Lowest raw blend observed across every shipping spec, with margin.
 ///
-/// Measured over 3-10 colours at both 1 and 2 empty tubes: the floor was 46.9
-/// (3 colours) and the ceiling 88.1 (10 colours, 1 empty). These bounds are
+/// Measured over 3-10 colors at both 1 and 2 empty tubes: the floor was 46.9
+/// (3 colors) and the ceiling 88.1 (10 colors, 1 empty). These bounds are
 /// deliberately a little wider than the observation so a slightly unusual board
 /// lands inside the scale rather than clamping.
 const double kRawScoreFloor = 45;
@@ -208,7 +208,7 @@ const double kRawScoreCeiling = 90;
 /// below ~47 or above ~88, because several terms never bottom out together. So
 /// the raw number is an interval scale, not a ratio scale, and arithmetic like
 /// "25% easier" on it is badly misleading — 25% below a raw 82 lands at 61,
-/// which only a 3-colour board can reach, which would make every breather level
+/// which only a 3-color board can reach, which would make every breather level
 /// a jarring board-size collapse.
 ///
 /// Mapping the measured range onto 0-100 makes the scale mean what it looks
@@ -223,11 +223,11 @@ double difficultyScore(DifficultyMetrics m) {
   return calibrated.clamp(0.0, 100.0);
 }
 
-/// Ceiling on simultaneous colours, set by ACCESSIBILITY rather than by search.
+/// Ceiling on simultaneous colors, set by ACCESSIBILITY rather than by search.
 ///
-/// Every ball carries a colour AND a distinct shape glyph, always both. Past
+/// Every ball carries a color AND a distinct shape glyph, always both. Past
 /// ten, the glyphs stop being tellable apart at ball size and the muted palette
 /// runs out of separable hues — and a board you have to squint at is not
 /// relaxing, which is the product. Difficulty past this point comes from fewer
 /// empty tubes, higher scatter and lower forced-move ratio instead.
-const int kMaxColours = 10;
+const int kMaxColors = 10;

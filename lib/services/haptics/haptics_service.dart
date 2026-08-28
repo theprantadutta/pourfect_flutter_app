@@ -1,7 +1,7 @@
 /// Haptics, behind an interface so it can be muted and faked.
 ///
 /// Touch is doing real work in this game: it is the difference between a ball
-/// that "lands" and a rectangle that changes colour. The tiers below are
+/// that "lands" and a rectangle that changes color. The tiers below are
 /// deliberately distinct — a completed tube must feel different from an
 /// ordinary pour, because that is the moment the game is rewarding.
 library;
@@ -15,7 +15,7 @@ abstract interface class HapticsService {
   /// A ball settling into a tube.
   void ballLanded();
 
-  /// A tube just filled with a single colour — the payoff moment.
+  /// A tube just filled with a single color — the payoff moment.
   void tubeCompleted();
 
   /// The level is finished.

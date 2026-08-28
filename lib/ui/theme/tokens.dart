@@ -1,6 +1,6 @@
 /// Semantic design tokens.
 ///
-/// Every colour, space and type ramp in the app resolves through here. Nothing
+/// Every color, space and type ramp in the app resolves through here. Nothing
 /// downstream writes a raw hex value or a magic number — that is what makes the
 /// warm-paper light theme a token remap later rather than a rewrite, and it is
 /// why [PourfectTokens] is read off the widget tree instead of being a global.
@@ -17,7 +17,7 @@ import 'package:flutter/material.dart';
 
 import 'ball_palette.dart';
 
-/// The app's colour, spacing, radius and motion tokens.
+/// The app's color, spacing, radius and motion tokens.
 @immutable
 class PourfectTokens extends ThemeExtension<PourfectTokens> {
   // ---- surfaces ----------------------------------------------------------
@@ -46,7 +46,7 @@ class PourfectTokens extends ThemeExtension<PourfectTokens> {
   final Color textNumeric;
 
   /// The quietest text tier: locked levels, inactive captions. Present so
-  /// "unavailable" can be expressed without dropping opacity on a colour that
+  /// "unavailable" can be expressed without dropping opacity on a color that
   /// was already muted, which compounds into unreadable.
   final Color dimText;
 
@@ -234,7 +234,7 @@ class PourfectTokens extends ThemeExtension<PourfectTokens> {
 ///
 /// The engine deals in opaque integers and knows nothing about appearance; this
 /// is the only place the two meet.
-Color ballColour(int colorId) =>
+Color ballColor(int colorId) =>
     Color(0xFF000000 | kBallPalette[colorId % kBallPalette.length].rgb);
 
 /// Resolves an engine `ColorId` to its accessibility glyph.

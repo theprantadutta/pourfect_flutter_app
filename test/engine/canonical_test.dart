@@ -19,7 +19,7 @@ void main() {
       'never confuses a short tube with a longer one sharing its suffix',
       () {
         // The classic encoding bug: [0] and [0,0] both "end in 0". Digits are
-        // colour+1 so 0 is never a digit and length rides in the magnitude.
+        // color+1 so 0 is never a digit and length rides in the magnitude.
         expect(tubeCode([0], 4), isNot(tubeCode([0, 0], 4)));
         expect(tubeCode([1], 4), isNot(tubeCode([0, 1], 4)));
         expect(tubeCode([], 4), isNot(tubeCode([0], 4)));
@@ -27,9 +27,9 @@ void main() {
     );
 
     test('is injective across every tube up to capacity 4', () {
-      const colours = 5;
+      const colors = 5;
       const capacity = 4;
-      final base = baseForMaxColour(colours - 1);
+      final base = baseForMaxColor(colors - 1);
       final seen = <int, List<ColorId>>{};
 
       void walk(List<ColorId> prefix) {
@@ -42,7 +42,7 @@ void main() {
         );
         seen[code] = List.of(prefix);
         if (prefix.length == capacity) return;
-        for (var c = 0; c < colours; c++) {
+        for (var c = 0; c < colors; c++) {
           walk([...prefix, c]);
         }
       }
@@ -143,7 +143,7 @@ void main() {
       final byKey = <String, List<List<ColorId>>>{};
 
       for (var i = 0; i < 3000; i++) {
-        final board = _randomBoard(random, colours: 4, capacity: 4, empties: 2);
+        final board = _randomBoard(random, colors: 4, capacity: 4, empties: 2);
         final key = canonicalKey(board);
         final sorted = board.toLists()
           ..sort((a, b) => a.join(',').compareTo(b.join(',')));
@@ -179,9 +179,9 @@ void main() {
     });
 
     test('stays correct when tube codes exceed the fast-path width', () {
-      // capacity 8 with 10 colours pushes codes past 0xFFFF, which is where a
+      // capacity 8 with 10 colors pushes codes past 0xFFFF, which is where a
       // naive code-unit packing would start truncating.
-      final base = baseForMaxColour(9);
+      final base = baseForMaxColor(9);
       final wide = List<ColorId>.generate(8, (i) => i % 10);
       expect(tubeCode(wide, base), greaterThan(0xFFFF));
 
@@ -210,16 +210,16 @@ Iterable<List<T>> _permutations<T>(List<T> items) sync* {
 
 Board _randomBoard(
   Random random, {
-  required int colours,
+  required int colors,
   required int capacity,
   required int empties,
 }) {
   final balls = <ColorId>[
-    for (var c = 0; c < colours; c++) ...List<ColorId>.filled(capacity, c),
+    for (var c = 0; c < colors; c++) ...List<ColorId>.filled(capacity, c),
   ]..shuffle(random);
 
   return Board([
-    for (var i = 0; i < colours; i++)
+    for (var i = 0; i < colors; i++)
       Tube(balls.sublist(i * capacity, (i + 1) * capacity), capacity),
     for (var i = 0; i < empties; i++) Tube.empty(capacity),
   ]);

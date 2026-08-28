@@ -82,7 +82,7 @@ const int _maxTranspositionEntries = 1 << 21;
 
 /// Node budget for BUILD-TIME work: level generation and validation.
 ///
-/// Set from measurement, not taste. The hardest shipping band (10 colours, 2
+/// Set from measurement, not taste. The hardest shipping band (10 colors, 2
 /// empty tubes) peaks at ~602k nodes, so this is roughly 2.5x the observed
 /// worst case. At 400k about 3% of otherwise-good boards came back
 /// [SolveUnknown] and were discarded — and because a discard costs a whole
@@ -128,7 +128,7 @@ class Solver {
   /// Solves [board], returning an optimal path, a proof of impossibility, or
   /// [SolveUnknown] if [nodeCap] was reached first.
   ///
-  /// Throws [ArgumentError] if the board violates the colour-count invariant
+  /// Throws [ArgumentError] if the board violates the color-count invariant
   /// (see [_assertBallCounts]).
   SolveOutcome solve(Board board) {
     _assertBallCounts(board);
@@ -138,7 +138,7 @@ class Solver {
   /// The next optimal move from [board], or `null` when the board is won,
   /// unsolvable, or the search gave up.
   ///
-  /// Callers should run this off the UI isolate: on a 10-colour board it can
+  /// Callers should run this off the UI isolate: on a 10-color board it can
   /// take long enough to drop frames.
   Move? hint(Board board) {
     final outcome = solve(board);
@@ -153,7 +153,7 @@ class Solver {
   bool isSolvable(Board board) => solve(board) is Solved;
 
   /// The solver's goal test is `heuristic == 0`, which is equivalent to "won"
-  /// ONLY when every colour has exactly `capacity` balls on the board. That
+  /// ONLY when every color has exactly `capacity` balls on the board. That
   /// holds for every generated level and is preserved by play and by the
   /// add-tube power-up, so a violation means a caller built a board by hand and
   /// would otherwise get a confidently wrong answer.
@@ -169,9 +169,9 @@ class Solver {
         throw ArgumentError.value(
           board,
           'board',
-          'colour ${entry.key} has ${entry.value} balls, expected exactly '
+          'color ${entry.key} has ${entry.value} balls, expected exactly '
               '${board.capacity} — the solver requires one full tube of every '
-              'colour',
+              'color',
         );
       }
     }
@@ -185,7 +185,7 @@ class Solver {
 class _Search {
   final int capacity;
   final int tubeCount;
-  final int maxColour;
+  final int maxColor;
   final int base;
   final int nodeCap;
 
@@ -193,7 +193,7 @@ class _Search {
   final List<List<ColorId>> tubes;
 
   /// Scratch for the heuristic — reused rather than reallocated per node.
-  final List<int> _colourTubeCount;
+  final List<int> _colorTubeCount;
 
   final List<Move> _path = [];
 
@@ -206,10 +206,10 @@ class _Search {
   _Search(Board board, this.nodeCap)
     : capacity = board.capacity,
       tubeCount = board.tubeCount,
-      maxColour = board.maxColour,
-      base = baseForMaxColour(board.maxColour),
+      maxColor = board.maxColor,
+      base = baseForMaxColor(board.maxColor),
       tubes = [for (final t in board.tubes) List<ColorId>.of(t.balls)],
-      _colourTubeCount = List<int>.filled(board.maxColour + 2, 0);
+      _colorTubeCount = List<int>.filled(board.maxColor + 2, 0);
 
   SolveOutcome run() {
     var threshold = _heuristic();
@@ -276,16 +276,16 @@ class _Search {
     return min;
   }
 
-  /// Admissible heuristic: for each colour, the number of distinct tubes
+  /// Admissible heuristic: for each color, the number of distinct tubes
   /// holding it, minus one, summed.
   ///
   /// Read as "how many merges remain". It is admissible because a single move
-  /// pours one colour from one tube into one other, so it can reduce the count
-  /// for at most one colour, by at most one — no move can ever make more than
+  /// pours one color from one tube into one other, so it can reduce the count
+  /// for at most one color, by at most one — no move can ever make more than
   /// one unit of progress against this measure.
   int _heuristic() {
-    for (var c = 0; c <= maxColour; c++) {
-      _colourTubeCount[c] = 0;
+    for (var c = 0; c <= maxColor; c++) {
+      _colorTubeCount[c] = 0;
     }
     for (var i = 0; i < tubeCount; i++) {
       final tube = tubes[i];
@@ -294,13 +294,13 @@ class _Search {
         final bit = 1 << tube[j];
         if (mask & bit == 0) {
           mask |= bit;
-          _colourTubeCount[tube[j]]++;
+          _colorTubeCount[tube[j]]++;
         }
       }
     }
     var h = 0;
-    for (var c = 0; c <= maxColour; c++) {
-      if (_colourTubeCount[c] > 0) h += _colourTubeCount[c] - 1;
+    for (var c = 0; c <= maxColor; c++) {
+      if (_colorTubeCount[c] > 0) h += _colorTubeCount[c] - 1;
     }
     return h;
   }
@@ -330,7 +330,7 @@ class _Search {
       if (_isComplete(from)) continue;
       if (!seenSource.add(codes[from])) continue;
 
-      final colour = source.last;
+      final color = source.last;
       final run = _topRun(from);
       final sourceUniform = _isUniform(from);
 
@@ -348,7 +348,7 @@ class _Search {
           continue;
         }
 
-        if (dest.last != colour) continue;
+        if (dest.last != color) continue;
         if (!seenDest.add(codes[to])) continue;
 
         final moved = run < free ? run : free;
@@ -366,9 +366,9 @@ class _Search {
   int _topRun(int index) {
     final tube = tubes[index];
     if (tube.isEmpty) return 0;
-    final colour = tube.last;
+    final color = tube.last;
     var n = 0;
-    for (var i = tube.length - 1; i >= 0 && tube[i] == colour; i--) {
+    for (var i = tube.length - 1; i >= 0 && tube[i] == color; i--) {
       n++;
     }
     return n;
@@ -391,13 +391,13 @@ class _Search {
   int _apply(int from, int to) {
     final source = tubes[from];
     final dest = tubes[to];
-    final colour = source.last;
+    final color = source.last;
     final run = _topRun(from);
     final free = capacity - dest.length;
     final count = run < free ? run : free;
     for (var i = 0; i < count; i++) {
       source.removeLast();
-      dest.add(colour);
+      dest.add(color);
     }
     return count;
   }
@@ -406,10 +406,10 @@ class _Search {
   void _undo(int from, int to, int count) {
     final source = tubes[from];
     final dest = tubes[to];
-    final colour = dest.last;
+    final color = dest.last;
     for (var i = 0; i < count; i++) {
       dest.removeLast();
-      source.add(colour);
+      source.add(color);
     }
   }
 }
