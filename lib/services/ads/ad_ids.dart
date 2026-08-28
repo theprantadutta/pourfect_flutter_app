@@ -110,7 +110,9 @@ abstract final class AdIds {
 /// It is a hash of the device's ad id, not a secret, and it changes if the
 /// advertising id is reset.
 const List<String> kAdMobTestDeviceIds = <String>[
-  // '33BE2250B43518CCDA7DE426D04EE231',
+  // Samsung A24, the development handset. Read from logcat on a profile
+  // build, so no live impression was taken to obtain it.
+  '245721C02AABB0F5FDB14764DD880B29',
 ];
 
 /// Product identifiers for in-app purchase.

@@ -150,7 +150,7 @@ I/Ads: Use RequestConfiguration.Builder().setTestDeviceIds(Arrays.asList("33BE22
 ```
 
 ```
-ANDROID_TEST_DEVICE_ID = ________________________________
+ANDROID_TEST_DEVICE_ID = 245721C02AABB0F5FDB14764DD880B29
 ```
 
 **Never tap your own live ads on a device that is not registered as a test
