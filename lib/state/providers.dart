@@ -13,8 +13,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../engine/level_set.dart';
+import '../services/ads/ad_service.dart';
+import '../services/ads/admob_ad_service.dart';
 import '../services/analytics/analytics_service.dart';
 import '../services/analytics/firebase_analytics_service.dart';
+import '../services/iap/billing_service.dart';
 import '../services/audio/audio_service.dart';
 import '../services/audio/soloud_audio_service.dart';
 import '../services/haptics/haptics_service.dart';
@@ -140,6 +143,21 @@ final audioServiceProvider = Provider<AudioService>((ref) {
   final service = SoLoudAudioService(
     enabled: () => ref.read(settingsProvider).soundEnabled,
   );
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+/// Ads. Overridden with `NoopAdService` in tests and `FakeAdService` where a
+/// scripted outcome is needed — which is the whole reason the interface exists.
+final adServiceProvider = Provider<AdService>((ref) {
+  final service = AdMobAdService();
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+/// The single Remove Ads purchase.
+final billingServiceProvider = Provider<BillingService>((ref) {
+  final service = PlayBillingService();
   ref.onDispose(service.dispose);
   return service;
 });

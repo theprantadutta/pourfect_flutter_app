@@ -102,6 +102,10 @@ class _ShellState extends ConsumerState<_Shell> {
     // usable audio still reaches the level map.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(audioServiceProvider).init();
+      // Ads and billing initialise off the first frame too. Neither may block
+      // startup: a device with no Play Services still has to reach level 1.
+      ref.read(adServiceProvider).init();
+      ref.read(billingServiceProvider).init();
     });
   }
 

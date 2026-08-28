@@ -7,7 +7,9 @@ import 'package:pourfect_flutter_app/engine/board.dart';
 import 'package:pourfect_flutter_app/engine/level.dart';
 import 'package:pourfect_flutter_app/engine/move.dart';
 import 'package:pourfect_flutter_app/services/analytics/analytics_service.dart';
+import 'package:pourfect_flutter_app/services/ads/ad_service.dart';
 import 'package:pourfect_flutter_app/services/audio/audio_service.dart';
+import 'package:pourfect_flutter_app/services/iap/billing_service.dart';
 import 'package:pourfect_flutter_app/services/haptics/haptics_service.dart';
 import 'package:pourfect_flutter_app/state/game_controller.dart';
 import 'package:pourfect_flutter_app/state/providers.dart';
@@ -49,6 +51,8 @@ void main() {
         analyticsServiceProvider.overrideWithValue(analytics),
         hapticsServiceProvider.overrideWithValue(const NoopHapticsService()),
         audioServiceProvider.overrideWithValue(const NoopAudioService()),
+        adServiceProvider.overrideWithValue(const NoopAdService()),
+        billingServiceProvider.overrideWithValue(const NoopBillingService()),
       ],
     );
   });
