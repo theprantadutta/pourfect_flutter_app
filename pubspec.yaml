@@ -57,6 +57,11 @@ dependencies:
   # decides whether we stop somebody's podcast. See CLAUDE.md.
   audio_session: ^0.2.0
 
+  # Version string in Settings, and the privacy-policy link Play requires to be
+  # reachable from inside the app as well as from the store listing.
+  package_info_plus: ^8.0.0
+  url_launcher: ^6.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -94,6 +99,17 @@ flutter:
     # Baked at build time by tool/generate_levels.dart and committed.
     # Regenerating must reproduce this byte-for-byte; see level_asset_test.dart.
     - assets/levels/levels.bin
+
+  fonts:
+    # Bundled, not fetched. `google_fonts` exists for runtime fetching, which we
+    # explicitly do not do — the game must be fully playable offline and a font
+    # must never pop in on first launch. See assets/fonts/ATTRIBUTION.md.
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/JetBrainsMono-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

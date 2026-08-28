@@ -303,6 +303,7 @@ class _BoardViewState extends ConsumerState<BoardView>
   ) {
     final widgets = <Widget>[];
     final active = _active;
+    final bold = ref.watch(settingsProvider).boldSymbols;
 
     for (var tube = 0; tube < state.board.tubeCount; tube++) {
       final balls = state.board[tube].balls;
@@ -340,6 +341,7 @@ class _BoardViewState extends ConsumerState<BoardView>
               size: geometry.ballSize,
               opacity: opacity,
               glow: warm,
+              boldGlyph: bold,
             ),
           ),
         );
@@ -395,7 +397,11 @@ class _BoardViewState extends ConsumerState<BoardView>
           top: position.dy - geometry.ballSize / 2,
           width: geometry.ballSize,
           height: geometry.ballSize,
-          child: Ball(colorId: active.colour, size: geometry.ballSize),
+          child: Ball(
+            colorId: active.colour,
+            size: geometry.ballSize,
+            boldGlyph: ref.read(settingsProvider).boldSymbols,
+          ),
         ),
       );
     }

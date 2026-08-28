@@ -42,7 +42,14 @@ class LevelSelectScreen extends ConsumerStatefulWidget {
   /// grow the board out of the vessel the player actually touched.
   final void Function(int levelId, Rect? origin) onOpenLevel;
 
-  const LevelSelectScreen({super.key, required this.onOpenLevel});
+  /// Opens settings.
+  final VoidCallback onOpenSettings;
+
+  const LevelSelectScreen({
+    super.key,
+    required this.onOpenLevel,
+    required this.onOpenSettings,
+  });
 
   @override
   ConsumerState<LevelSelectScreen> createState() => _LevelSelectScreenState();
@@ -63,11 +70,30 @@ class _LevelSelectScreenState extends ConsumerState<LevelSelectScreen> {
   /// on level 96 to hunt for themselves every single time. The layout is
   /// deterministic once the width is known, so the offset can simply be
   /// computed rather than measured after a frame.
+  static int _perRow(double width) =>
+      ((width + _tileGap) / (_tileWidth + _tileGap)).floor().clamp(1, 12);
+
+  /// Which band the viewport is currently showing.
+  ///
+  /// The inverse of [_offsetForLevel], sharing the same deterministic layout,
+  /// so the pinned bar and the scroll position can never disagree.
+  BandInfo _bandAtOffset(double offset, double width) {
+    final bands = campaignBands();
+    var cursor = 0.0;
+    for (final band in bands) {
+      final rows = (band.length / _perRow(width)).ceil();
+      final height =
+          _headerHeight + rows * (_tileHeight + _tileGap) + _sectionPadding;
+      // Flip to the next band as its heading reaches the top, not when the
+      // previous band's last tile finally leaves.
+      if (offset < cursor + height - _headerHeight) return band;
+      cursor += height;
+    }
+    return bands.last;
+  }
+
   double _offsetForLevel(int levelId, double width) {
-    final perRow = ((width + _tileGap) / (_tileWidth + _tileGap)).floor().clamp(
-      1,
-      12,
-    );
+    final perRow = _perRow(width);
 
     var offset = 0.0;
     for (final band in campaignBands()) {
@@ -107,18 +133,30 @@ class _LevelSelectScreenState extends ConsumerState<LevelSelectScreen> {
                   child: _Masthead(
                     cleared: progress.length,
                     stars: controller.totalStars,
+                    onOpenSettings: widget.onOpenSettings,
+                  ),
+                ),
+                // ONE pinned bar, not one per band. Flutter's pinned slivers
+                // STACK rather than pushing each other off, so a header per
+                // band left four piled up at the bottom of a 150-level list,
+                // eating a third of the screen.
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _CurrentBandBar(
+                    controller: _controller!,
+                    bandAt: (offset) => _bandAtOffset(offset, width),
+                    clearedIn: controller.clearedIn,
+                    tokens: tokens,
                   ),
                 ),
                 for (final band in campaignBands()) ...[
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _BandHeader(
+                  SliverToBoxAdapter(
+                    child: _BandHeading(
                       band: band,
                       cleared: controller.clearedIn(
                         band.firstLevel,
                         band.lastLevel,
                       ),
-                      tokens: tokens,
                     ),
                   ),
                   SliverPadding(
@@ -163,8 +201,13 @@ class _LevelSelectScreenState extends ConsumerState<LevelSelectScreen> {
 class _Masthead extends StatelessWidget {
   final int cleared;
   final int stars;
+  final VoidCallback onOpenSettings;
 
-  const _Masthead({required this.cleared, required this.stars});
+  const _Masthead({
+    required this.cleared,
+    required this.stars,
+    required this.onOpenSettings,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -216,91 +259,16 @@ class _Masthead extends StatelessWidget {
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Sticky band header, so position in a 150-level list is always legible.
-class _BandHeader extends SliverPersistentHeaderDelegate {
-  final BandInfo band;
-  final int cleared;
-  final PourfectTokens tokens;
-
-  _BandHeader({
-    required this.band,
-    required this.cleared,
-    required this.tokens,
-  });
-
-  @override
-  double get minExtent => _headerHeight;
-
-  @override
-  double get maxExtent => _headerHeight;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final done = cleared >= band.length;
-
-    return Container(
-      height: _headerHeight,
-      padding: EdgeInsets.fromLTRB(
-        tokens.space4,
-        tokens.space3,
-        tokens.space4,
-        tokens.space2,
-      ),
-      // Opaque so pinned headers never let tiles show through behind them.
-      color: tokens.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(band.name, style: titleStyle(tokens).copyWith(fontSize: 16)),
-              SizedBox(width: tokens.space2),
-              Expanded(
-                child: Text(
-                  band.shape.toUpperCase(),
-                  style: labelStyle(tokens).copyWith(fontSize: 9.5),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                '$cleared / ${band.length}',
-                style: numericStyle(
-                  tokens,
-                  size: 11,
-                  weight: FontWeight.w500,
-                  color: done ? tokens.accentWarm : tokens.textMuted,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: tokens.space2),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: SizedBox(
-              height: 2,
-              child: Stack(
-                children: [
-                  Container(color: tokens.hairline),
-                  FractionallySizedBox(
-                    widthFactor: (cleared / band.length).clamp(0.0, 1.0),
-                    child: Container(
-                      color: done ? tokens.accentWarm : tokens.accent,
-                    ),
-                  ),
-                ],
+          SizedBox(width: tokens.space3),
+          Pressable(
+            onPressed: onOpenSettings,
+            semanticLabel: 'Settings',
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Icon(
+                Icons.tune_rounded,
+                size: 22,
+                color: tokens.textMuted,
               ),
             ),
           ),
@@ -308,10 +276,169 @@ class _BandHeader extends SliverPersistentHeaderDelegate {
       ),
     );
   }
+}
+
+/// An inline band heading. Scrolls away with its section — the pinned bar
+/// above is what keeps position legible.
+class _BandHeading extends StatelessWidget {
+  final BandInfo band;
+  final int cleared;
+
+  const _BandHeading({required this.band, required this.cleared});
 
   @override
-  bool shouldRebuild(_BandHeader old) =>
-      old.cleared != cleared || old.band.index != band.index;
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+    final done = cleared >= band.length;
+
+    return SizedBox(
+      height: _headerHeight,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          tokens.space4,
+          tokens.space3,
+          tokens.space4,
+          tokens.space2,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  band.name,
+                  style: titleStyle(tokens).copyWith(fontSize: 16),
+                ),
+                SizedBox(width: tokens.space2),
+                Expanded(
+                  child: Text(
+                    band.shape.toUpperCase(),
+                    style: labelStyle(tokens).copyWith(fontSize: 9.5),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  '$cleared / ${band.length}',
+                  style: numericStyle(
+                    tokens,
+                    size: 11,
+                    weight: FontWeight.w500,
+                    color: done ? tokens.accentWarm : tokens.textMuted,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: tokens.space2),
+            _Track(value: cleared / band.length, done: done),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The single pinned bar, reporting whichever band the viewport is showing.
+class _CurrentBandBar extends SliverPersistentHeaderDelegate {
+  final ScrollController controller;
+  final BandInfo Function(double offset) bandAt;
+  final int Function(int first, int last) clearedIn;
+  final PourfectTokens tokens;
+
+  _CurrentBandBar({
+    required this.controller,
+    required this.bandAt,
+    required this.clearedIn,
+    required this.tokens,
+  });
+
+  /// Slim on purpose: this is a position indicator, not a second heading.
+  @override
+  double get minExtent => 44;
+
+  @override
+  double get maxExtent => 44;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlaps) =>
+      AnimatedBuilder(
+        animation: controller,
+        builder: (context, _) {
+          final offset = controller.hasClients ? controller.offset : 0.0;
+          final band = bandAt(offset);
+          final cleared = clearedIn(band.firstLevel, band.lastLevel);
+          final done = cleared >= band.length;
+
+          return Container(
+            height: 44,
+            // Opaque, so tiles never show through the pinned bar.
+            color: tokens.surface,
+            padding: EdgeInsets.symmetric(horizontal: tokens.space4),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        band.name.toUpperCase(),
+                        style: labelStyle(
+                          tokens,
+                        ).copyWith(color: tokens.textNumeric, fontSize: 10.5),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      '$cleared / ${band.length}',
+                      style: numericStyle(
+                        tokens,
+                        size: 10.5,
+                        weight: FontWeight.w500,
+                        color: done ? tokens.accentWarm : tokens.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: tokens.space2),
+                _Track(value: cleared / band.length, done: done),
+              ],
+            ),
+          );
+        },
+      );
+
+  @override
+  bool shouldRebuild(_CurrentBandBar old) => true;
+}
+
+/// The hairline progress rule, shared by the bar and the headings.
+class _Track extends StatelessWidget {
+  final double value;
+  final bool done;
+
+  const _Track({required this.value, required this.done});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(2),
+      child: SizedBox(
+        height: 2,
+        child: Stack(
+          children: [
+            Container(color: tokens.hairline),
+            FractionallySizedBox(
+              widthFactor: value.clamp(0.0, 1.0),
+              child: Container(color: done ? tokens.accentWarm : tokens.accent),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// One level, drawn as the vessel it is.

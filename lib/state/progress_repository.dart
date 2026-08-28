@@ -7,6 +7,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -137,7 +138,8 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
   /// next. Deliberately simple — a star-gate would let a player who is enjoying
   /// themselves hit a wall they have to grind past, which is a retention cost
   /// with no upside.
-  bool isUnlocked(int id) => id <= 1 || state.containsKey(id - 1);
+  bool isUnlocked(int id) =>
+      kDevUnlockAll || id <= 1 || state.containsKey(id - 1);
 
   /// Highest level the player may play.
   int get furthestUnlocked {
@@ -189,9 +191,26 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
     );
   }
 
+  /// Erases everything. Only ever reached through a confirm dialog.
+  Future<void> resetAll() async {
+    state = const {};
+    await ref.read(progressRepositoryProvider).save(state);
+  }
+
   /// Test seam.
   void debugSeed(Map<int, LevelProgress> seed) => state = seed;
 }
+
+/// Opens every level, for verifying the late campaign without playing 120
+/// levels first:
+///
+///     flutter build apk --profile --dart-define=POURFECT_UNLOCK_ALL=true
+///
+/// Double-gated ON PURPOSE. It needs an explicit build flag AND a non-release
+/// build, so there is no combination of flags that ships an unlocked campaign
+/// to a player — `pourfect_dev_flags_test` asserts the release path.
+const bool kDevUnlockAll =
+    !kReleaseMode && bool.fromEnvironment('POURFECT_UNLOCK_ALL');
 
 final progressRepositoryProvider = Provider<ProgressRepository>(
   (ref) => ProgressRepository(),

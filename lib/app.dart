@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'state/providers.dart';
 import 'ui/screens/game_screen.dart';
 import 'ui/screens/level_select_screen.dart';
+import 'ui/screens/settings_screen.dart';
 import 'ui/theme/tokens.dart';
 import 'ui/theme/typography.dart';
 import 'ui/transitions.dart';
@@ -117,9 +118,19 @@ class _ShellState extends ConsumerState<_Shell> {
     );
   }
 
+  void _openSettings() {
+    Navigator.of(context).push(
+      PourfectPageRoute<void>(
+        settings: const RouteSettings(name: '/settings'),
+        builder: (context) =>
+            SettingsScreen(onClose: () => Navigator.of(context).maybePop()),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) =>
-      LevelSelectScreen(onOpenLevel: _openLevel);
+      LevelSelectScreen(onOpenLevel: _openLevel, onOpenSettings: _openSettings);
 }
 
 /// System chrome for a full-bleed dark board.

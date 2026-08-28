@@ -28,6 +28,13 @@ class Ball extends StatelessWidget {
   /// 0-1 glow used for the completion flourish.
   final double glow;
 
+  /// Draws the glyph larger and at full contrast.
+  ///
+  /// The glyph is ALWAYS drawn — it is not a mode to discover in a menu. This
+  /// only controls emphasis, for a player who needs the shape rather than the
+  /// colour to carry the whole distinction. See Settings.
+  final bool boldGlyph;
+
   const Ball({
     super.key,
     required this.colorId,
@@ -35,6 +42,7 @@ class Ball extends StatelessWidget {
     this.squash = 1,
     this.opacity = 1,
     this.glow = 0,
+    this.boldGlyph = false,
   });
 
   @override
@@ -58,6 +66,7 @@ class Ball extends StatelessWidget {
                 colour: ballColour(colorId),
                 glyph: ballGlyph(colorId),
                 glow: glow,
+                bold: boldGlyph,
               ),
             ),
           ),
@@ -71,8 +80,14 @@ class _BallPainter extends CustomPainter {
   final Color colour;
   final BallGlyph glyph;
   final double glow;
+  final bool bold;
 
-  _BallPainter({required this.colour, required this.glyph, required this.glow});
+  _BallPainter({
+    required this.colour,
+    required this.glyph,
+    required this.glow,
+    required this.bold,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -114,9 +129,12 @@ class _BallPainter extends CustomPainter {
   /// so one rule works on the palest ball and the deepest without a lookup
   /// table that would inevitably fall out of sync with the palette.
   void _paintGlyph(Canvas canvas, Size size) {
-    final s = size.width / 100;
-    final sy = size.height / 100;
-    final ink = const Color(0xFF0A0C10).withValues(alpha: 0.72);
+    // Bold mode scales the glyph up and takes the ink to near-opaque, so shape
+    // alone can carry the distinction.
+    final scale = bold ? 1.18 : 1.0;
+    final s = size.width / 100 * scale;
+    final sy = size.height / 100 * scale;
+    final ink = const Color(0xFF0A0C10).withValues(alpha: bold ? 0.92 : 0.72);
 
     final fill = Paint()
       ..color = ink
@@ -130,7 +148,9 @@ class _BallPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..isAntiAlias = true;
 
-    Offset p(double x, double y) => Offset(x * s, y * sy);
+    final dx = (size.width - 100 * s) / 2;
+    final dy = (size.height - 100 * sy) / 2;
+    Offset p(double x, double y) => Offset(dx + x * s, dy + y * sy);
 
     switch (glyph) {
       case BallGlyph.dot:
@@ -149,7 +169,7 @@ class _BallPainter extends CustomPainter {
       case BallGlyph.square:
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromLTWH(33 * s, 33 * sy, 34 * s, 34 * sy),
+            Rect.fromLTWH(dx + 33 * s, dy + 33 * sy, 34 * s, 34 * sy),
             Radius.circular(3 * s),
           ),
           fill,
@@ -161,7 +181,7 @@ class _BallPainter extends CustomPainter {
       case BallGlyph.bar:
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromLTWH(28 * s, 43 * sy, 44 * s, 14 * sy),
+            Rect.fromLTWH(dx + 28 * s, dy + 43 * sy, 44 * s, 14 * sy),
             Radius.circular(7 * s),
           ),
           fill,
@@ -182,7 +202,7 @@ class _BallPainter extends CustomPainter {
           ..drawLine(p(65, 35), p(35, 65), stroke);
       case BallGlyph.arc:
         canvas.drawArc(
-          Rect.fromLTWH(30 * s, 38 * sy, 40 * s, 48 * sy),
+          Rect.fromLTWH(dx + 30 * s, dy + 38 * sy, 40 * s, 48 * sy),
           math.pi,
           math.pi,
           false,
@@ -205,5 +225,8 @@ class _BallPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BallPainter old) =>
-      old.colour != colour || old.glyph != glyph || old.glow != glow;
+      old.colour != colour ||
+      old.glyph != glyph ||
+      old.glow != glow ||
+      old.bold != bold;
 }

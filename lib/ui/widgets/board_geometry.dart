@@ -56,22 +56,49 @@ class BoardGeometry {
     // Up to six tubes read comfortably in one row on a phone. Past that, two
     // rows keep the balls big enough to tell apart, which matters more than
     // keeping the board on one line.
-    final rows = tubeCount <= 6 ? 1 : 2;
+    //
+    // But the row count cannot simply be ASSUMED: on a narrow screen a wide row
+    // can demand a ball below `minBallSize`, and clamping the ball back up then
+    // makes the row wider than the screen. So the desired split is checked
+    // against what actually fits and rows are added until it does.
+    final minTubeWidth = minBallSize + 2 * _paddingFor(minBallSize);
+    final maxPerRow = ((available.width + gap) / (minTubeWidth + gap))
+        .floor()
+        .clamp(1, tubeCount);
+
+    var rows = tubeCount <= 6 ? 1 : 2;
+    while ((tubeCount / rows).ceil() > maxPerRow && rows < 4) {
+      rows++;
+    }
     final perRow = (tubeCount / rows).ceil();
 
     // Solve for the ball size that fits both axes, then clamp.
+    //
+    // Padding is itself a function of ball size (`_paddingFor`), so solving
+    // with a FIXED padding guess under-computes the tube width and the row
+    // overflows — which is exactly what clipped the sixth tube on level 150.
+    // Both branches of that max() are solved and the smaller ball wins.
     final widthBudget = available.width - gap * (perRow - 1);
-    final ballFromWidth = widthBudget / perRow - 2 * _paddingFor(1);
+    final slot = widthBudget / perRow;
+    final ballFromWidth = math.min(
+      slot - 2 * _minPadding, // padding pinned at its floor
+      slot / (1 + 2 * _paddingRatio), // padding scaling with the ball
+    );
 
     // Reserve room above the board for the selection lift and the pour arc.
     final heightBudget =
         available.height - rowGap * (rows - 1) - _liftReserve(rows);
-    final ballFromHeight =
-        (heightBudget / rows - 2 * _paddingFor(1)) / capacity;
+    final rowHeight = heightBudget / rows;
+    final ballFromHeight = math.min(
+      (rowHeight - 2 * _minPadding) / capacity,
+      rowHeight / (capacity + 2 * _paddingRatio),
+    );
 
+    // Fitting WINS over the minimum. A ball a little under the comfortable
+    // floor is survivable; a tube clipped off the screen edge is not.
+    final fits = math.min(ballFromWidth, ballFromHeight);
     final ballSize = math
-        .min(ballFromWidth, ballFromHeight)
-        .clamp(minBallSize, maxBallSize)
+        .min(math.max(fits, math.min(minBallSize, fits)), maxBallSize)
         .toDouble();
 
     final padding = _paddingFor(ballSize);
@@ -88,7 +115,7 @@ class BoardGeometry {
     // Balls need headroom ABOVE the top row for the selection lift and the
     // pour arc, so the centring is biased down slightly rather than being
     // exact; a lifted ball must never clip the HUD.
-    final liftHeadroom = ballSize * 0.85;
+    final liftHeadroom = _liftHeadroom(ballSize);
     final verticalSlack = available.height - boardHeight;
     final top = verticalSlack <= 0
         ? 0.0
@@ -126,11 +153,22 @@ class BoardGeometry {
     );
   }
 
-  static double _paddingFor(double ballSize) => math.max(5, ballSize * 0.16);
+  static const double _minPadding = 5;
+  static const double _paddingRatio = 0.16;
+
+  static double _paddingFor(double ballSize) =>
+      math.max(_minPadding, ballSize * _paddingRatio);
 
   /// Vertical space kept clear above the board so a lifted or in-flight ball
   /// never clips the HUD.
   static double _liftReserve(int rows) => 56.0 * rows;
+
+  /// Clearance above the top row for a held run.
+  ///
+  /// `liftPoint` sits 0.58 ball-heights above the rim and the ball is drawn
+  /// from its centre, so the topmost held ball reaches 1.08 ball-heights above
+  /// the tube. Anything less than that here and a lifted run clips the HUD.
+  static double _liftHeadroom(double ballSize) => ballSize * 1.12;
 
   /// Centre of the ball occupying [slot] (0 = bottom) in [tube].
   ///

@@ -6,23 +6,25 @@
 /// shift the layout around it. That jitter is small and constant and it is
 /// exactly the kind of thing that makes an app feel cheap.
 ///
-/// FONTS ARE NOT YET BUNDLED. These resolve to the platform faces (Roboto and
-/// Roboto Mono on Android), which look good and cost zero bytes. Bundling a
-/// chosen pair is a licence decision, not a technical one — see CLAUDE.md.
-/// Everything downstream reads these constants, so swapping in a TTF later is
-/// a two-line change here plus a pubspec entry.
+/// JetBrains Mono is BUNDLED (OFL-1.1, see assets/fonts/ATTRIBUTION.md) rather
+/// than fetched: the game must be fully playable offline, and a face that pops
+/// in on first launch looks broken. It carries every numeral in the game.
+///
+/// The UI face is still the platform default. Manrope is the chosen pairing but
+/// was not available on the build machine; adding it is a one-line change here
+/// plus a pubspec entry, and everything downstream reads these constants.
 library;
 
 import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-/// Display face. Null means "platform default", which is the right answer until
-/// a licensed face is chosen.
+/// Display face. Null means "platform default" — see the note above.
 const String? kUiFontFamily = null;
 
-/// Monospace face for numerals.
-const String kMonoFontFamily = 'monospace';
+/// Monospace face for numerals. Bundled, so it renders identically on every
+/// device rather than inheriting whatever the OEM ships.
+const String kMonoFontFamily = 'JetBrainsMono';
 
 /// Small uppercase label: section headers, HUD captions.
 ///
