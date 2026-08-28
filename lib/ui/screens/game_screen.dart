@@ -288,8 +288,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
         //
         // Saying nothing here is how a paid reward reads as nothing happening,
         // which is a refund request and a one-star review.
-        if (wasRewarded)
+        if (wasRewarded) {
           _toast('Here is your hint — pour into the glowing tube.');
+        }
 
       case HintOutcome.stale:
       case HintOutcome.cancelled:

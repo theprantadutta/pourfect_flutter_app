@@ -117,6 +117,62 @@ void main() {
     });
   });
 
+  group('the free hint budget survives a relaunch', () {
+    test('a stored count is honoured by the FIRST spend', () async {
+      // The bug this exists to prevent, and it is a revenue bug rather than a
+      // cosmetic one.
+      //
+      // This provider is LAZY: nothing builds it until the first hint is
+      // asked for, so build() and the first spend happen in the same breath.
+      // If the spend does not wait for the persisted count to load, it is
+      // always measured against a freshly-zeroed counter — which means every
+      // launch hands out a full set of free hints and the rewarded prompt,
+      // the primary revenue driver, is never reached by anybody willing to
+      // reopen the app.
+      SharedPreferences.setMockInitialValues({'pourfect.hints.used': kFreeHints});
+
+      final container = containerWith(FakeBillingService());
+      final notifier = container.read(monetizationProvider.notifier);
+
+      expect(
+        await notifier.consumeFreeHint(),
+        isFalse,
+        reason: 'the budget was already spent before this launch',
+      );
+      expect(container.read(monetizationProvider).hintNeedsAd, isTrue);
+    });
+
+    test('a partially spent budget resumes where it left off', () async {
+      SharedPreferences.setMockInitialValues({'pourfect.hints.used': kFreeHints - 1});
+
+      final container = containerWith(FakeBillingService());
+      final notifier = container.read(monetizationProvider.notifier);
+
+      expect(await notifier.consumeFreeHint(), isTrue, reason: 'one was left');
+      expect(await notifier.consumeFreeHint(), isFalse);
+    });
+
+    test('restoring can never hand a spent hint back', () async {
+      // The other half of the same race. A plain assignment in _restore walks
+      // the counter BACKWARDS when a spend lands while it is still loading,
+      // so the merge has to be monotonic — spending only ever increases the
+      // count, so the larger number is always the true one.
+      SharedPreferences.setMockInitialValues({});
+
+      final container = containerWith(FakeBillingService());
+      final notifier = container.read(monetizationProvider.notifier);
+
+      for (var i = 0; i < kFreeHints; i++) {
+        await notifier.consumeFreeHint();
+      }
+      // Let any in-flight restore settle on top of the spending.
+      await Future<void>.delayed(Duration.zero);
+
+      expect(container.read(monetizationProvider).freeHintsRemaining, 0);
+      expect(await notifier.consumeFreeHint(), isFalse);
+    });
+  });
+
   group('free hints', () {
     test('spends down to zero, then reports that an ad is needed', () async {
       final container = containerWith(FakeBillingService());

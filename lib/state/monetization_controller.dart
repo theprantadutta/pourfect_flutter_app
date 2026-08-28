@@ -12,6 +12,8 @@
 /// player keeps whatever they spent.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -63,6 +65,14 @@ class MonetizationState {
 class MonetizationController extends Notifier<MonetizationState> {
   static const _hintsKey = 'pourfect.hints.used';
 
+  /// Completes once the persisted hint count has been read.
+  ///
+  /// This provider is LAZY: nothing builds it until the first hint is asked
+  /// for, which means `build()` and the first spend happen in the same
+  /// breath. Without waiting on this, that first spend is always measured
+  /// against a freshly-zeroed counter.
+  late final Future<void> _restored;
+
   @override
   MonetizationState build() {
     final billing = ref.read(billingServiceProvider);
@@ -76,8 +86,10 @@ class MonetizationController extends Notifier<MonetizationState> {
     );
     ref.onDispose(sub.cancel);
 
-    // Async: settles after build returns, which is allowed.
-    _restore();
+    // Async: settles after build returns, which is allowed. The future is
+    // KEPT, because anything that spends the hint budget has to wait for it —
+    // see consumeFreeHint.
+    _restored = _restore();
 
     return MonetizationState(
       adsRemoved: billing.adsRemoved,
@@ -89,7 +101,15 @@ class MonetizationController extends Notifier<MonetizationState> {
   Future<void> _restore() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      state = state.copyWith(freeHintsUsed: prefs.getInt(_hintsKey) ?? 0);
+      final stored = prefs.getInt(_hintsKey) ?? 0;
+
+      // MONOTONIC. A plain assignment here can walk the counter backwards: if
+      // a hint was spent while this was still loading, restoring the old
+      // stored value hands that hint straight back. Spending only ever
+      // increases the count, so the larger number is always the true one.
+      state = state.copyWith(
+        freeHintsUsed: math.max(state.freeHintsUsed, stored),
+      );
     } catch (_) {}
   }
 
@@ -146,6 +166,15 @@ class MonetizationController extends Notifier<MonetizationState> {
 
   /// Spends a free hint if one remains.
   Future<bool> consumeFreeHint() async {
+    // Never spend before we know what has already been spent.
+    //
+    // Skipping this wait does not merely risk one extra hint: because the
+    // provider is built on the first hint tap, the count is ALWAYS zero at
+    // that moment, so every launch hands out a fresh set of free hints and
+    // the rewarded prompt — the primary revenue driver — is never reached by
+    // anybody willing to reopen the app.
+    await _restored;
+
     if (state.freeHintsRemaining == 0) return false;
     final used = state.freeHintsUsed + 1;
     state = state.copyWith(freeHintsUsed: used);

@@ -47,7 +47,8 @@ abstract final class AdIds {
   // Google provides exactly one rewarded test unit per platform, so all three
   // rewarded placements share it here. The live units below are separate,
   // which is the point of having four.
-  static const _testAndroidInterstitial = 'ca-app-pub-3940256099942544/1033173712';
+  static const _testAndroidInterstitial =
+      'ca-app-pub-3940256099942544/1033173712';
   static const _testAndroidRewarded = 'ca-app-pub-3940256099942544/5224354917';
   static const _testIosInterstitial = 'ca-app-pub-3940256099942544/4411468910';
   static const _testIosRewarded = 'ca-app-pub-3940256099942544/1712485313';
@@ -55,8 +56,10 @@ abstract final class AdIds {
   // ---- Live units — Android ----------------------------------------------
   static const _androidInterstitial = 'ca-app-pub-9242904787767394/2104344149';
   static const _androidRewardedHint = 'ca-app-pub-9242904787767394/2509714423';
-  static const _androidRewardedExtraTube = 'ca-app-pub-9242904787767394/9813489373';
-  static const _androidRewardedLevelSkip = 'ca-app-pub-9242904787767394/2046679999';
+  static const _androidRewardedExtraTube =
+      'ca-app-pub-9242904787767394/9813489373';
+  static const _androidRewardedLevelSkip =
+      'ca-app-pub-9242904787767394/2046679999';
 
   // ---- Live units — iOS --------------------------------------------------
   static const _iosInterstitial = 'ca-app-pub-9242904787767394/6698195277';
