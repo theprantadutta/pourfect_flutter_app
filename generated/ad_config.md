@@ -31,9 +31,9 @@ Found in AdMob under **Apps → [your app] → App settings**. One per platform;
 they are different values even for the same game.
 
 ```
-ANDROID_ADMOB_APP_ID = ca-app-pub-________________~__________
+ANDROID_ADMOB_APP_ID = ca-app-pub-9242904787767394~3712054804
 
-IOS_ADMOB_APP_ID     = ca-app-pub-________________~__________
+IOS_ADMOB_APP_ID     = ca-app-pub-9242904787767394~8772809792
 ```
 
 I put the Android one into `android/app/src/main/AndroidManifest.xml` as:
