@@ -520,6 +520,45 @@ therefore all server-side progress).
 
 ## Secrets
 
-`google-services.json`, keystores and `key.properties` are gitignored and must
-stay that way. `.claude/` IS tracked on purpose, to share project knowledge
-across devices — never put credentials in it.
+Same rules as the Snake Classic Flutter app. Gitignored, as **globs** rather
+than fixed paths so a new flavour or platform folder cannot quietly
+reintroduce one:
+
+    **/google-services.json          **/firebase_options.dart
+    **/GoogleService-Info.plist       **/.firebaserc
+    **/google_service_client_secret.json
+    firebase.json                     *.env   (except .env.example)
+    **/android/key.properties         *.jks   *.keystore
+
+`firebase_options.dart` was tracked from the first commit before this was
+tightened. Adding an ignore rule does NOT untrack a file already in the index
+— `git rm --cached` is the other half, and forgetting it is why `firebase.json`
+survived a first pass.
+
+**Know which of these are actually secret.** The Firebase files carry the
+project id, app id, sender id and Web API key; every one of those values ships
+inside the APK and can be read out of any downloaded build. Firebase is
+designed that way and relies on Security Rules, App Check and API-key
+restrictions instead. They stay out of the repo because an unrestricted Web
+API key is worth scraping — it is what drives Identity Toolkit anonymous
+sign-up, so it can be burned on quota — not because hiding them provides
+security. **Restricting the key in Google Cloud Console is the mitigation that
+matters.**
+
+The genuinely secret ones are the keystore and `key.properties`. Losing
+control of those means somebody else can sign an update to this app.
+
+**`.env` is bundled into the APK as a Flutter asset.** Gitignoring it is repo
+hygiene, NOT secrecy — anyone can unzip a build and read it. Public
+identifiers and endpoint URLs only: `GOOGLE_WEB_CLIENT_ID`,
+`DEV_API_BACKEND_URL`, `PROD_API_BACKEND_URL`. Never a signing key, a service
+account, or an API secret.
+
+`.claude/` IS tracked on purpose, to share project knowledge across devices —
+never put credentials in it.
+
+To audit at any time:
+
+    git ls-files | grep -iE "google-services|firebase_options|\.env|keystore|\.jks"
+
+Only `.env.example` should come back.
