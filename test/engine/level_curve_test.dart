@@ -142,36 +142,6 @@ void main() {
     });
   });
 
-  group('daily pool configuration', () {
-    test('draws from mid-campaign shapes, not the campaign peak', () {
-      // A daily is one-shot; abandoning it costs more engagement than
-      // abandoning a campaign level the player can return to.
-      final hardestCampaignTier = kCampaignBands.last.tiers.last;
-      for (final spec in kDailySpecs) {
-        expect(
-          spec.colorCount,
-          lessThan(hardestCampaignTier.colorCount),
-          reason: 'daily spec $spec is as hard as the campaign peak',
-        );
-        expect(
-          spec.emptyTubeCount,
-          greaterThanOrEqualTo(2),
-          reason: 'dailies should not use the punishing single-empty layout',
-        );
-      }
-    });
-
-    test('has a sane difficulty window', () {
-      expect(kDailyMinScore, lessThan(kDailyMaxScore));
-      expect(kDailyMinScore, greaterThanOrEqualTo(0));
-      expect(kDailyMaxScore, lessThanOrEqualTo(100));
-    });
-
-    test('covers a full year', () {
-      expect(kDailyPoolSize, greaterThanOrEqualTo(365));
-    });
-  });
-
   group('calibration', () {
     test('maps the measured raw range onto 0-100', () {
       expect(kRawScoreFloor, lessThan(kRawScoreCeiling));

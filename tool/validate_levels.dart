@@ -11,7 +11,6 @@
 //
 // Exits non-zero on any failure.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:pourfect_flutter_app/engine/canonical.dart';
@@ -22,7 +21,6 @@ import 'package:pourfect_flutter_app/engine/rules.dart';
 import 'package:pourfect_flutter_app/engine/solver.dart';
 
 const _campaignAssetPath = 'assets/levels/levels.bin';
-const _dailyPoolPath = 'generated/daily_pool.json';
 
 void main(List<String> args) {
   final report = _Report();
@@ -67,54 +65,6 @@ void main(List<String> args) {
   _checkMonotonicWithinBands(levelSet, report);
   _checkBreathers(levelSet, report);
   _checkOnboardingRamp(levelSet, report);
-
-  // ---- daily pool ---------------------------------------------------------
-  final dailyFile = File(_dailyPoolPath);
-  if (!dailyFile.existsSync()) {
-    report.fail('missing $_dailyPoolPath — run tool/generate_levels.dart');
-  } else {
-    final payload =
-        jsonDecode(dailyFile.readAsStringSync()) as Map<String, Object?>;
-    final rawLevels = payload['levels']! as List;
-    final daily = [
-      for (final raw in rawLevels) Level.fromJson(raw as Map<String, Object?>),
-    ];
-    stdout.writeln('Daily pool: ${daily.length} levels');
-
-    if (daily.length != kDailyPoolSize) {
-      report.fail(
-        'daily pool holds ${daily.length}, expected $kDailyPoolSize — a short '
-        'pool means the daily challenge runs out mid-year',
-      );
-    }
-
-    final dailyKeys = <String, int>{};
-    for (final level in daily) {
-      _checkLevelIsPlayable(level, 'daily', solver, report);
-
-      // min_moves is what the server compares submitted move counts against.
-      // A missing or zero value would disable the anti-cheat floor silently.
-      if (level.minMoves <= 0) {
-        report.fail('daily ${level.id} has min_moves ${level.minMoves}');
-      }
-
-      final key = canonicalKey(level.board);
-      if (dailyKeys.containsKey(key)) {
-        report.fail(
-          'dailies ${dailyKeys[key]} and ${level.id} are the same board',
-        );
-      }
-      dailyKeys[key] = level.id;
-
-      if (campaignKeys.containsKey(key)) {
-        report.fail(
-          'daily ${level.id} duplicates campaign level ${campaignKeys[key]} — '
-          'players would be served a puzzle they already solved',
-        );
-      }
-    }
-    stdout.writeln('  re-solved all ${daily.length} daily levels');
-  }
 
   // ---- verdict ------------------------------------------------------------
   if (report.failures.isEmpty) {

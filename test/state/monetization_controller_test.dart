@@ -27,7 +27,7 @@ class FakeBillingService implements BillingService {
   final _changes = StreamController<bool>.broadcast();
   bool _adsRemoved;
 
-  FakeBillingService({bool adsRemoved = false}) : _adsRemoved = adsRemoved;
+  FakeBillingService([this._adsRemoved = false]);
 
   void emit(bool value) {
     _adsRemoved = value;
@@ -41,8 +41,11 @@ class FakeBillingService implements BillingService {
   Stream<bool> get adsRemovedChanges => _changes.stream;
 
   @override
-  StoreProduct? get removeAdsProduct =>
-      const StoreProduct(id: 'remove_ads', title: 'Remove Ads', price: r'$1.99');
+  StoreProduct? get removeAdsProduct => const StoreProduct(
+    id: 'remove_ads',
+    title: 'Remove Ads',
+    price: r'$1.99',
+  );
 
   @override
   Future<PurchaseOutcome> buyRemoveAds() async {
@@ -67,9 +70,7 @@ ProviderContainer containerWith(FakeBillingService billing) {
     overrides: [
       billingServiceProvider.overrideWithValue(billing),
       adServiceProvider.overrideWithValue(const NoopAdService()),
-      analyticsServiceProvider.overrideWithValue(
-        const NoopAnalyticsService(),
-      ),
+      analyticsServiceProvider.overrideWithValue(const NoopAnalyticsService()),
     ],
   );
   addTearDown(container.dispose);
@@ -92,7 +93,7 @@ void main() {
       // A player who already paid must not see ads on the very first level
       // completion after launch, before any stream event has arrived. So the
       // value has to be read INTO the initial state, not pushed in afterwards.
-      final container = containerWith(FakeBillingService(adsRemoved: true));
+      final container = containerWith(FakeBillingService(true));
       expect(container.read(monetizationProvider).adsRemoved, isTrue);
     });
 
@@ -129,7 +130,9 @@ void main() {
       // launch hands out a full set of free hints and the rewarded prompt,
       // the primary revenue driver, is never reached by anybody willing to
       // reopen the app.
-      SharedPreferences.setMockInitialValues({'pourfect.hints.used': kFreeHints});
+      SharedPreferences.setMockInitialValues({
+        'pourfect.hints.used': kFreeHints,
+      });
 
       final container = containerWith(FakeBillingService());
       final notifier = container.read(monetizationProvider.notifier);
@@ -143,7 +146,9 @@ void main() {
     });
 
     test('a partially spent budget resumes where it left off', () async {
-      SharedPreferences.setMockInitialValues({'pourfect.hints.used': kFreeHints - 1});
+      SharedPreferences.setMockInitialValues({
+        'pourfect.hints.used': kFreeHints - 1,
+      });
 
       final container = containerWith(FakeBillingService());
       final notifier = container.read(monetizationProvider.notifier);

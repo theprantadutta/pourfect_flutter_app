@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -10,7 +9,6 @@ import 'package:pourfect_flutter_app/engine/level_set.dart';
 import 'package:test/test.dart';
 
 const _campaignAssetPath = 'assets/levels/levels.bin';
-const _dailyPoolPath = 'generated/daily_pool.json';
 
 LevelSet _loadCampaign() =>
     LevelSetCodec.decode(File(_campaignAssetPath).readAsBytesSync());
@@ -281,50 +279,6 @@ void main() {
           reason: 'level ${campaignLevel.id} breather flag is stale',
         );
       }
-    });
-  });
-
-  group('daily pool asset', () {
-    List<Level> loadDaily() {
-      final payload = jsonDecode(
-        File(_dailyPoolPath).readAsStringSync(),
-      ) as Map<String, Object?>;
-      return [
-        for (final raw in payload['levels']! as List)
-          Level.fromJson(raw as Map<String, Object?>),
-      ];
-    }
-
-    test('holds a full year', () {
-      expect(loadDaily().length, kDailyPoolSize);
-    });
-
-    test('every entry carries min_moves for the anti-cheat floor', () {
-      // The server rejects submissions below this. A zero or missing value
-      // would disable the check silently rather than loudly.
-      for (final level in loadDaily()) {
-        expect(level.minMoves, greaterThan(0));
-      }
-    });
-
-    test('is disjoint from the campaign', () {
-      // Otherwise a player is handed a daily they already solved, which reads
-      // as a bug and wastes the one shot a daily gets.
-      final campaignKeys = {
-        for (final l in _loadCampaign().levels) canonicalKey(l.level.board),
-      };
-      for (final level in loadDaily()) {
-        expect(
-          campaignKeys.contains(canonicalKey(level.board)),
-          isFalse,
-          reason: 'daily ${level.id} duplicates a campaign level',
-        );
-      }
-    });
-
-    test('has no internal duplicates', () {
-      final keys = loadDaily().map((l) => canonicalKey(l.board)).toSet();
-      expect(keys, hasLength(kDailyPoolSize));
     });
   });
 

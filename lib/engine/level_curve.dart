@@ -21,9 +21,6 @@ import 'solver.dart';
 /// If you must change it, bump [kLevelSetVersion] in the same commit.
 const int kDefaultCampaignSeed = 20260827;
 
-/// Seed for the daily-challenge pool. Independent of the campaign seed so the
-/// two sets can be regenerated separately.
-const int kDefaultDailySeed = 71042;
 
 /// CONTENT version of the shipped campaign. See [LevelSet.levelSetVersion].
 const int kLevelSetVersion = 1;
@@ -31,8 +28,6 @@ const int kLevelSetVersion = 1;
 /// Levels in the campaign.
 const int kCampaignLength = 150;
 
-/// Days of daily challenges to pre-generate.
-const int kDailyPoolSize = 365;
 
 /// A breather must score at least this much BELOW the running average of the
 /// levels before it. 0.75 means "at least 25% easier".
@@ -202,22 +197,6 @@ const List<CampaignBand> kCampaignBands = [
   ),
 ];
 
-/// Specs the daily pool is drawn from.
-///
-/// Mid-campaign difficulty on purpose — a daily is one-shot, and abandoning
-/// today's challenge costs more engagement than abandoning a campaign level a
-/// player can return to. Never drawn from the campaign's own boards; the
-/// generator excludes them by canonical key so nobody is handed a puzzle they
-/// already solved.
-const List<LevelSpec> kDailySpecs = [
-  LevelSpec(colorCount: 6, emptyTubeCount: 2),
-  LevelSpec(colorCount: 7, emptyTubeCount: 2),
-  LevelSpec(colorCount: 8, emptyTubeCount: 2),
-];
-
-/// Calibrated difficulty window for daily challenges.
-const double kDailyMinScore = 45;
-const double kDailyMaxScore = 80;
 
 /// True when campaign level [id] is a deliberate breather.
 ///
@@ -473,45 +452,6 @@ void _placeBreathers({
   return (average * kBreatherFloorFactor, average * kBreatherReliefFactor);
 }
 
-/// Builds the daily-challenge pool.
-///
-/// A separate artifact with its own seed, and explicitly disjoint from the
-/// campaign: [excludeKeys] carries every campaign board's canonical key, so no
-/// player is ever served a daily they already solved in the campaign.
-List<Level> buildDailyPool({
-  required int seed,
-  required Set<String> excludeKeys,
-  int count = kDailyPoolSize,
-  GenerationStats? stats,
-  void Function(String message)? onProgress,
-}) {
-  final generator = LevelGenerator(random: Random(seed));
-  final seen = <String>{...excludeKeys};
-  final levels = <Level>[];
-
-  while (levels.length < count) {
-    // Rotate specs so the pool is a mix rather than 365 boards of one shape.
-    final spec = kDailySpecs[levels.length % kDailySpecs.length];
-    final generated = generator.generate(
-      spec,
-      minScore: kDailyMinScore,
-      maxScore: kDailyMaxScore,
-      maxAttempts: 60000,
-      stats: stats,
-    );
-
-    if (!seen.add(canonicalKeyOf(generated.board))) continue;
-
-    levels.add(
-      LevelSetCodec.quantiseLevel(generated.toLevel(levels.length + 1)),
-    );
-    if (levels.length % 50 == 0) {
-      onProgress?.call('daily pool: ${levels.length}/$count');
-    }
-  }
-
-  return levels;
-}
 
 /// Builds a pinned tier one level at a time, each aimed at its own slice of the
 /// tier's window, so the window is FILLED evenly rather than merely respected.
