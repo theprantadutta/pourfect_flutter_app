@@ -77,6 +77,16 @@ class _BoardViewState extends ConsumerState<BoardView>
   late final AnimationController _pour;
   late final AnimationController _flourish;
 
+  /// Breathes while a hint is on screen.
+  ///
+  /// A hint used to be drawn with the same static accent border as a tapped
+  /// tube, which made it indistinguishable from the player's own selection —
+  /// worst of all right after a rewarded video, when they return from a
+  /// fullscreen ad having lost all context and cannot tell they were given
+  /// anything. Motion is what separates "the game is telling you something"
+  /// from "you tapped this".
+  late final AnimationController _hintPulse;
+
   PourEvent? _active;
   int? _glowTube;
 
@@ -95,12 +105,17 @@ class _BoardViewState extends ConsumerState<BoardView>
         }
       });
     _flourish = AnimationController(vsync: this, duration: _flourishDuration);
+    _hintPulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
   }
 
   @override
   void dispose() {
     _pour.dispose();
     _flourish.dispose();
+    _hintPulse.dispose();
     super.dispose();
   }
 
@@ -228,20 +243,46 @@ class _BoardViewState extends ConsumerState<BoardView>
     GameState state,
     BoardGeometry geometry,
     PourfectTokens tokens,
-  ) => [
-    for (var i = 0; i < geometry.tubeRects.length; i++)
-      Positioned.fromRect(
-        rect: geometry.tubeRects[i],
-        child: _TubeShell(
-          tokens: tokens,
-          isSelected: state.selectedTube == i,
-          isHintSource: state.hintMove?.from == i,
-          isHintTarget: state.hintMove?.to == i,
-          opacity: _tubeOpacity(state, i),
-          warm: math.max(_tubeGlow(i), _winGlow(state, i)),
+  ) {
+    _syncHintPulse(state.hintMove != null);
+
+    return [
+      for (var i = 0; i < geometry.tubeRects.length; i++)
+        Positioned.fromRect(
+          rect: geometry.tubeRects[i],
+          child: AnimatedBuilder(
+            animation: _hintPulse,
+            builder: (context, _) => _TubeShell(
+              tokens: tokens,
+              isSelected: state.selectedTube == i,
+              isHintSource: state.hintMove?.from == i,
+              isHintTarget: state.hintMove?.to == i,
+              // A slow triangle wave, so it eases at both ends instead of
+              // snapping back. The destination is what the player has to act
+              // on, so only that tube gets the full swing.
+              hintPulse: Curves.easeInOut.transform(
+                1 - (2 * _hintPulse.value - 1).abs(),
+              ),
+              opacity: _tubeOpacity(state, i),
+              warm: math.max(_tubeGlow(i), _winGlow(state, i)),
+            ),
+          ),
         ),
-      ),
-  ];
+    ];
+  }
+
+  /// Runs the pulse only while a hint is up. A permanently repeating
+  /// controller would keep the board rebuilding every frame for the whole
+  /// session, which is exactly the kind of idle cost that turns a measured
+  /// 1.2ms build into a warm phone.
+  void _syncHintPulse(bool showing) {
+    if (showing && !_hintPulse.isAnimating) {
+      _hintPulse.repeat();
+    } else if (!showing && _hintPulse.isAnimating) {
+      _hintPulse.stop();
+      _hintPulse.value = 0;
+    }
+  }
 
   double _tubeOpacity(GameState state, int tube) {
     final win = widget.win;
@@ -448,6 +489,10 @@ class _TubeShell extends StatelessWidget {
   final bool isSelected;
   final bool isHintSource;
   final bool isHintTarget;
+
+  /// 0..1, breathing, while a hint is on screen.
+  final double hintPulse;
+
   final double opacity;
 
   /// Completion warmth, 0..1 — from an in-play tube completing or from the win
@@ -459,13 +504,25 @@ class _TubeShell extends StatelessWidget {
     required this.isSelected,
     required this.isHintSource,
     required this.isHintTarget,
+    required this.hintPulse,
     required this.opacity,
     required this.warm,
   });
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = isSelected || isHintSource || isHintTarget;
+    final isHint = isHintSource || isHintTarget;
+    final highlighted = isSelected || isHint;
+
+    // The DESTINATION carries the message — it is the tube the player has to
+    // act on — so it swings furthest. The source only needs to say where the
+    // run is coming from, and matching the target's intensity would leave the
+    // player reading two equal signals with no direction between them.
+    final pulse = isHintTarget
+        ? hintPulse
+        : isHintSource
+        ? hintPulse * 0.45
+        : 0.0;
 
     return AnimatedOpacity(
       duration: tokens.selectDuration,
@@ -486,10 +543,16 @@ class _TubeShell extends StatelessWidget {
                     tokens.accentWarm.withValues(alpha: 0.62),
                     warm,
                   )!
+                : isHint
+                ? tokens.accent.withValues(alpha: 0.45 + 0.5 * pulse)
                 : highlighted
-                ? tokens.accent.withValues(alpha: isSelected ? 0.75 : 0.5)
+                ? tokens.accent.withValues(alpha: 0.75)
                 : tokens.hairline,
-            width: highlighted || warm > 0.2 ? 1.5 : 1,
+            width: isHintTarget
+                ? 1.5 + 1.0 * pulse
+                : highlighted || warm > 0.2
+                ? 1.5
+                : 1,
           ),
           boxShadow: [
             if (warm > 0)
@@ -502,6 +565,16 @@ class _TubeShell extends StatelessWidget {
               BoxShadow(
                 color: tokens.accent.withValues(alpha: 0.16),
                 blurRadius: 18,
+              ),
+            // The halo only exists on a hint, and only on the destination.
+            // This is the part that is visible from across the room, which is
+            // the actual requirement: a player coming back from a fullscreen
+            // ad is re-orienting, not studying the board.
+            if (isHintTarget)
+              BoxShadow(
+                color: tokens.accent.withValues(alpha: 0.10 + 0.26 * pulse),
+                blurRadius: 16 + 22 * pulse,
+                spreadRadius: 1 + 3 * pulse,
               ),
           ],
         ),

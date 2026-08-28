@@ -271,12 +271,30 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final outcome = await hints.request(wasRewarded: wasRewarded);
     if (!mounted) return;
 
-    if (outcome == HintOutcome.unavailable) {
-      _toast(
-        wasRewarded
-            ? 'No hint for this position — your reward was not used.'
-            : 'No hint available for this position.',
-      );
+    switch (outcome) {
+      case HintOutcome.unavailable:
+        _toast(
+          wasRewarded
+              ? 'No hint for this position — your reward was not used.'
+              : 'No hint available for this position.',
+        );
+
+      case HintOutcome.resolved:
+        // Only after a REWARDED hint. The player has just spent fifteen
+        // seconds in a fullscreen ad and comes back to a board they have lost
+        // context on; the pulsing destination tube is the answer, but they
+        // have to be told to look at it. A free hint needs none of this —
+        // they never left the screen and the pulse speaks for itself.
+        //
+        // Saying nothing here is how a paid reward reads as nothing happening,
+        // which is a refund request and a one-star review.
+        if (wasRewarded)
+          _toast('Here is your hint — pour into the glowing tube.');
+
+      case HintOutcome.stale:
+      case HintOutcome.cancelled:
+      case HintOutcome.notApplicable:
+        break;
     }
   }
 
