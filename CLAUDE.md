@@ -388,12 +388,48 @@ splits them per device.
 
 ## Known gaps
 
-- **Fonts are not bundled.** Type resolves to the platform faces (Roboto /
-  Roboto Mono). Bundling a chosen pair is a licence decision; `typography.dart`
-  is the single swap point.
-- **No sound yet.** The completion moment currently lands on haptics alone; the
-  single chime described in the design direction still needs an asset.
-- **No settings, daily challenge, leaderboard or store screens yet.**
+- **Manrope is not bundled yet.** JetBrains Mono is in and rendering (the
+  slashed zero is the tell on device); the UI face still falls back to the
+  platform default. `kUiFontFamily` in `typography.dart` is the single swap
+  point, and `assets/licenses/` still needs the two OFL texts.
+- **No daily challenge or leaderboard screens.** Both wait on the backend.
+- **Everything monetization runs on TEST ids.** Google's public test ad units
+  and no real product. `generated/ad_config.md` is the fill-in template and
+  `services/ads/ad_ids.dart` plus the manifest meta-data are the only things
+  that change. The AdMob APP ids are filled in; the eight unit ids, the two
+  store product ids and the Play license key are not.
+- **`kPrivacyPolicyUrl` is a placeholder domain**, invented rather than
+  confirmed. The policy page exists at `generated/privacy_policy.html`; the URL
+  it will live at does not. Play rejects a dead privacy link.
+- **The interstitial has never been seen on a device.** Its rules have 16 tests
+  and its display plumbing is shared with rewarded video, which IS verified on
+  hardware — but nobody has yet played to level 10 in a release build and
+  watched one appear. Do that before the first public track.
+- **The Android activity is still `com.example.pourfect_flutter_app`.** The
+  applicationId is correct (`com.pranta.pourfect`) and Play only reads that, so
+  this is cosmetic — it shows up in `adb` and in stack traces.
+
+## Monetization — verified on device
+
+An arm64 release build on a Samsung A24, 2026-08-28:
+
+- Three free hints, then the "Watch a video for a hint?" prompt, then a real
+  rewarded video carrying the **Test Ad** label, then the hint actually
+  arrives. The whole rewarded chain, end to end.
+- `com.google.android.gms.ads.AdActivity` confirmed in the foreground via
+  `dumpsys window`, so the ad is genuinely showing rather than being reported
+  as shown.
+- Settings renders in full: Feel, Visibility, Support, Progress, About. The
+  Remove Ads price shows an em dash because the product is not Active in Play
+  Console yet, which is the correct degraded state and not an error.
+
+**A provider that throws is INVISIBLE in a release build.** It renders as a
+blank grey rectangle, not a red error box, and the exception names only the
+provider — nothing points at the screen that vanished. `MonetizationController`
+assigned `state` inside `build()`, which Riverpod forbids, and the whole
+settings screen simply was not there. The cheap defence is a test that merely
+CONSTRUCTS every Notifier a screen can reach; it catches this class of bug in
+milliseconds instead of a build-install-screenshot round trip.
 
 ## Auth — v1 limitation to be honest about
 
