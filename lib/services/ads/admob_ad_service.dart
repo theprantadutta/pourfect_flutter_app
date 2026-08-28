@@ -33,13 +33,30 @@ class AdMobAdService implements AdService {
   Future<void> init() async {
     if (_ready) return;
     try {
+      // Registered BEFORE initialize so the very first request already
+      // honours it. Set after the first ad has loaded, the device has
+      // already taken a live impression.
+      if (kAdMobTestDeviceIds.isNotEmpty) {
+        await MobileAds.instance.updateRequestConfiguration(
+          RequestConfiguration(testDeviceIds: kAdMobTestDeviceIds),
+        );
+      }
+
       await MobileAds.instance.initialize();
       _ready = true;
       preload();
+
       if (kUsingTestAdIds) {
         debugPrint(
-          '[ads] running on GOOGLE TEST ad units — every ad should carry a '
-          '"Test Ad" label. See generated/ad_config.md to go live.',
+          '[ads] GOOGLE TEST ad units (non-release build) — every ad should '
+          'carry a "Test Ad" label. An unlabelled ad here means ad_ids.dart '
+          'is broken; stop and fix it before tapping anything.',
+        );
+      } else {
+        debugPrint(
+          '[ads] LIVE ad units. Test devices registered: '
+          '${kAdMobTestDeviceIds.length}. Tapping a live ad on an '
+          'unregistered device is invalid traffic.',
         );
       }
     } catch (error) {

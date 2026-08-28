@@ -8,11 +8,13 @@
              "Invalid application ID"; putting an app id in Dart silently
              never loads an ad, which is far harder to diagnose.
 
-             This is Google's public TEST app id. Replace from
-             generated/ad_config.md before release. -->
+             The LIVE id, in every build mode. Google's test AD UNITS serve
+             under any app id, so debug builds still get test ads (see
+             services/ads/ad_ids.dart) and there is no second value here to
+             keep in step. Source: generated/ad_config.md. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
+            android:value="ca-app-pub-9242904787767394~3712054804"/>
 
         <activity
             android:name=".MainActivity"
