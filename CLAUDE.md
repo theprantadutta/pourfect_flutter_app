@@ -117,7 +117,6 @@ Two artifacts, both committed, both baked by `tool/generate_levels.dart`:
 | Artifact | What | Consumer |
 |---|---|---|
 | `assets/levels/levels.bin` | 150-level campaign, ~7.8 KB | bundled in the APK |
-| `generated/daily_pool.json` | 365 dailies, carries `min_moves` | **the backend** — copy into the API repo's seed data |
 | `generated/level_curve.{md,csv}` | the whole curve, for eyeballing | humans |
 
 **Determinism is a hard requirement.** `tool/generate_levels.dart` with default
@@ -156,9 +155,17 @@ level (a band should hand off at its peak). A breather must score 25-40% below
 the running average of the five levels before it — both bounds matter, since a
 ceiling alone produced a level scoring 19 where 57 was allowed.
 
-The daily pool is a **separate artifact with its own seed**, drawn from
-mid-campaign shapes and explicitly disjoint from the campaign by canonical key,
-so nobody is served a daily they already solved.
+**Daily challenges are NOT generated here.** The backend generates them at
+runtime, seeded from the date plus a salt that exists only in that private
+repo. They used to be baked into `generated/daily_pool.json` by the tool
+below — but this repo is public and generation is deterministic, so shipping
+the pool AND its seed published every board for the next year together with
+its proven optimal solution. Removing just the file would not have helped;
+the seed alone regenerates it.
+
+That matters because the anti-cheat floor rejects submissions BELOW `minMoves`
+and cannot tell an honest optimum from a looked-up one. See the backend's
+`DailyChallengeJobService`.
 
 ## Design direction
 
@@ -392,7 +399,8 @@ splits them per device.
   slashed zero is the tell on device); the UI face still falls back to the
   platform default. `kUiFontFamily` in `typography.dart` is the single swap
   point, and `assets/licenses/` still needs the two OFL texts.
-- **No daily challenge or leaderboard screens.** Both wait on the backend.
+- **No daily challenge or leaderboard screens.** Both wait on the client work;
+  the backend serves them already.
 - **No IAP product exists yet.** The Play and App Store product ids and the
   Play license key are still blank in `generated/ad_config.md`, so Remove Ads
   shows an em dash instead of a price. That is the correct degraded state, not
