@@ -556,6 +556,37 @@ matters.**
 The genuinely secret ones are the keystore and `key.properties`. Losing
 control of those means somebody else can sign an update to this app.
 
+## Release signing
+
+The upload keystore lives **only** in `C:ndroid-keys\pourfect\` — never in
+this repository. `android/key.properties` is gitignored and holds an absolute
+`storeFile` pointing there, which is the same arrangement Snake Classic uses.
+
+    C:ndroid-keys\pourfect      upload-keystore.jks        the key itself
+      key.properties            a copy, so the backup restores on its own
+      keystore-credentials.txt  passwords, alias, DN, creation date
+      upload_certificate.pem    the public certificate
+
+Certificate matches the other projects: `CN=PRANTA Dutta, OU=Pranta's Apps,
+O=Dutta Corp, L=Chattogram, ST=Chattogram, C=BD`, RSA 2048, SHA384withRSA,
+10,000 days. Alias `upload`.
+
+Gradle falls back to debug keys with a loud warning when `key.properties` is
+absent, so a fresh clone still builds — but a debug-signed build **cannot be
+uploaded to Play**, which is why the fallback is noisy rather than silent.
+
+**Verify what actually signed a build** rather than assuming:
+
+    apksigner verify --print-certs build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
+The SHA-256 must match `upload_certificate.pem`. Confirmed once already:
+`dedb09a7…0922b6`.
+
+**THIS KEY IS THE APP'S IDENTITY FOREVER.** Play accepts updates signed by it
+and nothing else, so losing it means the listing can never be updated again —
+a new listing, and every install starts from zero. Back up
+`C:ndroid-keys\` somewhere that is not this machine.
+
 **`.env` is bundled into the APK as a Flutter asset.** Gitignoring it is repo
 hygiene, NOT secrecy — anyone can unzip a build and read it. Public
 identifiers and endpoint URLs only: `GOOGLE_WEB_CLIENT_ID`,
