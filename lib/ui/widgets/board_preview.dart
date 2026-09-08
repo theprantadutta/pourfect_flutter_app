@@ -39,7 +39,11 @@ class BoardPreview extends StatelessWidget {
     final gap = ballSize * 0.22;
     final tubePadding = ballSize * 0.12;
     final tubeWidth = ballSize + tubePadding * 2;
-    final tubeHeight = ballSize * board.capacity + tubePadding * 2;
+    // The hairline border eats its own width out of the content box, so the
+    // stack of balls needs it back or the bottom ball is clipped.
+    const borderWidth = 1.0;
+    final tubeHeight =
+        ballSize * board.capacity + tubePadding * 2 + borderWidth * 2;
 
     return Wrap(
       alignment: WrapAlignment.center,

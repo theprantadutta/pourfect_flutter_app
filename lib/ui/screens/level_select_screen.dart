@@ -107,25 +107,6 @@ class _LevelSelectScreenState extends ConsumerState<LevelSelectScreen> {
   static int _perRow(double width) =>
       ((width + _tileGap) / (_tileWidth + _tileGap)).floor().clamp(1, 12);
 
-  /// Which band the viewport is currently showing.
-  ///
-  /// The inverse of [_offsetForLevel], sharing the same deterministic layout,
-  /// so the pinned bar and the scroll position can never disagree.
-  BandInfo _bandAtOffset(double offset, double width) {
-    final bands = campaignBands();
-    var cursor = 0.0;
-    for (final band in bands) {
-      final rows = (band.length / _perRow(width)).ceil();
-      final height =
-          _headerHeight + rows * (_tileHeight + _tileGap) + _sectionPadding;
-      // Flip to the next band as its heading reaches the top, not when the
-      // previous band's last tile finally leaves.
-      if (offset < cursor + height - _headerHeight) return band;
-      cursor += height;
-    }
-    return bands.last;
-  }
-
   double _offsetForLevel(int levelId, double width) {
     final perRow = _perRow(width);
 
@@ -218,27 +199,13 @@ class _LevelSelectScreenState extends ConsumerState<LevelSelectScreen> {
                             onPressed: () => _jumpToCurrent(current, width),
                             child: Text(
                               'Jump to $current',
-                              style: bodyStyle(
-                                tokens,
-                              ).copyWith(fontSize: 13, color: tokens.accent),
+                              style: bodyStyle(tokens)
+                                  .copyWith(fontSize: 13, color: tokens.accent),
                             ),
                           ),
                         ],
                       ],
                     ),
-                  ),
-                ),
-                // ONE pinned bar, not one per band. Flutter's pinned slivers
-                // STACK rather than pushing each other off, so a header per
-                // band left four piled up at the bottom of a 150-level list,
-                // eating a third of the screen.
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _CurrentBandBar(
-                    controller: _controller,
-                    bandAt: (offset) => _bandAtOffset(offset, width),
-                    clearedIn: controller.clearedIn,
-                    tokens: tokens,
                   ),
                 ),
                 for (final band in campaignBands()) ...[
@@ -329,21 +296,13 @@ class _Masthead extends StatelessWidget {
               color: tokens.textPrimary,
             ),
             SizedBox(width: tokens.space4),
-            _Counter(
-              value: '$stars',
-              label: 'stars',
-              color: tokens.accentWarm,
-            ),
+            _Counter(value: '$stars', label: 'stars', color: tokens.accentWarm),
             SizedBox(width: tokens.space4),
           ],
           Pressable(
             onPressed: onOpenSettings,
             semanticLabel: 'Settings',
-            child: Icon(
-              Icons.tune_rounded,
-              size: 22,
-              color: tokens.textMuted,
-            ),
+            child: Icon(Icons.tune_rounded, size: 22, color: tokens.textMuted),
           ),
         ],
       ),
@@ -435,108 +394,6 @@ class _BandHeading extends StatelessWidget {
   }
 }
 
-/// The single pinned bar, reporting whichever band the viewport is showing.
-class _CurrentBandBar extends SliverPersistentHeaderDelegate {
-  final ScrollController controller;
-  final BandInfo Function(double offset) bandAt;
-  final int Function(int first, int last) clearedIn;
-  final PourfectTokens tokens;
-
-  _CurrentBandBar({
-    required this.controller,
-    required this.bandAt,
-    required this.clearedIn,
-    required this.tokens,
-  });
-
-  /// Slim on purpose: this is a position indicator, not a second heading.
-  @override
-  double get minExtent => 44;
-
-  @override
-  double get maxExtent => 44;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlaps) =>
-      AnimatedBuilder(
-        animation: controller,
-        builder: (context, _) {
-          final offset = controller.hasClients ? controller.offset : 0.0;
-          final band = bandAt(offset);
-          final cleared = clearedIn(band.firstLevel, band.lastLevel);
-          final done = cleared >= band.length;
-
-          return Container(
-            height: 44,
-            // Opaque, so tiles never show through the pinned bar.
-            color: tokens.surface,
-            padding: EdgeInsets.symmetric(horizontal: tokens.space4),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        band.name.toUpperCase(),
-                        style: labelStyle(
-                          tokens,
-                        ).copyWith(color: tokens.textNumeric, fontSize: 10.5),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text(
-                      '$cleared / ${band.length}',
-                      style: numericStyle(
-                        tokens,
-                        size: 10.5,
-                        weight: FontWeight.w500,
-                        color: done ? tokens.accentWarm : tokens.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: tokens.space2),
-                _Track(value: cleared / band.length, done: done),
-              ],
-            ),
-          );
-        },
-      );
-
-  @override
-  bool shouldRebuild(_CurrentBandBar old) => true;
-}
-
-/// The hairline progress rule, shared by the bar and the headings.
-class _Track extends StatelessWidget {
-  final double value;
-  final bool done;
-
-  const _Track({required this.value, required this.done});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(2),
-      child: SizedBox(
-        height: 2,
-        child: Stack(
-          children: [
-            Container(color: tokens.hairline),
-            FractionallySizedBox(
-              widthFactor: value.clamp(0.0, 1.0),
-              child: Container(color: done ? tokens.accentWarm : tokens.accent),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One level, drawn as the vessel it is.
 class _LevelTile extends StatelessWidget {
   final int levelId;
   final LevelProgress? progress;
@@ -642,4 +499,31 @@ class _LevelTile extends StatelessWidget {
     height: 9,
     decoration: BoxDecoration(color: color, shape: BoxShape.circle),
   );
+}
+
+class _Track extends StatelessWidget {
+  final double value;
+  final bool done;
+
+  const _Track({required this.value, required this.done});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(2),
+      child: SizedBox(
+        height: 2,
+        child: Stack(
+          children: [
+            Container(color: tokens.hairline),
+            FractionallySizedBox(
+              widthFactor: value.clamp(0.0, 1.0),
+              child: Container(color: done ? tokens.accentWarm : tokens.accent),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
