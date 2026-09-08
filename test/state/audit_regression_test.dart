@@ -52,6 +52,155 @@ Level _level(int id) => Level(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  group('what the restore recovers actually reaches the disk', () {
+    // The follow-up audit's finding. The earlier fix repaired MEMORY and
+    // stopped there, so the recovered result survived exactly as long as the
+    // process did: the next launch loaded the worse row and restored the loss
+    // as though it were the truth. These assert the SAVED payload, which is
+    // the only thing a restart can see.
+
+    test(
+      'a bad replay of an already-stored level is not left on disk',
+      () async {
+        final repository = SlowRepository();
+        final container = ProviderContainer(
+          overrides: [progressRepositoryProvider.overrideWithValue(repository)],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(progressProvider.notifier);
+
+        // A 20-move replay of level 1, recorded before the stored snapshot
+        // lands. Same level, so the maps end up the same SIZE — which is the
+        // whole reason the old length check missed this.
+        controller.record(
+          level: _level(1),
+          levelSetVersion: 1,
+          movesUsed: 20,
+          elapsedSeconds: 600,
+        );
+
+        repository.release({
+          1: const LevelProgress(
+            levelId: 1,
+            levelSetVersion: 1,
+            stars: 3,
+            bestMoves: 5,
+            bestTimeSeconds: 60,
+            bestPoints: 1400,
+          ),
+        });
+        await pumpEventQueue();
+
+        final recovered = container.read(progressProvider)[1]!;
+        expect(recovered.stars, 3, reason: 'memory lost the stored best');
+
+        final onDisk = repository.saved[1];
+        expect(onDisk, isNotNull, reason: 'nothing was ever written');
+        expect(
+          onDisk!.stars,
+          3,
+          reason:
+              'the disk kept the 1-star replay; a restart would lose the best',
+        );
+        expect(onDisk.bestMoves, 5);
+        expect(onDisk.bestTimeSeconds, 60);
+        expect(onDisk.bestPoints, 1400);
+      },
+    );
+
+    test('no write ever lands carrying only pre-restore state', () async {
+      // The truncation. A completion recorded during startup used to be
+      // persisted immediately, and what it wrote was the whole map as it stood
+      // — one level — over a file holding the entire campaign.
+      final repository = SlowRepository();
+      final container = ProviderContainer(
+        overrides: [progressRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      container
+          .read(progressProvider.notifier)
+          .record(
+            level: _level(9),
+            levelSetVersion: 1,
+            movesUsed: 4,
+            elapsedSeconds: 60,
+          );
+      await pumpEventQueue();
+
+      expect(
+        repository.saveCount,
+        0,
+        reason: 'a write ran before the stored campaign had been read',
+      );
+
+      repository.release({
+        for (var id = 1; id <= 8; id++)
+          id: LevelProgress(
+            levelId: id,
+            levelSetVersion: 1,
+            stars: 3,
+            bestMoves: 4,
+          ),
+      });
+      await pumpEventQueue();
+
+      expect(repository.saved.keys.toList()..sort(), [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+      ], reason: 'the saved map lost levels that were already on disk');
+    });
+
+    test(
+      'a full round trip through the real repository keeps the best',
+      () async {
+        // The same scenario against the SHIPPING repository and its real
+        // encoding, so the assertion is about what a relaunch would load rather
+        // than about a test double.
+        SharedPreferences.setMockInitialValues({});
+        final repository = ProgressRepository();
+
+        await repository.save({
+          1: const LevelProgress(
+            levelId: 1,
+            levelSetVersion: 1,
+            stars: 3,
+            bestMoves: 5,
+            bestTimeSeconds: 60,
+            bestPoints: 1400,
+          ),
+        });
+
+        final container = ProviderContainer(
+          overrides: [progressRepositoryProvider.overrideWithValue(repository)],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(progressProvider.notifier);
+        controller.record(
+          level: _level(1),
+          levelSetVersion: 1,
+          movesUsed: 20,
+          elapsedSeconds: 600,
+        );
+        await pumpEventQueue();
+
+        final relaunched = await ProgressRepository().load();
+        expect(relaunched[1]!.stars, 3);
+        expect(relaunched[1]!.bestMoves, 5);
+        expect(relaunched[1]!.bestTimeSeconds, 60);
+      },
+    );
+  });
+
   group('a late load cannot delete progress made before it arrived', () {
     test('a level completed first survives the restore', () async {
       // The reported failure: build() starts the load, record() saves a

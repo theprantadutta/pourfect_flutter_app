@@ -24,9 +24,15 @@ import 'consent_gate.dart';
 import 'ad_service.dart';
 
 class AdMobAdService implements AdService {
-  /// Decides whether an ad may be requested at all. Exposed so the settings
-  /// screen can offer the privacy-options form where one is required.
-  final ConsentGate consent = ConsentGate();
+  /// Decides whether an ad may be requested at all.
+  ///
+  /// Injectable so a test can state the consent answer directly. Everything
+  /// this class does with consent has to be provable without a device, since
+  /// the failure it guards against is invisible on one: an ad requested
+  /// without a legal basis looks exactly like an ad requested with one.
+  final ConsentGate consent;
+
+  AdMobAdService({ConsentGate? consent}) : consent = consent ?? ConsentGate();
 
   InterstitialAd? _interstitial;
   final Map<RewardedPlacement, RewardedAd> _rewarded = {};
@@ -88,10 +94,60 @@ class AdMobAdService implements AdService {
   @override
   bool get isInterstitialReady => _interstitial != null;
 
+  /// THE SINGLE GATE. Every path that could put a request on the wire asks
+  /// this first, and nothing requests an ad any other way.
+  ///
+  /// It used to be checked in `preload()` alone, which is the one place that
+  /// does not matter: `showRewarded()` called the private loader directly
+  /// whenever its cache was empty, and so did every retry and every
+  /// post-dismissal refill. Reproduced with the native channel mocked —
+  /// canRequestAds=false still emitted loadRewardedAd. A guard on one caller
+  /// is not a gate, it is a comment.
+  ///
+  /// Google's UMP integration requires consent to be checked before REQUESTING
+  /// ads, not before showing them; by the time an ad is on screen the request
+  /// has already happened.
+  bool get _mayRequestAds => _ready && !_disposed && consent.canRequestAds;
+
+  @override
+  bool get privacyOptionsRequired => consent.privacyOptionsRequired;
+
+  @override
+  Future<void> showPrivacyOptions() async {
+    await consent.showPrivacyOptions();
+    await applyConsent();
+  }
+
+  /// Brings cached inventory into line with the current consent answer.
+  ///
+  /// Both directions matter. Withdrawing consent has to DISCARD ads that were
+  /// requested while it was granted — keeping them means the next hint shows
+  /// an ad the player has just refused, from a request they have just
+  /// withdrawn the basis for. Granting it has to start filling again, or the
+  /// player who has just opted in gets nothing until they relaunch.
+  @visibleForTesting
+  Future<void> applyConsent() async {
+    if (consent.canRequestAds) {
+      preload();
+      return;
+    }
+
+    await _interstitial?.dispose();
+    _interstitial = null;
+    for (final ad in _rewarded.values) {
+      await ad.dispose();
+    }
+    _rewarded.clear();
+    _retries.clear();
+  }
+
+  /// Marks the SDK as initialised, for tests that cannot call [init].
+  @visibleForTesting
+  void debugMarkInitialised() => _ready = true;
+
   @override
   void preload() {
-    if (!_ready) return;
-    if (!consent.canRequestAds) return;
+    if (!_mayRequestAds) return;
     _loadInterstitial();
     for (final placement in RewardedPlacement.values) {
       _loadRewarded(placement);
@@ -100,6 +156,7 @@ class AdMobAdService implements AdService {
 
   void _loadInterstitial() {
     if (_interstitial != null) return;
+    if (!_mayRequestAds) return;
     InterstitialAd.load(
       adUnitId: AdIds.interstitialLevelComplete,
       request: const AdRequest(),
@@ -119,6 +176,7 @@ class AdMobAdService implements AdService {
 
   void _loadRewarded(RewardedPlacement placement) {
     if (_rewarded[placement] != null) return;
+    if (!_mayRequestAds) return;
     RewardedAd.load(
       adUnitId: _unitFor(placement),
       request: const AdRequest(),
@@ -149,7 +207,11 @@ class AdMobAdService implements AdService {
     final ad = _interstitial;
     // The guard against a second ad while one is on screen. Without it a
     // double-tap can queue two, and the player is hit twice in a row.
-    if (ad == null || _showing) return false;
+    //
+    // Consent is checked here as well as at load time. An ad cached before the
+    // player withdrew consent must not be shown afterwards, and the
+    // withdrawal can land between the two.
+    if (ad == null || _showing || !consent.canRequestAds) return false;
 
     _interstitial = null;
     _showing = true;
@@ -185,7 +247,16 @@ class AdMobAdService implements AdService {
   @override
   Future<RewardOutcome> showRewarded(RewardedPlacement placement) async {
     final ad = _rewarded[placement];
-    if (ad == null || _showing) {
+
+    // THE PATH THAT LEAKED. A hint request with an empty cache reached
+    // `_loadRewarded` directly, so the gate that `preload()` respected was
+    // simply stepped around by the busiest caller in the app.
+    //
+    // The refill attempt stays — it is what makes the next hint instant — but
+    // it now passes the same gate as everything else, and a player who has not
+    // consented gets "no video available" rather than a request they never
+    // agreed to.
+    if (ad == null || _showing || !consent.canRequestAds) {
       _loadRewarded(placement);
       return RewardOutcome.unavailable;
     }
@@ -244,7 +315,9 @@ class AdMobAdService implements AdService {
   void _scheduleRetry(void Function() load, String label) {
     final attempts = _retries.update(label, (n) => n + 1, ifAbsent: () => 1);
     if (attempts > _maxRetries) {
-      debugPrint('[ads] $label giving up after $attempts attempts this session');
+      debugPrint(
+        '[ads] $label giving up after $attempts attempts this session',
+      );
       return;
     }
 

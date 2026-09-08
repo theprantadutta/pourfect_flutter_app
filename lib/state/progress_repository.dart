@@ -226,30 +226,86 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
             );
     }
 
-    state = merged;
+    state = _latest = merged;
 
     // Anything recorded before the load arrived exists only in memory until
     // this lands, so the merged view is written back rather than assumed.
-    if (merged.length != loaded.length) _enqueueSave();
+    //
+    // COMPARED BY VALUE, not by size. This used to ask whether the map had
+    // grown, which is only true when the two sides disagree about which
+    // LEVELS exist. The damaging case is the one where they agree: a level
+    // stored at 3 stars in 5 moves, replayed badly to 1 star in 20 before the
+    // load landed. Same single key on both sides, so no save was queued —
+    // memory recovered the 3 stars and the disk kept the 1, and the next
+    // launch restored the loss as though it were the truth.
+    if (_differs(merged, loaded)) _enqueueSave();
+  }
+
+  /// Whether [merged] holds anything [loaded] does not already say.
+  ///
+  /// Only ever asked in the direction that matters: the merge is monotonic, so
+  /// a difference can only mean the merged view is BETTER, and better is worth
+  /// a write.
+  static bool _differs(
+    Map<int, LevelProgress> merged,
+    Map<int, LevelProgress> loaded,
+  ) {
+    if (merged.length != loaded.length) return true;
+
+    for (final entry in merged.entries) {
+      final stored = loaded[entry.key];
+      if (stored == null) return true;
+
+      final fresh = entry.value;
+      if (stored.stars != fresh.stars ||
+          stored.bestMoves != fresh.bestMoves ||
+          stored.bestTimeSeconds != fresh.bestTimeSeconds ||
+          stored.bestPoints != fresh.bestPoints) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Queues a write behind any already in flight.
   ///
-  /// The repository is resolved NOW, not inside the queued callback. A queued
-  /// write can run after the provider is disposed, and `ref.read` at that point
-  /// throws — the save is the last thing that should fail when a screen goes
-  /// away mid-write.
+  /// Two things here are load-bearing and neither is obvious.
+  ///
+  /// **The write waits for the restore.** A completion recorded during startup
+  /// used to be persisted immediately, and what it persisted was the whole map
+  /// as it stood: one level, because the stored snapshot had not arrived yet.
+  /// That write is not merely redundant, it is a truncation — it lands on disk
+  /// over a file that held the player's entire campaign. Waiting costs nothing
+  /// (the restore is a single prefs read) and removes the window entirely.
+  ///
+  /// **The snapshot is taken when the write RUNS, not when it is queued.**
+  /// Whatever is in memory at that moment has already absorbed everything
+  /// earlier, because every path into this state is a monotonic merge. Queuing
+  /// the value instead means a stale snapshot can be written after a fresher
+  /// one, which is the same lost-update shape in a different place.
+  ///
+  /// The repository is resolved NOW rather than inside the callback: a queued
+  /// write can run after the provider is disposed, and `ref.read` at that
+  /// point throws — the save is the last thing that should fail when a screen
+  /// goes away mid-write.
   void _enqueueSave() {
-    final snapshot = state;
     final repository = ref.read(progressRepositoryProvider);
 
     // A failed write must not poison the chain and block every later save.
-    _writes = _writes.then((_) => repository.save(snapshot)).catchError((
-      Object error,
-    ) {
-      debugPrint('[progress] save failed: $error');
-    });
+    _writes = _writes
+        .then((_) => _restored)
+        .then((_) => repository.save(_latest))
+        .catchError((Object error) {
+          debugPrint('[progress] save failed: $error');
+        });
   }
+
+  /// The newest state, readable from the write chain.
+  ///
+  /// Kept alongside `state` because a queued write can outlive the provider,
+  /// and reading `state` after disposal throws — which would turn a routine
+  /// screen change into a lost save.
+  Map<int, LevelProgress> _latest = const {};
 
   LevelProgress? forLevel(int id) => state[id];
 
@@ -370,7 +426,7 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
           bestPoints: points,
         );
 
-    state = {...state, level.id: merged};
+    state = _latest = {...state, level.id: merged};
     // Still not awaited — a slow disk write must never delay the win sequence
     // — but queued, so writes cannot land out of order.
     _enqueueSave();
@@ -393,13 +449,13 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
     // merge the old progress back in immediately after the wipe.
     await _restored;
 
-    state = const {};
+    state = _latest = const {};
     _enqueueSave();
     await _writes;
   }
 
   /// Test seam.
-  void debugSeed(Map<int, LevelProgress> seed) => state = seed;
+  void debugSeed(Map<int, LevelProgress> seed) => state = _latest = seed;
 }
 
 /// Opens every level, for verifying the late campaign without playing 120

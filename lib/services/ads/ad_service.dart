@@ -59,6 +59,22 @@ abstract interface class AdService {
   /// Pre-loads so the next placement is instant.
   void preload();
 
+  /// True when the SDK says this player must be given a way back into the
+  /// consent form.
+  ///
+  /// Required where the form is required: somebody who consented has to be
+  /// able to change their mind, and burying that is the kind of thing that
+  /// gets ad serving limited rather than merely criticised.
+  bool get privacyOptionsRequired;
+
+  /// Re-opens the consent form and applies whatever the player chose.
+  ///
+  /// Applying it is part of the job, not the caller's problem: withdrawing
+  /// consent has to discard inventory that was requested under the old answer,
+  /// and granting it has to start requesting again without waiting for a
+  /// relaunch.
+  Future<void> showPrivacyOptions();
+
   Future<void> dispose();
 }
 
@@ -81,6 +97,12 @@ class NoopAdService implements AdService {
 
   @override
   void preload() {}
+
+  @override
+  bool get privacyOptionsRequired => false;
+
+  @override
+  Future<void> showPrivacyOptions() async {}
 
   @override
   Future<void> dispose() async {}
@@ -118,6 +140,12 @@ class FakeAdService implements AdService {
 
   @override
   void preload() => calls.add('preload');
+
+  @override
+  bool privacyOptionsRequired = false;
+
+  @override
+  Future<void> showPrivacyOptions() async => calls.add('privacy_options');
 
   @override
   Future<void> dispose() async {}

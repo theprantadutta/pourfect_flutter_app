@@ -178,6 +178,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       );
   }
 
+  /// Re-opens the advertising consent form.
+  ///
+  /// The row only exists where the SDK says a privacy-options entry point is
+  /// REQUIRED, which is the same regions where the consent form itself is.
+  /// Showing it everywhere would put a dead control in front of most players;
+  /// showing it nowhere - which is what shipped - means somebody who consented
+  /// in the EEA had no way to change their mind, and the form the app already
+  /// knew how to open was unreachable from any screen.
+  Future<void> _openAdPrivacyOptions() async {
+    // The service applies whatever the player chooses: withdrawing consent
+    // discards inventory requested under the old answer, granting it starts
+    // filling again. This screen only has to reflect the result.
+    await ref.read(adServiceProvider).showPrivacyOptions();
+    if (mounted) setState(() {});
+  }
+
   Future<void> _openPrivacy() async {
     final uri = Uri.parse(kPrivacyPolicyUrl);
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -299,6 +315,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               detail: kPrivacyPolicyUrl.replaceFirst('https://', ''),
               onTap: _openPrivacy,
             ),
+            if (ref.watch(adServiceProvider).privacyOptionsRequired)
+              _ActionRow(
+                title: 'Ad privacy options',
+                detail: 'Change what you agreed to for advertising.',
+                onTap: _openAdPrivacyOptions,
+              ),
             Padding(
               padding: EdgeInsets.symmetric(vertical: tokens.space3),
               child: Row(

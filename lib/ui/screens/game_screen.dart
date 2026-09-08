@@ -338,26 +338,36 @@ class _GameScreenState extends ConsumerState<GameScreen>
         game.resumeClock();
         return;
       }
-      if (!mounted) return;
 
       final outcome = await money.offerRewarded(
         RewardedPlacement.hint,
         levelId: levelId,
       );
       game.resumeClock();
-      if (!mounted) return;
 
       if (outcome != RewardOutcome.earned) {
-        _toast(switch (outcome) {
-          RewardOutcome.dismissed => 'No hint — the video was not finished.',
-          RewardOutcome.unavailable => 'No video available right now.',
-          _ => 'Something went wrong. Nothing was used.',
-        });
+        // Nothing was spent, so there is nothing to settle. Only the toast
+        // needs a screen.
+        if (mounted) {
+          _toast(switch (outcome) {
+            RewardOutcome.dismissed => 'No hint — the video was not finished.',
+            RewardOutcome.unavailable => 'No video available right now.',
+            _ => 'Something went wrong. Nothing was used.',
+          });
+        }
         return;
       }
 
-      // Banked BEFORE the solve, then spent. If the app dies between the two,
-      // the credit survives and the next request honours it.
+      // BANKED WHETHER OR NOT THE SCREEN SURVIVED.
+      //
+      // A rewarded ad ends by returning from a fullscreen activity, and coming
+      // back to a rebuilt or popped route is ordinary rather than exceptional.
+      // The `mounted` check that used to sit above this took fifteen seconds
+      // of somebody's attention and then gave back nothing, because the credit
+      // was granted after it.
+      //
+      // Banked before it is spent, so a crash in between leaves a credit
+      // rather than a debt.
       await money.grantHintCredit();
       await money.consumeHintCredit();
       spentCredit = true;
@@ -365,9 +375,19 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
     final wasRewarded = spentCredit;
     final outcome = await hints.request(wasRewarded: wasRewarded);
-    if (!mounted) return;
 
-    // Anything other than a delivered hint means the player paid for nothing.
+    // NO `mounted` CHECK HERE, deliberately.
+    //
+    // Solving runs on an isolate and can take seconds on a late board. Leaving
+    // the screen during it is the most ordinary thing a player can do — back
+    // out, take a call, put the phone down on a hint that never arrives — and
+    // the early return that used to sit on this line skipped every refund
+    // branch below it. The free hint, or the video they had already watched,
+    // was simply gone, and nothing on screen had said so.
+    //
+    // What a player is owed does not depend on which widgets are still alive.
+    // Settlement is unconditional from here down; only the toasts are guarded,
+    // because a toast is the one part that genuinely needs a screen.
     Future<void> refund() async {
       if (spentFreeHint) await money.refundFreeHint();
       if (spentCredit) await money.grantHintCredit();
@@ -392,7 +412,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         //
         // Saying nothing here is how a paid reward reads as nothing happening,
         // which is a refund request and a one-star review.
-        if (wasRewarded) {
+        if (wasRewarded && mounted) {
           _toast('Here is your hint — pour into the glowing tube.');
         }
 
