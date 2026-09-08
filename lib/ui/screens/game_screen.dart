@@ -10,12 +10,14 @@ import '../../state/game_controller.dart';
 import '../../state/hint_controller.dart';
 import '../../state/level_repository.dart';
 import '../../state/monetization_controller.dart';
+import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
+import '../widgets/level_clock.dart';
 import '../widgets/win_overlay.dart';
 import '../widgets/win_profile.dart';
 
@@ -71,6 +73,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
+        // The clock stops FIRST, before anything reads a duration, so the
+        // banked time is what was actually played and not however long the
+        // phone sat in a pocket.
+        _bankPlaytime();
+        ref.read(gameControllerProvider.notifier).pauseClock();
         ref
             .read(gameControllerProvider.notifier)
             .reportAbandon(AbandonReason.backgrounded);
@@ -81,6 +88,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         // suppressed level_complete for the rest of the run and the funnel
         // lost every success that had been interrupted.
         ref.read(gameControllerProvider.notifier).reportResumed();
+        ref.read(gameControllerProvider.notifier).resumeClock();
 
         // A failed initial ad load used to last the whole session. Somebody
         // who launches offline and reconnects should not be stuck without
@@ -90,6 +98,28 @@ class _GameScreenState extends ConsumerState<GameScreen>
       case AppLifecycleState.inactive:
         break;
     }
+  }
+
+  /// Moves the time played so far out of the live clock and into today's row
+  /// of the play history.
+  ///
+  /// Called wherever a stretch of play ends without a win — backgrounding,
+  /// leaving, restarting. Without it "time played" would only ever count
+  /// levels somebody finished, and the boards they wrestled with longest, the
+  /// ones actually worth knowing about, would contribute nothing.
+  ///
+  /// Banking RESETS the live clock's accumulator, so a stretch can never be
+  /// counted twice by two callers on the same exit path.
+  void _bankPlaytime() {
+    final controller = ref.read(gameControllerProvider.notifier);
+    final seconds = controller.takeUnbankedSeconds();
+    if (seconds <= 0) return;
+    ref.read(playHistoryProvider.notifier).recordPlaytime(seconds: seconds);
+  }
+
+  void _exit() {
+    _bankPlaytime();
+    widget.onExit();
   }
 
   // ---- level lifecycle -----------------------------------------------------
@@ -159,12 +189,33 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final state = ref.read(gameControllerProvider);
     if (campaign == null || state == null) return;
 
+    // The controller stopped the clock on the winning move, so this reads the
+    // settled time rather than however long the win animation has been up.
+    final elapsedSeconds = state.elapsedSecondsAt(DateTime.now());
+
     final result = ref
         .read(progressProvider.notifier)
         .record(
           level: state.level,
           levelSetVersion: campaign.levelSetVersion,
           movesUsed: movesUsed,
+          elapsedSeconds: elapsedSeconds,
+        );
+
+    // The SCORE gets the whole attempt; the history gets only the part it has
+    // not already been given. An attempt interrupted by a phone call reaches
+    // the history in two instalments, and adding the full elapsed time here
+    // would count the first one twice.
+    ref
+        .read(playHistoryProvider.notifier)
+        .recordSolve(
+          levelId: levelId,
+          seconds: ref
+              .read(gameControllerProvider.notifier)
+              .takeUnbankedSeconds(),
+          moves: movesUsed,
+          stars: result.stars,
+          points: result.points,
         );
 
     // Length is EARNED, not constant. Three stars, a personal best, or the end
@@ -272,13 +323,28 @@ class _GameScreenState extends ConsumerState<GameScreen>
       spentFreeHint = true;
     } else {
       if (!mounted) return;
-      if (!await _confirmWatchAd()) return;
+
+      // The clock stops for the whole ad negotiation — the prompt and the
+      // video both. Charging somebody score for the time it takes to watch an
+      // ad we asked them to watch is the sort of thing that shows up in
+      // reviews. Backgrounding to the ad activity would stop it anyway on
+      // Android, but relying on that leaves the confirm dialog running and
+      // gives no cover at all on a platform that reports lifecycle
+      // differently.
+      final game = ref.read(gameControllerProvider.notifier);
+      game.pauseClock();
+
+      if (!await _confirmWatchAd()) {
+        game.resumeClock();
+        return;
+      }
       if (!mounted) return;
 
       final outcome = await money.offerRewarded(
         RewardedPlacement.hint,
         levelId: levelId,
       );
+      game.resumeClock();
       if (!mounted) return;
 
       if (outcome != RewardOutcome.earned) {
@@ -438,7 +504,25 @@ class _GameScreenState extends ConsumerState<GameScreen>
                         bandName: band.name,
                         movesUsed: state.movesUsed,
                         minMoves: state.level.minMoves,
-                        onExit: widget.onExit,
+                        clock: LevelClock(
+                          // Read through the notifier rather than closing over
+                          // `state`: the ticker outlives this build, and a
+                          // captured snapshot would freeze at the time of the
+                          // last move.
+                          elapsedSeconds: () =>
+                              ref
+                                  .read(gameControllerProvider)
+                                  ?.elapsedSecondsAt(DateTime.now()) ??
+                              0,
+                          parSeconds: state.parSeconds,
+                          isRunning: state.isClockRunning,
+                          // Smaller than the level number and the move count
+                          // on either side of it. Three 26px numerals across
+                          // one bar read as three scores; the clock is the one
+                          // that only moves points, and it should look it.
+                          fontSize: 19,
+                        ),
+                        onExit: _exit,
                       ),
                     ),
                     Expanded(
@@ -472,6 +556,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                             minMoves: state.level.minMoves,
                             previousBest: result.previousBest,
                             isNewBest: result.isNewBest,
+                            elapsedSeconds: result.elapsedSeconds,
+                            parSeconds: result.parSeconds,
+                            points: result.points,
+                            previousFastest: result.previousFastest,
                             bandName: band.name,
                             bandClearedBefore: (clearedNow - 1).clamp(
                               0,
@@ -486,7 +574,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                                     state.level.id + 1,
                                   ),
                             onReplay: () => _startLevel(state.level.id),
-                            onLevels: widget.onExit,
+                            onLevels: _exit,
                             interactive: !_skipActive,
                           ),
                         ),
@@ -505,7 +593,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
                                     .undo();
                               }
                             : null,
-                        onRestart: () => _startLevel(state.level.id),
+                        onRestart: () {
+                          // Banked BEFORE the restart, which discards the
+                          // clock. Time spent on an attempt somebody threw
+                          // away is still time they played.
+                          _bankPlaytime();
+                          _startLevel(state.level.id);
+                        },
                         onHint: _onHint,
                         hintBusy: state.hintPending,
                       ),

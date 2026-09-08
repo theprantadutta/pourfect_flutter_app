@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/analytics/analytics_service.dart';
 import '../../services/iap/billing_service.dart';
 import '../../state/monetization_controller.dart';
+import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../theme/ball_palette.dart';
@@ -121,6 +122,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (confirmed == true && mounted) {
       await ref.read(progressProvider.notifier).resetAll();
+      // The play history goes with it. Leaving a two-year streak standing
+      // behind a wiped campaign would be a statistics screen reporting a
+      // player who no longer exists.
+      await ref.read(playHistoryProvider.notifier).resetAll();
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..clearSnackBars()

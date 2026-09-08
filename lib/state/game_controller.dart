@@ -149,7 +149,13 @@ class GameController extends Notifier<GameState?> {
     // No haptic here on purpose: the board view fires one per BALL as it
     // touches down, so the feedback lands with the ball rather than at the
     // moment the move was decided.
-    if (state!.isWon) _logComplete();
+    if (state!.isWon) {
+      // Stop the clock on the winning move itself, not when the win card
+      // finishes animating in — otherwise the score depends on how long the
+      // flourish takes to play.
+      pauseClock();
+      _logComplete();
+    }
 
     return result.completedDestination
         ? TapOutcome.pouredAndCompleted
@@ -212,6 +218,49 @@ class GameController extends Notifier<GameState?> {
         isRetry: true,
       ),
     );
+  }
+
+  // ---- the clock -----------------------------------------------------------
+
+  /// Stops the clock and banks the time run so far.
+  ///
+  /// Idempotent, so the lifecycle observer and an ad callback can both call it
+  /// without the second one losing a stretch.
+  void pauseClock() {
+    final current = state;
+    if (current == null || !current.isClockRunning) return;
+    state = current.copyWith(
+      elapsedBefore: current.elapsedAt(DateTime.now()),
+      runningSince: () => null,
+    );
+  }
+
+  /// Restarts the clock. Never restarts it on a finished level — the time on
+  /// a solved board is settled, and resuming it would let a player's score
+  /// drift while the win card sits on screen.
+  void resumeClock() {
+    final current = state;
+    if (current == null || current.isClockRunning || current.isWon) return;
+    state = current.copyWith(runningSince: () => DateTime.now());
+  }
+
+  /// Hands back the seconds played since the last call, and marks them as
+  /// handed over.
+  ///
+  /// The caller writes them to the play history. Marking here rather than
+  /// there is what makes double counting impossible: two exit paths firing on
+  /// the same departure (backgrounding while leaving, say) means the second
+  /// one gets zero.
+  int takeUnbankedSeconds() {
+    final current = state;
+    if (current == null) return 0;
+
+    final now = DateTime.now();
+    final seconds = current.unbankedSecondsAt(now);
+    if (seconds <= 0) return 0;
+
+    state = current.copyWith(bankedSeconds: current.bankedSeconds + seconds);
+    return seconds;
   }
 
   // ---- hint plumbing -------------------------------------------------------
@@ -293,7 +342,7 @@ class GameController extends Notifier<GameState?> {
         levelSetVersion: state.levelSetVersion,
         moves: state.movesUsed,
         minMoves: state.level.minMoves,
-        durationSeconds: DateTime.now().difference(state.startedAt).inSeconds,
+        durationSeconds: state.elapsedSecondsAt(DateTime.now()),
         reason: reason,
         progress: state.progress,
       ),
@@ -312,7 +361,7 @@ class GameController extends Notifier<GameState?> {
         moves: current.movesUsed,
         minMoves: current.level.minMoves,
         stars: current.stars,
-        durationSeconds: DateTime.now().difference(current.startedAt).inSeconds,
+        durationSeconds: current.elapsedSecondsAt(DateTime.now()),
         hintsUsed: current.hintsUsed,
         undosUsed: current.undosUsed,
       ),

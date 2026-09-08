@@ -10,6 +10,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../format.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import 'pressable.dart';
@@ -34,6 +35,15 @@ class WinOverlay extends StatelessWidget {
   final int bandClearedAfter;
   final int bandTotal;
 
+  /// This run's clock, the pace it was scored against, and what it earned.
+  final int elapsedSeconds;
+  final int parSeconds;
+  final int points;
+
+  /// The player's own previous fastest on this level, or null if there was
+  /// none — a first clear, or one from before the clock shipped.
+  final int? previousFastest;
+
   /// Null when this was the last level available.
   final VoidCallback? onNext;
   final VoidCallback onReplay;
@@ -52,6 +62,10 @@ class WinOverlay extends StatelessWidget {
     required this.minMoves,
     required this.previousBest,
     required this.isNewBest,
+    required this.elapsedSeconds,
+    required this.parSeconds,
+    required this.points,
+    required this.previousFastest,
     required this.bandName,
     required this.bandClearedBefore,
     required this.bandClearedAfter,
@@ -87,6 +101,19 @@ class WinOverlay extends StatelessWidget {
               isNewBest: isNewBest,
               bestRevealed: _span(profile.moves.at + 120, 220) > 0.5,
             ),
+            SizedBox(height: tokens.space2),
+
+            // Rides the tail of the moves beat rather than earning a beat of
+            // its own. The win sequence is tuned to the millisecond and adding
+            // 250ms to every three-star clear to announce a score would make
+            // the payoff longer, not better.
+            _ScoreLine(
+              opacity: _span(profile.moves.at + 140, 220),
+              elapsedSeconds: elapsedSeconds,
+              parSeconds: parSeconds,
+              points: points,
+              previousFastest: previousFastest,
+            ),
             SizedBox(height: tokens.space4),
             _BandTrack(
               opacity: _span(profile.band.at, 140),
@@ -118,6 +145,90 @@ class WinOverlay extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The clock and the score, on one line under the move count.
+///
+/// Deliberately smaller than the moves figure above it. Stars are the level's
+/// result and the clock only moves the score, so it must not compete with the
+/// number that decides how many stars were earned.
+class _ScoreLine extends StatelessWidget {
+  final double opacity;
+  final int elapsedSeconds;
+  final int parSeconds;
+  final int points;
+  final int? previousFastest;
+
+  const _ScoreLine({
+    required this.opacity,
+    required this.elapsedSeconds,
+    required this.parSeconds,
+    required this.points,
+    required this.previousFastest,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+
+    final isNewFastest =
+        previousFastest != null &&
+        elapsedSeconds > 0 &&
+        elapsedSeconds < previousFastest!;
+    final beatPar = parSeconds > 0 && elapsedSeconds <= parSeconds;
+
+    return Opacity(
+      opacity: opacity,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                formatClock(elapsedSeconds),
+                style: numericStyle(
+                  tokens,
+                  size: 17,
+                  color: beatPar || isNewFastest
+                      ? tokens.accentWarm
+                      : tokens.textNumeric,
+                ),
+              ),
+              Text(' time', style: bodyStyle(tokens).copyWith(fontSize: 13)),
+              SizedBox(width: tokens.space4),
+              Text(
+                formatCount(points),
+                style: numericStyle(
+                  tokens,
+                  size: 17,
+                  color: tokens.textNumeric,
+                ),
+              ),
+              Text(' points', style: bodyStyle(tokens).copyWith(fontSize: 13)),
+            ],
+          ),
+          SizedBox(height: tokens.space1),
+          Text(
+            isNewFastest
+                ? 'YOUR FASTEST YET'
+                : formatParDelta(
+                    seconds: elapsedSeconds,
+                    parSeconds: parSeconds,
+                  ).toUpperCase(),
+            style: numericStyle(
+              tokens,
+              size: 11,
+              color: beatPar || isNewFastest
+                  ? tokens.accentWarm
+                  : tokens.textMuted,
+            ),
+          ),
+        ],
       ),
     );
   }

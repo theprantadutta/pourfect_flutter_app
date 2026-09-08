@@ -86,6 +86,28 @@ class GameState {
   /// When this attempt began, for the funnel's duration figure.
   final DateTime startedAt;
 
+  /// Play time banked from earlier running stretches of this attempt.
+  ///
+  /// The clock is NOT `now - startedAt`. It stops whenever the player is not
+  /// actually playing: app backgrounded, a rewarded video on screen, the
+  /// settings sheet open, the level finished. A scored clock that keeps
+  /// running through an ad break would charge the player points for watching
+  /// the ad, which is the sort of thing that gets a game uninstalled.
+  final Duration elapsedBefore;
+
+  /// When the current running stretch began, or null while the clock is
+  /// stopped.
+  final DateTime? runningSince;
+
+  /// Seconds of this attempt already written into the play history.
+  ///
+  /// The scoring clock and the history are counted separately on purpose. The
+  /// score wants the WHOLE attempt, so `elapsedBefore` only ever grows; the
+  /// history wants each second exactly once, and an attempt can reach it in
+  /// several instalments as the player backgrounds and returns. This is the
+  /// high-water mark of what has already been handed over.
+  final int bankedSeconds;
+
   /// True if the player has opened this level before in this session.
   final bool isRetry;
 
@@ -102,6 +124,9 @@ class GameState {
     required this.hintsUsed,
     required this.undosUsed,
     required this.startedAt,
+    required this.elapsedBefore,
+    required this.runningSince,
+    required this.bankedSeconds,
     required this.isRetry,
   });
 
@@ -124,10 +149,42 @@ class GameState {
     hintsUsed: 0,
     undosUsed: 0,
     startedAt: now,
+    elapsedBefore: Duration.zero,
+    runningSince: now,
+    bankedSeconds: 0,
     isRetry: isRetry,
   );
 
   bool get isWon => board.isWon;
+
+  /// True while the clock is counting.
+  bool get isClockRunning => runningSince != null;
+
+  /// Play time as of [now], excluding every stretch the clock was stopped.
+  Duration elapsedAt(DateTime now) {
+    final since = runningSince;
+    if (since == null) return elapsedBefore;
+    final live = now.difference(since);
+    // A device clock that jumps backwards (timezone, NTP, manual change) must
+    // not hand back time the player already spent.
+    return live.isNegative ? elapsedBefore : elapsedBefore + live;
+  }
+
+  /// Play time in whole seconds, the unit everything downstream stores.
+  int elapsedSecondsAt(DateTime now) => elapsedAt(now).inSeconds;
+
+  /// The pace this level is scored against.
+  int get parSeconds => level.parSeconds;
+
+  /// Seconds played but not yet written to the play history.
+  int unbankedSecondsAt(DateTime now) {
+    final unbanked = elapsedSecondsAt(now) - bankedSeconds;
+    return unbanked > 0 ? unbanked : 0;
+  }
+
+  /// Points this attempt would score if it finished at [now].
+  int pointsAt(DateTime now) =>
+      level.points(movesUsed: movesUsed, elapsedSeconds: elapsedSecondsAt(now));
 
   /// No legal move remains and the level is unfinished. The UI must surface
   /// this immediately and offer undo or restart — leaving a player stuck on a
@@ -164,6 +221,9 @@ class GameState {
     bool? hintPending,
     int? hintsUsed,
     int? undosUsed,
+    Duration? elapsedBefore,
+    DateTime? Function()? runningSince,
+    int? bankedSeconds,
   }) => GameState(
     level: level,
     levelSetVersion: levelSetVersion,
@@ -177,6 +237,9 @@ class GameState {
     hintsUsed: hintsUsed ?? this.hintsUsed,
     undosUsed: undosUsed ?? this.undosUsed,
     startedAt: startedAt,
+    elapsedBefore: elapsedBefore ?? this.elapsedBefore,
+    runningSince: runningSince == null ? this.runningSince : runningSince(),
+    bankedSeconds: bankedSeconds ?? this.bankedSeconds,
     isRetry: isRetry,
   );
 }

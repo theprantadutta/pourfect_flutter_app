@@ -67,7 +67,12 @@ void main() {
       final controller = container.read(progressProvider.notifier);
 
       // Finish level 2 BEFORE the stored snapshot lands.
-      controller.record(level: _level(2), levelSetVersion: 1, movesUsed: 4);
+      controller.record(
+        level: _level(2),
+        levelSetVersion: 1,
+        movesUsed: 4,
+        elapsedSeconds: 60,
+      );
       expect(container.read(progressProvider).containsKey(2), isTrue);
 
       // The stored snapshot knows only about level 1.
@@ -82,10 +87,16 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       final state = container.read(progressProvider);
-      expect(state.containsKey(2), isTrue,
-          reason: 'the late restore erased a completed level');
-      expect(state.containsKey(1), isTrue,
-          reason: 'the restore dropped what was on disk');
+      expect(
+        state.containsKey(2),
+        isTrue,
+        reason: 'the late restore erased a completed level',
+      );
+      expect(
+        state.containsKey(1),
+        isTrue,
+        reason: 'the restore dropped what was on disk',
+      );
     });
 
     test('the better of the two sides wins per level', () async {
@@ -98,7 +109,12 @@ void main() {
       final controller = container.read(progressProvider.notifier);
 
       // In memory: a WORSE run of level 1 than the one already stored.
-      controller.record(level: _level(1), levelSetVersion: 1, movesUsed: 9);
+      controller.record(
+        level: _level(1),
+        levelSetVersion: 1,
+        movesUsed: 9,
+        elapsedSeconds: 60,
+      );
 
       repository.release({
         1: const LevelProgress(
@@ -141,11 +157,16 @@ void main() {
       final money = container.read(monetizationProvider.notifier);
 
       expect(await money.consumeFreeHint(), isTrue);
-      expect(container.read(monetizationProvider).freeHintsRemaining,
-          kFreeHints - 1);
+      expect(
+        container.read(monetizationProvider).freeHintsRemaining,
+        kFreeHints - 1,
+      );
 
       await money.refundFreeHint();
-      expect(container.read(monetizationProvider).freeHintsRemaining, kFreeHints);
+      expect(
+        container.read(monetizationProvider).freeHintsRemaining,
+        kFreeHints,
+      );
     });
 
     test('refunding never manufactures hints beyond the allowance', () async {
@@ -155,8 +176,11 @@ void main() {
       await money.refundFreeHint();
       await money.refundFreeHint();
 
-      expect(container.read(monetizationProvider).freeHintsRemaining, kFreeHints,
-          reason: 'a refund with nothing spent invented a free hint');
+      expect(
+        container.read(monetizationProvider).freeHintsRemaining,
+        kFreeHints,
+        reason: 'a refund with nothing spent invented a free hint',
+      );
     });
 
     test('a watched video that produced nothing leaves a credit', () async {
@@ -175,8 +199,11 @@ void main() {
       await money.grantHintCredit();
 
       expect(container.read(monetizationProvider).hasHintCredit, isTrue);
-      expect(container.read(monetizationProvider).hintNeedsAd, isFalse,
-          reason: 'a paid-for hint should not demand another video');
+      expect(
+        container.read(monetizationProvider).hintNeedsAd,
+        isFalse,
+        reason: 'a paid-for hint should not demand another video',
+      );
 
       // The next request spends it, and only once.
       expect(await money.consumeHintCredit(), isTrue);
@@ -193,8 +220,11 @@ void main() {
       final container = containerFor(const NoopBillingService());
       final money = container.read(monetizationProvider.notifier);
 
-      expect(await money.consumeHintCredit(), isTrue,
-          reason: 'closing the app pocketed a hint the player paid for');
+      expect(
+        await money.consumeHintCredit(),
+        isTrue,
+        reason: 'closing the app pocketed a hint the player paid for',
+      );
     });
   });
 }

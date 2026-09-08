@@ -60,6 +60,113 @@ void main() {
     });
   });
 
+  group('time and points merge like every other axis', () {
+    const cleared = LevelProgress(
+      levelId: 4,
+      levelSetVersion: 1,
+      stars: 3,
+      bestMoves: 9,
+      bestTimeSeconds: 120,
+      bestPoints: 1500,
+    );
+
+    test('a slower replay never overwrites a faster time', () {
+      final merged = cleared.mergedWith(
+        stars: 3,
+        moves: 9,
+        timeSeconds: 400,
+        points: 900,
+      );
+      expect(merged.bestTimeSeconds, 120);
+      expect(merged.bestPoints, 1500);
+    });
+
+    test('a faster replay wins', () {
+      final merged = cleared.mergedWith(
+        stars: 3,
+        moves: 9,
+        timeSeconds: 60,
+        points: 1800,
+      );
+      expect(merged.bestTimeSeconds, 60);
+      expect(merged.bestPoints, 1800);
+    });
+
+    test('an UNKNOWN time is not the fastest time', () {
+      // Zero means "cleared before the clock shipped", not "solved instantly".
+      // Treating it as a number would hand every pre-clock level a 0:00
+      // personal best that nothing could ever beat.
+      final merged = cleared.mergedWith(stars: 3, moves: 9);
+      expect(merged.bestTimeSeconds, 120);
+    });
+
+    test('a first real time replaces an unknown one', () {
+      const preClock = LevelProgress(
+        levelId: 4,
+        levelSetVersion: 1,
+        stars: 3,
+        bestMoves: 9,
+      );
+      expect(preClock.hasTime, isFalse);
+
+      final merged = preClock.mergedWith(
+        stars: 3,
+        moves: 9,
+        timeSeconds: 200,
+        points: 700,
+      );
+      expect(merged.bestTimeSeconds, 200);
+      expect(merged.hasTime, isTrue);
+    });
+
+    test('is order-independent on both new axes', () {
+      final a = cleared
+          .mergedWith(stars: 3, moves: 9, timeSeconds: 300, points: 400)
+          .mergedWith(stars: 3, moves: 9, timeSeconds: 90, points: 2000);
+      final b = cleared
+          .mergedWith(stars: 3, moves: 9, timeSeconds: 90, points: 2000)
+          .mergedWith(stars: 3, moves: 9, timeSeconds: 300, points: 400);
+
+      expect(a.bestTimeSeconds, b.bestTimeSeconds);
+      expect(a.bestPoints, b.bestPoints);
+    });
+  });
+
+  group('rows written before the clock shipped still load', () {
+    test('a payload with no time or points is not a wipe', () {
+      // The upgrade path. Every player who already has progress has rows in
+      // the old shape, and a failed parse here is a deleted campaign.
+      final restored = LevelProgress.fromJson(const {
+        'id': 12,
+        'v': 1,
+        's': 3,
+        'm': 8,
+      });
+
+      expect(restored.levelId, 12);
+      expect(restored.stars, 3);
+      expect(restored.bestMoves, 8);
+      expect(restored.bestTimeSeconds, 0);
+      expect(restored.hasTime, isFalse);
+    });
+
+    test('a new payload round-trips', () {
+      const row = LevelProgress(
+        levelId: 12,
+        levelSetVersion: 2,
+        stars: 2,
+        bestMoves: 14,
+        bestTimeSeconds: 91,
+        bestPoints: 1234,
+      );
+      final back = LevelProgress.fromJson(row.toJson());
+
+      expect(back.bestTimeSeconds, 91);
+      expect(back.bestPoints, 1234);
+      expect(back.levelSetVersion, 2);
+    });
+  });
+
   group('ProgressController', () {
     late ProviderContainer container;
 
@@ -69,11 +176,73 @@ void main() {
     ProgressController controller() =>
         container.read(progressProvider.notifier);
 
+    test('a completion reports the clock and what it scored', () {
+      final level = levelWith(id: 1, minMoves: 10);
+      final result = controller().record(
+        level: level,
+        levelSetVersion: 1,
+        movesUsed: 10,
+        elapsedSeconds: level.parSeconds,
+      );
+
+      expect(result.elapsedSeconds, level.parSeconds);
+      expect(result.parSeconds, level.parSeconds);
+      expect(result.isUnderPar, isTrue);
+      expect(result.points, greaterThan(0));
+      expect(
+        result.isNewFastest,
+        isFalse,
+        reason: 'a first clear has nothing to beat',
+      );
+      expect(result.previousFastest, isNull);
+    });
+
+    test('a faster replay is reported as a personal best time', () {
+      final level = levelWith(id: 1, minMoves: 10);
+      controller().record(
+        level: level,
+        levelSetVersion: 1,
+        movesUsed: 10,
+        elapsedSeconds: 200,
+      );
+
+      final result = controller().record(
+        level: level,
+        levelSetVersion: 1,
+        movesUsed: 10,
+        elapsedSeconds: 120,
+      );
+
+      expect(result.isNewFastest, isTrue);
+      expect(result.previousFastest, 200);
+      expect(controller().forLevel(1)!.bestTimeSeconds, 120);
+    });
+
+    test('a slower replay keeps the faster time on record', () {
+      final level = levelWith(id: 1, minMoves: 10);
+      controller().record(
+        level: level,
+        levelSetVersion: 1,
+        movesUsed: 10,
+        elapsedSeconds: 120,
+      );
+      final result = controller().record(
+        level: level,
+        levelSetVersion: 1,
+        movesUsed: 10,
+        elapsedSeconds: 400,
+      );
+
+      expect(result.isNewFastest, isFalse);
+      expect(controller().forLevel(1)!.bestTimeSeconds, 120);
+    });
+
     test('records a first clear with no previous best', () {
       final result = controller().record(
         level: levelWith(id: 1, minMoves: 5),
         levelSetVersion: 1,
         movesUsed: 5,
+        elapsedSeconds: 60,
       );
 
       expect(result.stars, 3);
@@ -83,12 +252,18 @@ void main() {
 
     test('detects a personal best on a later run', () {
       final level = levelWith(id: 1, minMoves: 5);
-      controller().record(level: level, levelSetVersion: 1, movesUsed: 9);
+      controller().record(
+        level: level,
+        levelSetVersion: 1,
+        movesUsed: 9,
+        elapsedSeconds: 60,
+      );
 
       final result = controller().record(
         level: level,
         levelSetVersion: 1,
         movesUsed: 7,
+        elapsedSeconds: 60,
       );
 
       expect(result.isNewBest, isTrue);
@@ -97,11 +272,17 @@ void main() {
 
     test('an equal run is not a new best', () {
       final level = levelWith(id: 1, minMoves: 5);
-      controller().record(level: level, levelSetVersion: 1, movesUsed: 7);
+      controller().record(
+        level: level,
+        levelSetVersion: 1,
+        movesUsed: 7,
+        elapsedSeconds: 60,
+      );
       final result = controller().record(
         level: level,
         levelSetVersion: 1,
         movesUsed: 7,
+        elapsedSeconds: 60,
       );
       expect(result.isNewBest, isFalse);
     });
@@ -113,6 +294,7 @@ void main() {
         level: levelWith(id: 3, minMoves: 5),
         levelSetVersion: 7,
         movesUsed: 6,
+        elapsedSeconds: 60,
       );
       expect(controller().forLevel(3)!.levelSetVersion, 7);
     });
@@ -125,6 +307,7 @@ void main() {
         level: levelWith(id: 1, minMoves: 5),
         levelSetVersion: 1,
         movesUsed: 5,
+        elapsedSeconds: 60,
       );
 
       expect(controller().isUnlocked(2), isTrue);
@@ -138,6 +321,7 @@ void main() {
           level: levelWith(id: id, minMoves: 5),
           levelSetVersion: 1,
           movesUsed: 6,
+          elapsedSeconds: 60,
         );
       }
       expect(controller().clearedIn(16, 30), 3);
