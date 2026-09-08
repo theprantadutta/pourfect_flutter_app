@@ -257,6 +257,7 @@ class GameController extends Notifier<GameState?> {
   void reportAbandon(AbandonReason reason) {
     final current = state;
     if (current == null || current.isWon || _terminalLogged) return;
+
     if (current.movesUsed == 0 && reason == AbandonReason.backgrounded) {
       // Opened and immediately backgrounded with no move made. That is a
       // session event, not a level abandonment, and counting it would smear
@@ -264,6 +265,24 @@ class GameController extends Notifier<GameState?> {
       return;
     }
     _logAbandon(current, reason);
+  }
+
+  /// The player came back to a level they had backgrounded.
+  ///
+  /// Backgrounding logs an abandonment and latches the terminal flag, which is
+  /// right up to the moment they return and finish the board: the flag then
+  /// suppressed `level_complete` for the rest of that run, so a level that WAS
+  /// completed produced no completion event at all. The per-level funnel
+  /// exists to find levels that lose players, and silently dropping the
+  /// successes makes every backgrounded level look worse than it is.
+  ///
+  /// Clearing the latch means such a run reports both an abandon and a
+  /// complete. That is the truthful record of what happened — they did leave,
+  /// and they did come back — and it is far better than losing half of it.
+  void reportResumed() {
+    final current = state;
+    if (current == null || current.isWon) return;
+    _terminalLogged = false;
   }
 
   void _logAbandon(GameState state, AbandonReason reason) {

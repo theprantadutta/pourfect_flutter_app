@@ -201,8 +201,10 @@ class PlayBillingService implements BillingService {
 
   void _complete(PurchaseOutcome outcome) {
     final pending = _pending;
-    if (pending != null && !pending.isCompleted) pending.complete(outcome);
+    if (pending == null) return;
+
     _pending = null;
+    if (!pending.isCompleted) pending.complete(outcome);
   }
 
   @override
@@ -213,27 +215,51 @@ class PlayBillingService implements BillingService {
     final product = _product;
     if (product == null) return PurchaseOutcome.unavailable;
 
+    // One purchase flow at a time. A second tap while the store sheet is open
+    // would otherwise replace the completer the first call is waiting on, and
+    // that first caller would hang until its timeout. Reported as cancelled
+    // because nothing was charged for the second tap — the first flow is still
+    // running and will report the real outcome.
+    if (_pending != null) return PurchaseOutcome.cancelled;
+
+    // Held LOCALLY, not read back from the field.
+    //
+    // The purchase stream can deliver the result DURING the await below —
+    // `_complete` then clears `_pending`, and the old code's `_pending!`
+    // threw on null, was caught, and returned `failed` for a purchase that had
+    // actually succeeded. The player was charged, the entitlement was granted,
+    // and the app told them it did not work.
+    final pending = Completer<PurchaseOutcome>();
+    _pending = pending;
+
     try {
       final response = await _iap.queryProductDetails({IapIds.removeAds});
       final details = response.productDetails.firstWhere(
         (d) => d.id == IapIds.removeAds,
       );
 
-      _pending = Completer<PurchaseOutcome>();
       await _iap.buyNonConsumable(
         purchaseParam: PurchaseParam(productDetails: details),
       );
 
       // The store UI can sit open indefinitely, but a purchase that never
       // resolves must not leave the caller awaiting forever.
-      return await _pending!.future.timeout(
+      return await pending.future.timeout(
         const Duration(minutes: 5),
         onTimeout: () => PurchaseOutcome.failed,
       );
     } catch (error) {
       debugPrint('[iap] buy failed: $error');
-      _pending = null;
+
+      // If the stream already resolved this attempt, that answer is the true
+      // one — the entitlement may well have been granted. Only report a
+      // failure for an attempt that genuinely never completed.
+      if (pending.isCompleted) return pending.future;
+
       return PurchaseOutcome.failed;
+    } finally {
+      // Only clear the field if it still refers to THIS attempt.
+      if (identical(_pending, pending)) _pending = null;
     }
   }
 

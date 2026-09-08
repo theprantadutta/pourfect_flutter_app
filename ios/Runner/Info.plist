@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- AdMob APP id for iOS. The SDK reads this at initialisation and
+	     FAILS NATIVELY without it — a Dart try/catch around initialize()
+	     cannot recover from that, so ads simply never work on iOS.
+	     Note the TILDE: app ids use '~', ad unit ids use '/'.
+	     Source: generated/ad_config.md -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-9242904787767394~8772809792</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

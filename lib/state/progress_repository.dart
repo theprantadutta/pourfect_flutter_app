@@ -119,15 +119,71 @@ class CompletionResult {
 }
 
 class ProgressController extends Notifier<Map<int, LevelProgress>> {
+  /// Completes once the stored progress has been read and merged in.
+  late final Future<void> _restored;
+
+  /// Serialises persistence.
+  ///
+  /// Saves were fire-and-forget, so two completions in quick succession raced
+  /// each other to the same key and the LATER write could land first — leaving
+  /// disk holding the earlier, smaller map. Chaining them keeps writes in the
+  /// order the player made them without making the win sequence wait.
+  Future<void> _writes = Future<void>.value();
+
   @override
   Map<int, LevelProgress> build() {
-    _restore();
+    _restored = _restore();
     return const {};
   }
 
+  /// Folds stored progress into whatever is already in memory.
+  ///
+  /// MERGES, never replaces. This provider is built lazily and the load is
+  /// asynchronous, so a level can be completed before the stored snapshot
+  /// arrives — and assigning `state = loaded` then deleted that completion
+  /// outright, after which the next save persisted the loss. Reproduced in the
+  /// audit: level 2 vanished when the level-1-only snapshot landed late.
+  ///
+  /// The union is monotonic per level, the same rule the server uses, so it
+  /// cannot matter which side arrived first.
   Future<void> _restore() async {
     final loaded = await ref.read(progressRepositoryProvider).load();
-    if (loaded.isNotEmpty) state = loaded;
+    if (loaded.isEmpty) return;
+
+    final merged = <int, LevelProgress>{...loaded};
+    for (final entry in state.entries) {
+      final stored = merged[entry.key];
+      merged[entry.key] = stored == null
+          ? entry.value
+          : stored.mergedWith(
+              stars: entry.value.stars,
+              moves: entry.value.bestMoves,
+            );
+    }
+
+    state = merged;
+
+    // Anything recorded before the load arrived exists only in memory until
+    // this lands, so the merged view is written back rather than assumed.
+    if (merged.length != loaded.length) _enqueueSave();
+  }
+
+  /// Queues a write behind any already in flight.
+  ///
+  /// The repository is resolved NOW, not inside the queued callback. A queued
+  /// write can run after the provider is disposed, and `ref.read` at that point
+  /// throws — the save is the last thing that should fail when a screen goes
+  /// away mid-write.
+  void _enqueueSave() {
+    final snapshot = state;
+    final repository = ref.read(progressRepositoryProvider);
+
+    // A failed write must not poison the chain and block every later save.
+    _writes = _writes
+        .then((_) => repository.save(snapshot))
+        .catchError((Object error) {
+          debugPrint('[progress] save failed: $error');
+        });
   }
 
   LevelProgress? forLevel(int id) => state[id];
@@ -181,8 +237,9 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
         );
 
     state = {...state, level.id: merged};
-    // Fire-and-forget: a slow disk write must never delay the win sequence.
-    ref.read(progressRepositoryProvider).save(state);
+    // Still not awaited — a slow disk write must never delay the win sequence
+    // — but queued, so writes cannot land out of order.
+    _enqueueSave();
 
     return CompletionResult(
       stars: stars,
@@ -193,8 +250,13 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
 
   /// Erases everything. Only ever reached through a confirm dialog.
   Future<void> resetAll() async {
+    // Waits for the restore first. Without it, a load still in flight would
+    // merge the old progress back in immediately after the wipe.
+    await _restored;
+
     state = const {};
-    await ref.read(progressRepositoryProvider).save(state);
+    _enqueueSave();
+    await _writes;
   }
 
   /// Test seam.

@@ -76,6 +76,17 @@ class _GameScreenState extends ConsumerState<GameScreen>
             .reportAbandon(AbandonReason.backgrounded);
         ref.read(analyticsServiceProvider).flush();
       case AppLifecycleState.resumed:
+        // Coming back un-latches the terminal event, so finishing this board
+        // still reports a completion. Without it, backgrounding permanently
+        // suppressed level_complete for the rest of the run and the funnel
+        // lost every success that had been interrupted.
+        ref.read(gameControllerProvider.notifier).reportResumed();
+
+        // A failed initial ad load used to last the whole session. Somebody
+        // who launches offline and reconnects should not be stuck without
+        // interstitials until they restart the app.
+        ref.read(adServiceProvider).preload();
+
       case AppLifecycleState.inactive:
         break;
     }
@@ -245,8 +256,21 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final levelId = ref.read(gameControllerProvider)?.level.id ?? 0;
     final money = ref.read(monetizationProvider.notifier);
 
-    var wasRewarded = false;
-    if (!await money.consumeFreeHint()) {
+    // What the player spent to get here, so it can be given back if the
+    // solver cannot deliver. Charging happens before the solve — the ad has to
+    // play before the work, or the wait feels like a punishment — so the
+    // refund is what keeps that honest.
+    var spentFreeHint = false;
+    var spentCredit = false;
+
+    // A credit is a hint already paid for by a video that produced nothing.
+    // It is spent before anything else, so a player never pays twice for the
+    // same hint.
+    if (await money.consumeHintCredit()) {
+      spentCredit = true;
+    } else if (await money.consumeFreeHint()) {
+      spentFreeHint = true;
+    } else {
       if (!mounted) return;
       if (!await _confirmWatchAd()) return;
       if (!mounted) return;
@@ -265,17 +289,31 @@ class _GameScreenState extends ConsumerState<GameScreen>
         });
         return;
       }
-      wasRewarded = true;
+
+      // Banked BEFORE the solve, then spent. If the app dies between the two,
+      // the credit survives and the next request honours it.
+      await money.grantHintCredit();
+      await money.consumeHintCredit();
+      spentCredit = true;
     }
 
+    final wasRewarded = spentCredit;
     final outcome = await hints.request(wasRewarded: wasRewarded);
     if (!mounted) return;
 
+    // Anything other than a delivered hint means the player paid for nothing.
+    Future<void> refund() async {
+      if (spentFreeHint) await money.refundFreeHint();
+      if (spentCredit) await money.grantHintCredit();
+    }
+
     switch (outcome) {
       case HintOutcome.unavailable:
+        await refund();
+        if (!mounted) return;
         _toast(
           wasRewarded
-              ? 'No hint for this position — your reward was not used.'
+              ? 'No hint for this position — your video is saved for the next one.'
               : 'No hint available for this position.',
         );
 
@@ -295,7 +333,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
       case HintOutcome.stale:
       case HintOutcome.cancelled:
       case HintOutcome.notApplicable:
-        break;
+        // The board moved on, or the player cancelled. Either way nothing was
+        // delivered, so nothing stays spent.
+        await refund();
     }
   }
 

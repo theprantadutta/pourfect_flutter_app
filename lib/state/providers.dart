@@ -122,9 +122,14 @@ final settingsProvider = NotifierProvider<SettingsController, Settings>(
 /// Overridden in tests with `RecordingAnalyticsService`, and in a future
 /// privacy setting with `NoopAnalyticsService` — which is the entire point of
 /// the indirection.
-final analyticsServiceProvider = Provider<AnalyticsService>(
-  (ref) => FirebaseAnalyticsService(debugLog: kDebugMode),
-);
+final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
+  // Noop when Firebase never came up. Constructing the real one reaches for
+  // FirebaseAnalytics.instance, which throws without a default app — and it
+  // does so outside the try that caught the initialisation failure, so the
+  // app would survive startup and then fail on its first gameplay event.
+  if (!firebaseReady) return const NoopAnalyticsService();
+  return FirebaseAnalyticsService(debugLog: kDebugMode);
+});
 
 final hapticsServiceProvider = Provider<HapticsService>(
   (ref) => PlatformHapticsService(

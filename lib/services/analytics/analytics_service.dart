@@ -335,6 +335,17 @@ abstract interface class AnalyticsService {
 }
 
 /// Drops everything. Used in tests and wherever analytics is disabled.
+/// Whether `Firebase.initializeApp` actually succeeded.
+///
+/// Catching the initialisation failure is only half a fallback: constructing
+/// `FirebaseAnalyticsService` touches `FirebaseAnalytics.instance`, which
+/// throws when there is no default app — OUTSIDE the try that caught the
+/// original failure. So the app survived startup and then died on its first
+/// gameplay event instead.
+///
+/// Set once, in main(), and read when choosing an implementation.
+bool firebaseReady = false;
+
 final class NoopAnalyticsService implements AnalyticsService {
   const NoopAnalyticsService();
 

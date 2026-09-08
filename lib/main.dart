@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'firebase_options.dart';
+import 'services/analytics/analytics_service.dart';
 import 'services/licenses.dart';
 import 'services/perf/frame_watch.dart';
 
@@ -22,6 +23,7 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    firebaseReady = true;
   } catch (error, stack) {
     developer.log(
       'Firebase init failed; continuing offline',

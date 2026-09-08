@@ -34,36 +34,54 @@ const int kFreeHints = 3;
 class MonetizationState {
   final bool adsRemoved;
   final int freeHintsUsed;
+
+  /// Hints that are PAID FOR but not yet delivered.
+  ///
+  /// A rewarded video is watched before the solver is asked, so the solver can
+  /// still come back empty — and the player has already spent their attention.
+  /// The credit is what makes "your reward was not used" true instead of a
+  /// polite lie: the next request spends it rather than another video.
+  ///
+  /// Persisted, so closing the app does not quietly pocket it.
+  final int hintCredits;
+
   final InterstitialPolicy interstitials;
 
   const MonetizationState({
     required this.adsRemoved,
     required this.freeHintsUsed,
+    required this.hintCredits,
     required this.interstitials,
   });
 
   int get freeHintsRemaining =>
       (kFreeHints - freeHintsUsed).clamp(0, kFreeHints);
 
+  /// True when a paid-for hint is waiting to be delivered.
+  bool get hasHintCredit => hintCredits > 0;
+
   /// True when the next hint costs a rewarded video.
   ///
   /// Buying Remove Ads does NOT make hints free — it stops interruptions, and
   /// rewarded video stays an opt-in the player can still choose.
-  bool get hintNeedsAd => freeHintsRemaining == 0;
+  bool get hintNeedsAd => freeHintsRemaining == 0 && !hasHintCredit;
 
   MonetizationState copyWith({
     bool? adsRemoved,
     int? freeHintsUsed,
+    int? hintCredits,
     InterstitialPolicy? interstitials,
   }) => MonetizationState(
     adsRemoved: adsRemoved ?? this.adsRemoved,
     freeHintsUsed: freeHintsUsed ?? this.freeHintsUsed,
+    hintCredits: hintCredits ?? this.hintCredits,
     interstitials: interstitials ?? this.interstitials,
   );
 }
 
 class MonetizationController extends Notifier<MonetizationState> {
   static const _hintsKey = 'pourfect.hints.used';
+  static const _creditsKey = 'pourfect.hints.credits';
 
   /// Completes once the persisted hint count has been read.
   ///
@@ -94,6 +112,7 @@ class MonetizationController extends Notifier<MonetizationState> {
     return MonetizationState(
       adsRemoved: billing.adsRemoved,
       freeHintsUsed: 0,
+      hintCredits: 0,
       interstitials: const InterstitialPolicy(),
     );
   }
@@ -109,6 +128,10 @@ class MonetizationController extends Notifier<MonetizationState> {
       // increases the count, so the larger number is always the true one.
       state = state.copyWith(
         freeHintsUsed: math.max(state.freeHintsUsed, stored),
+        // Credits move both ways, so the same trick does not apply — but the
+        // restore only runs before anything can spend one, and a credit
+        // granted meanwhile is additive.
+        hintCredits: state.hintCredits + (prefs.getInt(_creditsKey) ?? 0),
       );
     } catch (_) {}
   }
@@ -185,6 +208,42 @@ class MonetizationController extends Notifier<MonetizationState> {
     return true;
   }
 
+  /// Hands back a free hint that was spent on a hint never delivered.
+  ///
+  /// Charging before the solver answers is what makes this necessary: the
+  /// alternative is silently taking one of three free hints for nothing, which
+  /// a player notices and cannot dispute.
+  Future<void> refundFreeHint() async {
+    if (state.freeHintsUsed == 0) return;
+    final used = state.freeHintsUsed - 1;
+    state = state.copyWith(freeHintsUsed: used);
+    await _persistInt(_hintsKey, used);
+  }
+
+  /// Records a hint that has been paid for but not yet delivered.
+  Future<void> grantHintCredit() async {
+    final credits = state.hintCredits + 1;
+    state = state.copyWith(hintCredits: credits);
+    await _persistInt(_creditsKey, credits);
+  }
+
+  /// Spends a waiting credit, if there is one.
+  Future<bool> consumeHintCredit() async {
+    await _restored;
+    if (state.hintCredits == 0) return false;
+    final credits = state.hintCredits - 1;
+    state = state.copyWith(hintCredits: credits);
+    await _persistInt(_creditsKey, credits);
+    return true;
+  }
+
+  Future<void> _persistInt(String key, int value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(key, value);
+    } catch (_) {}
+  }
+
   /// Offers a rewarded video for [placement].
   ///
   /// Returns whether the player EARNED it. The caller then performs the action
@@ -237,8 +296,12 @@ class MonetizationController extends Notifier<MonetizationState> {
   }
 
   /// Test seam.
-  void debugSet({bool? adsRemoved, int? freeHintsUsed}) => state = state
-      .copyWith(adsRemoved: adsRemoved, freeHintsUsed: freeHintsUsed);
+  void debugSet({bool? adsRemoved, int? freeHintsUsed, int? hintCredits}) =>
+      state = state.copyWith(
+        adsRemoved: adsRemoved,
+        freeHintsUsed: freeHintsUsed,
+        hintCredits: hintCredits,
+      );
 }
 
 final monetizationProvider =
