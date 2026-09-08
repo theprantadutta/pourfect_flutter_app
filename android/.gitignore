@@ -15,3 +15,6 @@ key.properties
 
 # Gradle build output.
 /build/
+
+# Kotlin compiler session artifacts.
+.kotlin/

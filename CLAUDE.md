@@ -558,11 +558,12 @@ control of those means somebody else can sign an update to this app.
 
 ## Release signing
 
-The upload keystore lives **only** in `C:ndroid-keys\pourfect\` — never in
+The upload keystore lives **only** in `C:\android-keys\pourfect\` — never in
 this repository. `android/key.properties` is gitignored and holds an absolute
 `storeFile` pointing there, which is the same arrangement Snake Classic uses.
 
-    C:ndroid-keys\pourfect      upload-keystore.jks        the key itself
+    C:\android-keys\pourfect\
+      upload-keystore.jks        the key itself
       key.properties            a copy, so the backup restores on its own
       keystore-credentials.txt  passwords, alias, DN, creation date
       upload_certificate.pem    the public certificate
@@ -585,7 +586,7 @@ The SHA-256 must match `upload_certificate.pem`. Confirmed once already:
 **THIS KEY IS THE APP'S IDENTITY FOREVER.** Play accepts updates signed by it
 and nothing else, so losing it means the listing can never be updated again —
 a new listing, and every install starts from zero. Back up
-`C:ndroid-keys\` somewhere that is not this machine.
+`C:\android-keys\` somewhere that is not this machine.
 
 **`.env` is bundled into the APK as a Flutter asset.** Gitignoring it is repo
 hygiene, NOT secrecy — anyone can unzip a build and read it. Public
