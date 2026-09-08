@@ -40,6 +40,19 @@ enum TapOutcome {
 class GameController extends Notifier<GameState?> {
   int _pourSequence = 0;
 
+  /// Identifies the current spell of play, and is bumped whenever it ends.
+  ///
+  /// The controller OUTLIVES THE BOARD SCREEN — it is a global provider, so a
+  /// player who backs out mid-solve leaves a live controller holding the
+  /// position they walked away from. Without a way to say "that session is
+  /// over", a hint that finished solving afterwards was applied to that
+  /// position, reported success, and was charged for; the board it decorated
+  /// was never on screen again, because reopening a level starts a fresh one.
+  ///
+  /// A counter rather than a flag: an answer has to be matched against the
+  /// session it was asked in, not merely against "is anything running".
+  int _session = 0;
+
   /// Levels opened this session, so `is_retry` on `level_start` is honest.
   final Set<int> _seenLevels = {};
 
@@ -51,6 +64,21 @@ class GameController extends Notifier<GameState?> {
   @override
   GameState? build() => null;
 
+  /// The session a request should be answered into.
+  int get sessionId => _session;
+
+  /// Whether [session] is still the one being played.
+  bool isCurrentSession(int session) => session == _session;
+
+  /// Ends the current spell of play, so nothing in flight can still land.
+  ///
+  /// Called when the board screen goes away, by whichever route — the back
+  /// affordance, or plain disposal. Touches NOTHING but the counter on
+  /// purpose: disposal is exactly when reading `state` or `ref` can throw, and
+  /// a settlement path that throws while tidying up is worse than the bug it
+  /// was added to fix.
+  void endSession() => _session++;
+
   AnalyticsService get _analytics => ref.read(analyticsServiceProvider);
 
   HapticsService get _haptics => ref.read(hapticsServiceProvider);
@@ -59,6 +87,9 @@ class GameController extends Notifier<GameState?> {
   void startLevel(Level level, {required int levelSetVersion}) {
     final isRetry = !_seenLevels.add(level.id);
     _terminalLogged = false;
+    // A new board is a new session: an answer asked for on the previous one
+    // must not arrive and decorate this one.
+    _session++;
     state = GameState.fresh(
       level: level,
       levelSetVersion: levelSetVersion,
@@ -202,6 +233,7 @@ class GameController extends Notifier<GameState?> {
     }
 
     _terminalLogged = false;
+    _session++;
     state = GameState.fresh(
       level: current.level,
       levelSetVersion: current.levelSetVersion,

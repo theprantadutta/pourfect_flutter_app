@@ -50,16 +50,30 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   bool _started = false;
 
+  /// Held from initState so [dispose] never has to reach through `ref`.
+  ///
+  /// Reading a provider while the tree is being torn down is exactly when it
+  /// can throw, and the one thing dispose must do here — ending the gameplay
+  /// session — is the thing that must not be skipped.
+  late final GameController _game;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _game = ref.read(gameControllerProvider.notifier);
     _win = AnimationController(vsync: this)..addListener(_onWinTick);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    // THE BOARD IS GONE, SO THE SESSION IS OVER. Every route out of here ends
+    // in disposal — the back affordance, a system back, a parent rebuild — and
+    // this is the only place all of them pass through. Without it a solve
+    // still in flight lands on the position the player walked away from,
+    // reports success, and is charged for a hint nobody ever saw.
+    _game.endSession();
     _win.dispose();
     super.dispose();
   }
@@ -119,6 +133,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   void _exit() {
     _bankPlaytime();
+    // Disposal ends the session too, but not until the route animation
+    // finishes. Ending it here means a solve that lands during the transition
+    // is already known to be undeliverable.
+    _game.endSession();
     widget.onExit();
   }
 
@@ -307,6 +325,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final levelId = ref.read(gameControllerProvider)?.level.id ?? 0;
     final money = ref.read(monetizationProvider.notifier);
 
+    // The spell of play this request belongs to. Everything below is settled
+    // against it rather than against whether this widget is still alive: the
+    // player is owed something because of what they paid and what arrived, not
+    // because of which route happens to be on screen.
+    final session = _game.sessionId;
+
     // What the player spent to get here, so it can be given back if the
     // solver cannot deliver. Charging happens before the solve — the ad has to
     // play before the work, or the wait feels like a punishment — so the
@@ -331,11 +355,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
       // Android, but relying on that leaves the confirm dialog running and
       // gives no cover at all on a platform that reports lifecycle
       // differently.
-      final game = ref.read(gameControllerProvider.notifier);
-      game.pauseClock();
+      _game.pauseClock();
 
       if (!await _confirmWatchAd()) {
-        game.resumeClock();
+        _game.resumeClock();
         return;
       }
 
@@ -343,7 +366,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         RewardedPlacement.hint,
         levelId: levelId,
       );
-      game.resumeClock();
+      _game.resumeClock();
 
       if (outcome != RewardOutcome.earned) {
         // Nothing was spent, so there is nothing to settle. Only the toast
@@ -369,6 +392,20 @@ class _GameScreenState extends ConsumerState<GameScreen>
       // Banked before it is spent, so a crash in between leaves a credit
       // rather than a debt.
       await money.grantHintCredit();
+
+      // ...and if the board that asked for it is gone, banked is where it
+      // stays. Spending it here would buy a hint for a session that ended
+      // while the video played, which is a purchase with nothing to deliver
+      // it to. Left as a credit, the next hint they ask for is free — which is
+      // what "your video is saved for the next one" already promises
+      // elsewhere.
+      if (!_game.isCurrentSession(session)) {
+        if (mounted) {
+          _toast('Your video is saved for the next hint.');
+        }
+        return;
+      }
+
       await money.consumeHintCredit();
       spentCredit = true;
     }
@@ -393,7 +430,21 @@ class _GameScreenState extends ConsumerState<GameScreen>
       if (spentCredit) await money.grantHintCredit();
     }
 
+    // DELIVERY, not merely success, is what a hint is charged for.
+    //
+    // The session is re-checked HERE as well as inside the service, because
+    // this is where the money is decided and it must not depend on the service
+    // behaving. A solve that finishes after the player has left resolves
+    // perfectly well against the position they abandoned — same board, valid
+    // move, `resolved` — and the board carrying it is never shown again,
+    // because reopening a level starts a fresh one. Charging for that is
+    // charging for nothing.
+    final delivered = _game.isCurrentSession(session);
+
     switch (outcome) {
+      case HintOutcome.resolved when !delivered:
+        await refund();
+
       case HintOutcome.unavailable:
         await refund();
         if (!mounted) return;

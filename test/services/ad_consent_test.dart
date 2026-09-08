@@ -11,7 +11,6 @@
 // than where the request happens. Google's UMP integration requires the check
 // before the REQUEST; by the time an ad is on screen it is far too late.
 
-
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pourfect_flutter_app/services/ads/ad_service.dart';

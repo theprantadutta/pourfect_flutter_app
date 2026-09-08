@@ -44,6 +44,20 @@ class AdMobAdService implements AdService {
   /// Failed load attempts this session, per placement.
   final Map<String, int> _retries = {};
 
+  /// Which batch of requests is still wanted.
+  ///
+  /// A load is not instant and its callback is not cancellable. Withdrawing
+  /// consent cleared the cache, but a request already in flight completed
+  /// afterwards and cached its result — quietly undoing the discard that had
+  /// just been promised. The same shape refilled a DISPOSED service, which
+  /// then leaked the ad it was holding.
+  ///
+  /// So every load carries the generation it was issued in, and anything that
+  /// invalidates inventory bumps it. A callback from an older generation
+  /// disposes its ad instead of keeping it: the request cannot be recalled,
+  /// but its result can be thrown away.
+  int _generation = 0;
+
   static const _maxRetries = 3;
 
   @override
@@ -132,6 +146,11 @@ class AdMobAdService implements AdService {
       return;
     }
 
+    // Invalidated FIRST, before anything is disposed. A load that completes
+    // between these two lines must already be seen as stale, or it lands in a
+    // cache that has just been emptied.
+    _generation++;
+
     await _interstitial?.dispose();
     _interstitial = null;
     for (final ad in _rewarded.values) {
@@ -157,15 +176,22 @@ class AdMobAdService implements AdService {
   void _loadInterstitial() {
     if (_interstitial != null) return;
     if (!_mayRequestAds) return;
+
+    final generation = _generation;
     InterstitialAd.load(
       adUnitId: AdIds.interstitialLevelComplete,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
+          if (_isStale(generation)) {
+            ad.dispose();
+            return;
+          }
           _interstitial = ad;
           _retries.remove('interstitial');
         },
         onAdFailedToLoad: (error) {
+          if (_isStale(generation)) return;
           _interstitial = null;
           debugPrint('[ads] interstitial load failed: ${error.code}');
           _scheduleRetry(() => _loadInterstitial(), 'interstitial');
@@ -174,18 +200,33 @@ class AdMobAdService implements AdService {
     );
   }
 
+  /// Whether a callback belongs to a batch of requests we no longer want.
+  ///
+  /// Checks the generation AND current eligibility. The generation catches a
+  /// result that was superseded; the eligibility check catches the case where
+  /// the answer changed back and forth while a single load was in flight, and
+  /// covers disposal, which no generation bump alone should have to remember.
+  bool _isStale(int generation) => generation != _generation || !_mayRequestAds;
+
   void _loadRewarded(RewardedPlacement placement) {
     if (_rewarded[placement] != null) return;
     if (!_mayRequestAds) return;
+
+    final generation = _generation;
     RewardedAd.load(
       adUnitId: _unitFor(placement),
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
+          if (_isStale(generation)) {
+            ad.dispose();
+            return;
+          }
           _rewarded[placement] = ad;
           _retries.remove(placement.eventName);
         },
         onAdFailedToLoad: (error) {
+          if (_isStale(generation)) return;
           _rewarded.remove(placement);
           debugPrint(
             '[ads] rewarded ${placement.eventName} load failed: ${error.code}',
@@ -321,10 +362,16 @@ class AdMobAdService implements AdService {
       return;
     }
 
+    final generation = _generation;
+
     // 2s, 8s, 32s.
     final delay = Duration(seconds: 2 << (2 * (attempts - 1)));
     Future<void>.delayed(delay, () {
-      if (_disposed) return;
+      // A retry armed under one consent answer must not fire under another.
+      // The loader would refuse it anyway, but a timer that outlives its
+      // reason is worth cancelling where it is armed rather than relying on
+      // the far end.
+      if (_isStale(generation)) return;
       load();
     });
   }
@@ -332,6 +379,10 @@ class AdMobAdService implements AdService {
   @override
   Future<void> dispose() async {
     _disposed = true;
+    // Same reason as consent withdrawal: a load still in flight would
+    // otherwise complete into a service nobody is using and hold an ad object
+    // that nothing will ever dispose.
+    _generation++;
     await _interstitial?.dispose();
     _interstitial = null;
     for (final ad in _rewarded.values) {
