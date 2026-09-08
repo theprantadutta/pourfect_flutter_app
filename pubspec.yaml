@@ -108,6 +108,12 @@ flutter:
     # Directory, so the OFL text for each bundled face can be dropped in
     # without a pubspec change. See assets/fonts/ATTRIBUTION.md.
     - assets/licenses/
+    # Privacy policy, terms of use and refund policy, BUNDLED rather than
+    # linked. A hosted page is still required for the store listing, but the
+    # in-app copy cannot 404, cannot drift behind the installed version, and
+    # is readable with no network — which matters for a game that is otherwise
+    # fully playable offline.
+    - assets/legal/
 
   fonts:
     # Bundled, not fetched. `google_fonts` exists for runtime fetching, which we
