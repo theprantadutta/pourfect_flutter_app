@@ -21,9 +21,17 @@ import '../theme/typography.dart';
 import '../widgets/ball.dart';
 import '../widgets/pressable.dart';
 
-/// Where the store listing's privacy policy points. Play requires this to be
-/// reachable from inside the app as well as from the listing.
-const kPrivacyPolicyUrl = 'https://pourfect.pranta.dev/privacy';
+/// The hosted legal documents. Confirmed live, and the same host Snake
+/// Classic uses.
+///
+/// Play requires a reachable privacy policy URL on the listing AND from inside
+/// the app. The in-app acceptance screen reads the BUNDLED copies in
+/// `assets/legal/`, so these links are for the listing and for anybody who
+/// wants to read the current version outside the installed build.
+const kPrivacyPolicyUrl =
+    'https://legal.pranta.dev/privacy?projectName=pourfect';
+const kTermsUrl = 'https://legal.pranta.dev/terms?projectName=pourfect';
+const kRefundPolicyUrl = 'https://legal.pranta.dev/refund?projectName=pourfect';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   final VoidCallback onClose;

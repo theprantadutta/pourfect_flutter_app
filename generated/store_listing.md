@@ -138,14 +138,11 @@ Pour, sort, relax.
       carries materially more search volume. Swept across the listing, every
       in-app string, and the whole codebase (319 occurrences), so nothing can
       drift back.
-- [ ] **Privacy policy URL — CONFIRM THE DOMAIN.** `pourfect.pranta.dev/privacy`
-      is a placeholder **I invented**, not a URL anyone has confirmed exists.
-      Pick the real one and the swap is a single line: `kPrivacyPolicyUrl` in
-      `lib/ui/screens/settings_screen.dart`. The page itself is written and
-      ready to host at `generated/privacy_policy.html`.
-      It must be LIVE before the listing can be published — Play rejects a dead
-      link, and the same URL goes in the Play Console listing field, so it has
-      to match what Settings opens.
+- [x] **Privacy policy URL.** Confirmed live and verified 200:
+      `https://legal.pranta.dev/privacy?projectName=pourfect`
+      Terms and refund policy are on the same host with `?projectName=pourfect`.
+      Paste the privacy URL into the Play Console listing field — it must match
+      what Settings opens, which it now does.
 - [ ] **Screenshots** — the single highest-leverage asset on the page, more than
       any of this text. Lead with the board mid-pour, then the win moment, then
       the level map. Do NOT lead with a menu.

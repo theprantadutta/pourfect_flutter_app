@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'state/legal_acceptance.dart';
 import 'state/providers.dart';
 import 'ui/screens/game_screen.dart';
+import 'ui/screens/legal_consent_screen.dart';
 import 'ui/screens/level_select_screen.dart';
 import 'ui/screens/settings_screen.dart';
 import 'ui/theme/tokens.dart';
@@ -94,9 +96,13 @@ class _Shell extends ConsumerStatefulWidget {
 }
 
 class _ShellState extends ConsumerState<_Shell> {
+  /// Null until the launch count and stored acceptance have been read.
+  bool? _showLegalGate;
+
   @override
   void initState() {
     super.initState();
+    _resolveLegalGate();
     // Generating the sound bank takes a few milliseconds and opening the mixer
     // can take longer, so it happens off the first frame. A device with no
     // usable audio still reaches the level map.
@@ -106,6 +112,24 @@ class _ShellState extends ConsumerState<_Shell> {
       // startup: a device with no Play Services still has to reach level 1.
       ref.read(adServiceProvider).init();
       ref.read(billingServiceProvider).init();
+    });
+  }
+
+  /// Decides whether the acceptance gate stands in front of the level map.
+  ///
+  /// Deliberately does NOT block the first frame — the level map renders while
+  /// this resolves, so a prefs read cannot delay startup. The gate replaces
+  /// the map a moment later if it is needed, and a brand-new player never
+  /// sees it at all on their first launch.
+  Future<void> _resolveLegalGate() async {
+    final launchCount = await LegalAcceptance.recordLaunch();
+    final accepted = await LegalAcceptance.isCurrentVersionAccepted();
+    if (!mounted) return;
+    setState(() {
+      _showLegalGate = LegalAcceptance.shouldShowGate(
+        launchCount: launchCount,
+        accepted: accepted,
+      );
     });
   }
 
@@ -134,7 +158,14 @@ class _ShellState extends ConsumerState<_Shell> {
 
   @override
   Widget build(BuildContext context) =>
-      LevelSelectScreen(onOpenLevel: _openLevel, onOpenSettings: _openSettings);
+      _showLegalGate == true
+      ? LegalConsentScreen(
+          onAccepted: () => setState(() => _showLegalGate = false),
+        )
+      : LevelSelectScreen(
+          onOpenLevel: _openLevel,
+          onOpenSettings: _openSettings,
+        );
 }
 
 /// System chrome for a full-bleed dark board.
