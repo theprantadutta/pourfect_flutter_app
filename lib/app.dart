@@ -7,9 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'state/legal_acceptance.dart';
 import 'state/providers.dart';
+import 'state/daily_controller.dart';
 import 'state/sync_controller.dart';
+import 'ui/screens/daily_challenge_screen.dart';
 import 'ui/screens/game_screen.dart';
 import 'ui/screens/legal_consent_screen.dart';
+import 'ui/screens/leaderboard_screen.dart';
 import 'ui/screens/level_select_screen.dart';
 import 'ui/screens/settings_screen.dart';
 import 'ui/screens/statistics_screen.dart';
@@ -121,6 +124,11 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // player on a train opens the game and plays; they do not wait for a
       // handshake with a server they do not know exists.
       ref.read(syncControllerProvider.notifier).syncNow();
+
+      // And today's board, so the home card knows whether it has been played
+      // before the player looks at it. Off the first frame like everything
+      // else: the level map does not wait on it.
+      ref.read(dailyProvider.notifier).ensureLoaded();
     });
   }
 
@@ -133,6 +141,9 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.read(syncControllerProvider.notifier).syncNow();
+      // Midnight UTC may have passed while the app was in a pocket, in which
+      // case yesterday's board is the wrong one to be offering.
+      ref.read(dailyProvider.notifier).refresh();
     }
   }
 
@@ -173,6 +184,27 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     );
   }
 
+  void _openDaily() {
+    Navigator.of(context).push(
+      PourfectPageRoute<void>(
+        settings: const RouteSettings(name: '/daily'),
+        builder: (context) => DailyChallengeScreen(
+          onExit: () => Navigator.of(context).maybePop(),
+        ),
+      ),
+    );
+  }
+
+  void _openLeaderboard() {
+    Navigator.of(context).push(
+      PourfectPageRoute<void>(
+        settings: const RouteSettings(name: '/leaderboard'),
+        builder: (context) =>
+            LeaderboardScreen(onBack: () => Navigator.of(context).maybePop()),
+      ),
+    );
+  }
+
   void _openStatistics() {
     Navigator.of(context).push(
       PourfectPageRoute<void>(
@@ -202,6 +234,8 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
           onOpenLevel: _openLevel,
           onOpenSettings: _openSettings,
           onOpenStatistics: _openStatistics,
+          onOpenDaily: _openDaily,
+          onOpenLeaderboard: _openLeaderboard,
         );
 }
 

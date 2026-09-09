@@ -20,12 +20,14 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../state/daily_controller.dart';
 import '../../state/level_repository.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../transitions.dart';
+import '../widgets/daily_card.dart';
 import '../widgets/next_level_hero.dart';
 import '../widgets/pressable.dart';
 
@@ -49,11 +51,19 @@ class LevelSelectScreen extends ConsumerStatefulWidget {
   /// Opens the statistics screen.
   final VoidCallback onOpenStatistics;
 
+  /// Opens today's challenge.
+  final VoidCallback onOpenDaily;
+
+  /// Opens the leaderboards.
+  final VoidCallback onOpenLeaderboard;
+
   const LevelSelectScreen({
     super.key,
     required this.onOpenLevel,
     required this.onOpenSettings,
     required this.onOpenStatistics,
+    required this.onOpenDaily,
+    required this.onOpenLeaderboard,
   });
 
   @override
@@ -133,6 +143,7 @@ class _LevelSelectScreenState extends ConsumerState<LevelSelectScreen> {
     // draws the real next board.
     final levelSet = ref.watch(campaignProvider).asData?.value;
     final progress = ref.watch(progressProvider);
+    final daily = ref.watch(dailyProvider);
     final controller = ref.read(progressProvider.notifier);
     final current = controller.furthestUnlocked;
 
@@ -173,6 +184,27 @@ class _LevelSelectScreenState extends ConsumerState<LevelSelectScreen> {
                       earnedStars: progress[current]?.stars,
                       boldGlyphs: ref.watch(settingsProvider).boldSymbols,
                       onPlay: (origin) => widget.onOpenLevel(current, origin),
+                    ),
+                  ),
+
+                // One quiet row, not a second hero. A daily card competing
+                // with the Play button would put a first-time player back
+                // where the redesign found them: choosing between two things
+                // they do not understand yet.
+                //
+                // Absent entirely with no backend — a build with no server,
+                // or a first launch with no signal, gets the game it already
+                // had rather than a row that never works.
+                if (daily.isOff)
+                  const SliverToBoxAdapter(child: SizedBox.shrink())
+                else
+                  SliverToBoxAdapter(
+                    child: DailyCard(
+                      played: daily.challenge?.isPlayed,
+                      stars: daily.challenge?.yourAttempt?.stars,
+                      unavailable: daily.isUnavailable,
+                      onOpenDaily: widget.onOpenDaily,
+                      onOpenLeaderboard: widget.onOpenLeaderboard,
                     ),
                   ),
 
