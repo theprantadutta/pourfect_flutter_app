@@ -97,8 +97,8 @@ class AppEnv {
   ///
   /// A release URL that does not pass [releaseUrlProblem] is DISCARDED, and
   /// the build behaves as one with no backend at all. That is not defensive
-  /// tidiness: `.env.example` ships `PROD_API_BACKEND_URL=https://example.com`
-  /// and a real `.env` copied from it inherits the placeholder, so the
+  /// tidiness: `.env.example` ships a placeholder host and a real `.env`
+  /// copied from it inherits that placeholder, so the
   /// alternative is a signed release quietly sending every player's progress
   /// and Firebase token to a domain we do not own. Silence is the only safe
   /// failure here — the campaign does not need a server, and a leaderboard
@@ -145,6 +145,15 @@ class AppEnv {
 
     final host = uri.host.toLowerCase();
 
+    // A host that could not resolve, whatever it is.
+    //
+    // `Uri.tryParse` is lenient and happily returns a Uri whose host is
+    // `<your-api-host>`, angle brackets and all — so the most natural way to
+    // write a placeholder passed every rule below and shipped. The denylist
+    // cannot enumerate placeholders nobody has thought of yet; requiring the
+    // host to be shaped like a hostname rules out the whole class at once.
+    if (!_looksLikeHostname(host)) return 'not a hostname';
+
     const placeholders = {
       'example.com',
       'example.org',
@@ -168,6 +177,26 @@ class AppEnv {
     if (_isPrivateAddress(host)) return 'private network address';
 
     return null;
+  }
+
+  /// Letters, digits, dots and hyphens, in dot-separated labels — an IPv4
+  /// literal satisfies this too, and is caught further down by address rather
+  /// than by shape.
+  static bool _looksLikeHostname(String host) {
+    if (host.startsWith('.') || host.endsWith('.')) return false;
+
+    for (final label in host.split('.')) {
+      if (label.isEmpty) return false;
+      if (label.startsWith('-') || label.endsWith('-')) return false;
+      for (final unit in label.codeUnits) {
+        final isDigit = unit >= 0x30 && unit <= 0x39;
+        final isLower = unit >= 0x61 && unit <= 0x7a;
+        final isHyphen = unit == 0x2d;
+        if (!isDigit && !isLower && !isHyphen) return false;
+      }
+    }
+
+    return true;
   }
 
   static bool _isPrivateAddress(String host) {

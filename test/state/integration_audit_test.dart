@@ -144,6 +144,34 @@ void main() {
       expect(AppEnv.releaseUrlProblem('not a url'), isNotNull);
       expect(AppEnv.releaseUrlProblem('https://'), isNotNull);
     });
+
+    test('a fill-me-in host is refused even though it parses', () {
+      // Uri.tryParse is lenient enough to hand back a Uri whose host is
+      // `<your-api-host>`, brackets included, so the most natural way anybody
+      // writes a placeholder passed every other rule here and would have
+      // shipped. The denylist cannot enumerate placeholders nobody has
+      // thought of; requiring the host to be shaped like a hostname rules out
+      // the class.
+      expect(AppEnv.releaseUrlProblem('https://<your-api-host>'), isNotNull);
+      expect(AppEnv.releaseUrlProblem('https://TODO fill me in'), isNotNull);
+      expect(AppEnv.releaseUrlProblem('https://api_host.dev'), isNotNull);
+      expect(AppEnv.releaseUrlProblem('https://-leading-hyphen.dev'), isNotNull);
+      expect(AppEnv.releaseUrlProblem('https://double..dot.dev'), isNotNull);
+    });
+
+    test('the host the example file ships is refused', () {
+      // Whatever `.env.example` carries is what a hurried copy carries, so
+      // the two have to stay in step. `.example` is the reserved
+      // documentation TLD.
+      expect(
+        AppEnv.releaseUrlProblem('https://api.your-domain.example'),
+        isNotNull,
+      );
+    });
+
+    test('the real production host is still accepted', () {
+      expect(AppEnv.releaseUrlProblem('https://pourfect.pranta.dev'), isNull);
+    });
   });
 
   // ---- 3: an authoritative revocation, and only that ----------------------
