@@ -129,6 +129,15 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // before the player looks at it. Off the first frame like everything
       // else: the level map does not wait on it.
       ref.read(dailyProvider.notifier).ensureLoaded();
+
+      // Re-registers an ALREADY granted push token. Never asks: a prompt on
+      // launch is a measurable D1 killer, and the ask belongs at the one
+      // moment it means something — just after a daily is finished.
+      //
+      // Re-registering every session is what keeps the stored row pointing at
+      // a device that still exists; tokens rotate on reinstall, on restore,
+      // and whenever the OS decides.
+      ref.read(pushServiceProvider).registerIfPermitted();
     });
   }
 

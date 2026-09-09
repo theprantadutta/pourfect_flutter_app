@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/api/api_result.dart';
 import '../../services/api/daily_api.dart';
+import '../../services/api/push_service.dart';
 import '../../state/daily_controller.dart';
 import '../../state/game_controller.dart';
 import '../../state/hint_controller.dart';
@@ -47,11 +48,20 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
   bool _submitting = false;
   String? _submitError;
 
+  PushPermission? _pushPermission;
+  bool _reminderOn = false;
+
   @override
   void initState() {
     super.initState();
     _game = ref.read(gameControllerProvider.notifier);
     ref.read(dailyProvider.notifier).ensureLoaded();
+
+    // Read, never requested. Knowing the answer is what lets the offer appear
+    // only where it is worth making.
+    ref.read(pushServiceProvider).permission().then((permission) {
+      if (mounted) setState(() => _pushPermission = permission);
+    });
   }
 
   @override
@@ -181,6 +191,8 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
             error: _submitError,
             onDone: widget.onExit,
             onRetry: _submitError == null ? null : _submit,
+            onRemindMe: _canOfferReminder ? _enableReminder : null,
+            reminderOn: _reminderOn,
           )
         else
           BoardControls(
@@ -209,6 +221,23 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
     final challenge = ref.read(dailyProvider).challenge;
     if (challenge == null) return;
     _game.startLevel(challenge.asLevel, levelSetVersion: 0);
+  }
+
+  /// Whether offering the reminder is appropriate right now.
+  ///
+  /// Only after a board has actually been finished, and only if the OS has
+  /// never been asked. A second prompt is not available on iOS at all, and
+  /// nagging on Android earns an uninstall rather than a reminder.
+  bool get _canOfferReminder =>
+      _result != null && _pushPermission == PushPermission.notAsked;
+
+  Future<void> _enableReminder() async {
+    final on = await ref.read(pushServiceProvider).requestAndRegister();
+    if (!mounted) return;
+    setState(() {
+      _reminderOn = on;
+      _pushPermission = on ? PushPermission.granted : PushPermission.denied;
+    });
   }
 
   Future<void> _onHint() async {
@@ -292,11 +321,18 @@ class _Outcome extends StatelessWidget {
   final VoidCallback onDone;
   final VoidCallback? onRetry;
 
+  /// Null unless offering a reminder is appropriate — see the screen.
+  final VoidCallback? onRemindMe;
+
+  final bool reminderOn;
+
   const _Outcome({
     required this.result,
     required this.error,
     required this.onDone,
     required this.onRetry,
+    required this.onRemindMe,
+    required this.reminderOn,
   });
 
   @override
@@ -354,12 +390,30 @@ class _Outcome extends StatelessWidget {
               ],
             ),
           ],
+          if (reminderOn) ...[
+            SizedBox(height: tokens.space4),
+            Text(
+              'You will get one reminder tomorrow evening.',
+              style: bodyStyle(tokens)
+                  .copyWith(fontSize: 12.5, color: tokens.dimText),
+            ),
+          ] else if (onRemindMe != null) ...[
+            SizedBox(height: tokens.space4),
+            Pressable(
+              onPressed: onRemindMe,
+              child: Text(
+                'Remind me tomorrow',
+                style: actionStyle(tokens, color: tokens.accent),
+              ),
+            ),
+          ],
+
           SizedBox(height: tokens.space4),
           Pressable(
             onPressed: onDone,
             child: Text(
               'Done',
-              style: actionStyle(tokens, color: tokens.accent),
+              style: actionStyle(tokens, color: tokens.textMuted),
             ),
           ),
         ],

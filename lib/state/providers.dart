@@ -22,6 +22,7 @@ import '../services/audio/audio_service.dart';
 import '../services/audio/soloud_audio_service.dart';
 import '../services/api/api_client.dart';
 import '../services/api/auth_service.dart';
+import '../services/api/push_service.dart';
 import '../services/haptics/haptics_service.dart';
 import 'game_controller.dart';
 import 'game_state.dart';
@@ -199,6 +200,11 @@ final Provider<AuthService> authServiceProvider = Provider<AuthService>(
     client: () => ref.read(apiClientProvider),
     appVersion: () => ref.read(appVersionProvider),
   ),
+);
+
+/// Push registration, and the one moment it is appropriate to ask.
+final Provider<PushService> pushServiceProvider = Provider<PushService>(
+  (ref) => PushService(client: () => ref.read(apiClientProvider)),
 );
 
 /// The running app's version string, for the auth handshake.
