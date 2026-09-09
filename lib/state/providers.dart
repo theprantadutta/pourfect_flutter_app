@@ -20,6 +20,9 @@ import '../services/analytics/firebase_analytics_service.dart';
 import '../services/iap/billing_service.dart';
 import '../services/audio/audio_service.dart';
 import '../services/audio/soloud_audio_service.dart';
+import '../services/api/api_client.dart';
+import '../services/api/auth_service.dart';
+import '../services/api/push_service.dart';
 import '../services/haptics/haptics_service.dart';
 import 'game_controller.dart';
 import 'game_state.dart';
@@ -166,6 +169,50 @@ final billingServiceProvider = Provider<BillingService>((ref) {
   ref.onDispose(service.dispose);
   return service;
 });
+
+// ---- the backend -----------------------------------------------------------
+//
+// EVERY ONE OF THESE IS OPTIONAL. A build with no `POURFECT_API_BASE_URL` gets
+// a client that reports `notConfigured` to everything and never opens a
+// socket, and the game behaves exactly as it did before any of this existed.
+// That is not a debug convenience — it is how the offline guarantee is kept
+// honest, because the code path where there is no server is the one that runs
+// on every plane, every underground train and every install in a country we
+// have not deployed to.
+
+/// The HTTP client. One per app, so connections are reused.
+final Provider<ApiClient> apiClientProvider = Provider<ApiClient>((ref) {
+  final client = ApiClient(
+    // Resolved lazily, and it has to be: the auth service needs this client to
+    // exchange a token, and this client needs the auth service to supply one.
+    // Reading through `ref` at call time rather than at construction is what
+    // keeps that from being a cycle.
+    tokenProvider: ({bool forceRefresh = false}) =>
+        ref.read(authServiceProvider).bearerToken(forceRefresh: forceRefresh),
+  );
+  ref.onDispose(client.close);
+  return client;
+});
+
+/// The session, and how one is obtained.
+final Provider<AuthService> authServiceProvider = Provider<AuthService>(
+  (ref) => AuthService(
+    client: () => ref.read(apiClientProvider),
+    appVersion: () => ref.read(appVersionProvider),
+  ),
+);
+
+/// Push registration, and the one moment it is appropriate to ask.
+final Provider<PushService> pushServiceProvider = Provider<PushService>(
+  (ref) => PushService(client: () => ref.read(apiClientProvider)),
+);
+
+/// The running app's version string, for the auth handshake.
+///
+/// Set once at startup. A `Provider` rather than a `FutureProvider` because
+/// auth must never wait on a plugin call to learn something this unimportant —
+/// an empty version is a fine thing to send.
+final appVersionProvider = Provider<String>((ref) => '');
 
 final levelRepositoryProvider = Provider<LevelRepository>(
   (ref) => LevelRepository(),

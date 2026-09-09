@@ -45,6 +45,33 @@ class LevelProgress {
   /// Highest score earned on this level. Also 0 when unknown.
   final int bestPoints;
 
+  /// The moves and seconds of the ATTEMPT that earned [bestPoints].
+  ///
+  /// Kept because the other bests are independent and pairing them invents a
+  /// run that never happened. A level cleared once in 5 moves over 110 seconds
+  /// and again in 10 moves over 20 has a best-moves of 5 and a best-time of
+  /// 20 — and submitting that pair as one attempt scored 625 against two real
+  /// runs worth 250 and 313. The score doubled without anybody playing.
+  ///
+  /// Zero for a row written before this was recorded. Those rows submit their
+  /// move count with an UNKNOWN time rather than a borrowed one: stars come
+  /// from moves and survive, and a score we cannot evidence is not sent.
+  final int bestPointsMoves;
+  final int bestPointsSeconds;
+
+  /// When this level was FIRST cleared, in milliseconds since the epoch, UTC.
+  ///
+  /// Zero means unknown, which every row written before sync existed will be.
+  /// It is recorded because the server stores it and merges it with LEAST:
+  /// without a real value the phone would have to send "now" on its first
+  /// sync, and the date a player first beat level 40 would silently become the
+  /// date they happened to get a signal.
+  ///
+  /// A fact about the past, so the merge takes the EARLIEST non-zero. A device
+  /// with a wrong clock, or an old queue flushing late, must not be able to
+  /// move it forward.
+  final int firstClearedAtMillis;
+
   const LevelProgress({
     required this.levelId,
     required this.levelSetVersion,
@@ -52,10 +79,18 @@ class LevelProgress {
     required this.bestMoves,
     this.bestTimeSeconds = 0,
     this.bestPoints = 0,
+    this.bestPointsMoves = 0,
+    this.bestPointsSeconds = 0,
+    this.firstClearedAtMillis = 0,
   });
 
   /// True when this level was cleared before the clock existed.
   bool get hasTime => bestTimeSeconds > 0;
+
+  /// When it was first cleared, or null if that was never recorded.
+  DateTime? get firstClearedAt => firstClearedAtMillis > 0
+      ? DateTime.fromMillisecondsSinceEpoch(firstClearedAtMillis, isUtc: true)
+      : null;
 
   Map<String, Object?> toJson() => {
     'id': levelId,
@@ -64,6 +99,9 @@ class LevelProgress {
     'm': bestMoves,
     't': bestTimeSeconds,
     'p': bestPoints,
+    'pm': bestPointsMoves,
+    'ps': bestPointsSeconds,
+    'c': firstClearedAtMillis,
   };
 
   factory LevelProgress.fromJson(Map<String, Object?> json) => LevelProgress(
@@ -75,6 +113,9 @@ class LevelProgress {
     // than failing is the difference between an upgrade and a wipe.
     bestTimeSeconds: (json['t'] as num?)?.toInt() ?? 0,
     bestPoints: (json['p'] as num?)?.toInt() ?? 0,
+    bestPointsMoves: (json['pm'] as num?)?.toInt() ?? 0,
+    bestPointsSeconds: (json['ps'] as num?)?.toInt() ?? 0,
+    firstClearedAtMillis: (json['c'] as num?)?.toInt() ?? 0,
   );
 
   /// Merges a fresh result, keeping the player's best of each.
@@ -87,16 +128,37 @@ class LevelProgress {
     required int moves,
     int timeSeconds = 0,
     int points = 0,
-  }) => LevelProgress(
-    levelId: levelId,
-    levelSetVersion: levelSetVersion,
-    stars: stars > this.stars ? stars : this.stars,
-    bestMoves: moves < bestMoves ? moves : bestMoves,
-    // Fastest wins, but an unknown time (0) is not the fastest time — it is
-    // no time at all, and must never displace a real one.
-    bestTimeSeconds: _fastest(bestTimeSeconds, timeSeconds),
-    bestPoints: points > bestPoints ? points : bestPoints,
-  );
+    int firstClearedAtMillis = 0,
+  }) {
+    // The scoring attempt travels WITH the score. Taking the new points but
+    // leaving the old pair behind would be the same fabrication in slower
+    // motion.
+    final takesPoints = points > bestPoints;
+
+    return LevelProgress(
+      levelId: levelId,
+      levelSetVersion: levelSetVersion,
+      stars: stars > this.stars ? stars : this.stars,
+      bestMoves: moves < bestMoves ? moves : bestMoves,
+      // Fastest wins, but an unknown time (0) is not the fastest time — it is
+      // no time at all, and must never displace a real one.
+      bestTimeSeconds: _fastest(bestTimeSeconds, timeSeconds),
+      bestPoints: takesPoints ? points : bestPoints,
+      bestPointsMoves: takesPoints ? moves : bestPointsMoves,
+      bestPointsSeconds: takesPoints ? timeSeconds : bestPointsSeconds,
+      // The first clear is a fact about the past and cannot move forward.
+      firstClearedAtMillis: _earliest(
+        this.firstClearedAtMillis,
+        firstClearedAtMillis,
+      ),
+    );
+  }
+
+  static int _earliest(int a, int b) {
+    if (a <= 0) return b > 0 ? b : 0;
+    if (b <= 0) return a;
+    return a < b ? a : b;
+  }
 
   static int _fastest(int a, int b) {
     if (a <= 0) return b > 0 ? b : 0;
@@ -223,6 +285,7 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
               moves: entry.value.bestMoves,
               timeSeconds: entry.value.bestTimeSeconds,
               points: entry.value.bestPoints,
+              firstClearedAtMillis: entry.value.firstClearedAtMillis,
             );
     }
 
@@ -260,7 +323,8 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
       if (stored.stars != fresh.stars ||
           stored.bestMoves != fresh.bestMoves ||
           stored.bestTimeSeconds != fresh.bestTimeSeconds ||
-          stored.bestPoints != fresh.bestPoints) {
+          stored.bestPoints != fresh.bestPoints ||
+          stored.firstClearedAtMillis != fresh.firstClearedAtMillis) {
         return true;
       }
     }
@@ -306,6 +370,14 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
   /// and reading `state` after disposal throws — which would turn a routine
   /// screen change into a lost save.
   Map<int, LevelProgress> _latest = const {};
+
+  /// Completes once the stored campaign has been read in.
+  ///
+  /// Exposed for sync, which must not push a half-restored map: the server
+  /// merge would lose nothing, but the response would then be reconciled
+  /// against a map still filling in, costing a second round of writes on every
+  /// launch for no gain.
+  Future<void> get restored => _restored;
 
   LevelProgress? forLevel(int id) => state[id];
 
@@ -394,6 +466,7 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
     required int levelSetVersion,
     required int movesUsed,
     required int elapsedSeconds,
+    DateTime? now,
   }) {
     final stars = level.stars(movesUsed);
     final points = level.points(
@@ -410,12 +483,15 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
         elapsedSeconds > 0 &&
         elapsedSeconds < previousFastest;
 
+    final clearedAt = (now ?? DateTime.now()).toUtc().millisecondsSinceEpoch;
+
     final merged =
         existing?.mergedWith(
           stars: stars,
           moves: movesUsed,
           timeSeconds: elapsedSeconds,
           points: points,
+          firstClearedAtMillis: clearedAt,
         ) ??
         LevelProgress(
           levelId: level.id,
@@ -424,6 +500,9 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
           bestMoves: movesUsed,
           bestTimeSeconds: elapsedSeconds,
           bestPoints: points,
+          bestPointsMoves: movesUsed,
+          bestPointsSeconds: elapsedSeconds,
+          firstClearedAtMillis: clearedAt,
         );
 
     state = _latest = {...state, level.id: merged};
@@ -441,6 +520,67 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
       isNewFastest: isNewFastest,
       previousFastest: previousFastest,
     );
+  }
+
+  /// Folds the server's view of a set of levels into the local one.
+  ///
+  /// THE SAME MONOTONIC MERGE AS EVERYTHING ELSE, and that is the whole design
+  /// of sync. The server is not an authority that overwrites the phone: it is
+  /// another device's opinion, and the two are combined by taking the best of
+  /// each. So a player who cleared level 40 with three stars on a tablet and
+  /// then replayed it badly here keeps the three stars, and one who has been
+  /// playing offline for a week loses nothing when a signal finally arrives.
+  ///
+  /// Last-write-wins would be the natural shape and is wrong in a way that is
+  /// hard to see in testing: the newer write is genuinely newer and genuinely
+  /// worse, the player is certain they had the star, and the review says the
+  /// game deleted their progress.
+  ///
+  /// Returns true if anything actually changed, so a caller can tell a real
+  /// reconciliation from a no-op sync.
+  bool mergeFromServer(Iterable<LevelProgress> rows) {
+    final merged = <int, LevelProgress>{...state};
+    var changed = false;
+
+    for (final row in rows) {
+      final mine = merged[row.levelId];
+
+      if (mine == null) {
+        merged[row.levelId] = row;
+        changed = true;
+        continue;
+      }
+
+      // The server's own scoring attempt, when it sent one. Merging its
+      // points against OUR moves and time would recreate the fabrication this
+      // pair exists to prevent.
+      final combined = mine.mergedWith(
+        stars: row.stars,
+        moves: row.bestPoints > mine.bestPoints && row.bestPointsMoves > 0
+            ? row.bestPointsMoves
+            : row.bestMoves,
+        timeSeconds: row.bestPoints > mine.bestPoints && row.bestPointsMoves > 0
+            ? row.bestPointsSeconds
+            : row.bestTimeSeconds,
+        points: row.bestPoints,
+        firstClearedAtMillis: row.firstClearedAtMillis,
+      );
+
+      if (combined.stars != mine.stars ||
+          combined.bestMoves != mine.bestMoves ||
+          combined.bestTimeSeconds != mine.bestTimeSeconds ||
+          combined.bestPoints != mine.bestPoints ||
+          combined.firstClearedAtMillis != mine.firstClearedAtMillis) {
+        merged[row.levelId] = combined;
+        changed = true;
+      }
+    }
+
+    if (!changed) return false;
+
+    state = _latest = merged;
+    _enqueueSave();
+    return true;
   }
 
   /// Erases everything. Only ever reached through a confirm dialog.

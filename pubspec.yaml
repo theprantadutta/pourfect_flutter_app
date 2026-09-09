@@ -67,6 +67,9 @@ dependencies:
   # code. See generated/ad_config.md.
   google_mobile_ads: ^9.1.0
   in_app_purchase: ^3.2.0
+  http: ^1.6.0
+  firebase_auth: ^6.6.1
+  firebase_messaging: ^16.6.0
 
 dev_dependencies:
   flutter_test:
@@ -114,6 +117,12 @@ flutter:
     # is readable with no network — which matters for a game that is otherwise
     # fully playable offline.
     - assets/legal/
+    # Public identifiers and endpoint URLs: the backend base URLs and the
+    # Google OAuth web client id. Gitignored, so a fresh clone must copy
+    # .env.example to .env before it will build — the same setup step the
+    # example file's own header describes. Everything in it ships inside the
+    # APK and is readable from any downloaded build; nothing secret goes here.
+    - .env
 
   fonts:
     # Bundled, not fetched. `google_fonts` exists for runtime fetching, which we
