@@ -53,6 +53,29 @@ class StoreProduct {
   });
 }
 
+/// A purchase the store has confirmed, in the form the server needs.
+///
+/// Carried out of this layer as a plain value rather than verified here, so
+/// `services/iap/` keeps knowing nothing about HTTP and the retry rule lives
+/// in one place.
+class PurchaseReceipt {
+  final String productId;
+
+  /// Play's purchase token. On Android this is what
+  /// `serverVerificationData` holds; on iOS it will be the transaction id.
+  final String token;
+
+  /// True when the store replayed a purchase we already had, rather than one
+  /// the player has just made.
+  final bool restored;
+
+  const PurchaseReceipt({
+    required this.productId,
+    required this.token,
+    required this.restored,
+  });
+}
+
 abstract interface class BillingService {
   Future<void> init();
 
@@ -70,6 +93,14 @@ abstract interface class BillingService {
   /// Re-reads past purchases. Play requires a user-visible way to do this.
   Future<void> restorePurchases();
 
+  /// Receipts worth showing the server.
+  ///
+  /// Emitted for a fresh purchase AND for every purchase the store replays on
+  /// launch, which is what makes verification self-healing: a device that was
+  /// offline when the purchase completed simply verifies it on the next launch
+  /// instead, with no queue to persist and nothing to lose.
+  Stream<PurchaseReceipt> get receipts;
+
   Future<void> dispose();
 }
 
@@ -78,6 +109,7 @@ class PlayBillingService implements BillingService {
 
   final InAppPurchase _iap;
   final _changes = StreamController<bool>.broadcast();
+  final _receipts = StreamController<PurchaseReceipt>.broadcast();
 
   StreamSubscription<List<PurchaseDetails>>? _subscription;
   Completer<PurchaseOutcome>? _pending;
@@ -148,6 +180,9 @@ class PlayBillingService implements BillingService {
     } catch (_) {}
   }
 
+  @override
+  Stream<PurchaseReceipt> get receipts => _receipts.stream;
+
   void _setEntitlement(bool value) {
     if (_adsRemoved == value) return;
     _adsRemoved = value;
@@ -175,6 +210,23 @@ class PlayBillingService implements BillingService {
         case PurchaseStatus.purchased:
         case PurchaseStatus.restored:
           _persistEntitlement(true);
+
+          // Offered to the server on every delivery, including the replays
+          // the store performs on launch. The local entitlement is granted
+          // either way — a player who has paid does not wait on our backend
+          // to stop seeing ads — but the server needs the token to make the
+          // ownership exclusive and to notice a later refund.
+          final token = purchase.verificationData.serverVerificationData;
+          if (token.isNotEmpty) {
+            _receipts.add(
+              PurchaseReceipt(
+                productId: purchase.productID,
+                token: token,
+                restored: purchase.status == PurchaseStatus.restored,
+              ),
+            );
+          }
+
           _complete(
             purchase.status == PurchaseStatus.restored
                 ? PurchaseOutcome.alreadyOwned
@@ -277,6 +329,7 @@ class PlayBillingService implements BillingService {
   Future<void> dispose() async {
     await _subscription?.cancel();
     await _changes.close();
+    await _receipts.close();
   }
 }
 
@@ -301,6 +354,9 @@ class NoopBillingService implements BillingService {
 
   @override
   Future<void> restorePurchases() async {}
+
+  @override
+  Stream<PurchaseReceipt> get receipts => const Stream.empty();
 
   @override
   Future<void> dispose() async {}

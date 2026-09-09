@@ -60,6 +60,9 @@ class FakeBillingService implements BillingService {
   Future<void> restorePurchases() async {}
 
   @override
+  Stream<PurchaseReceipt> get receipts => const Stream.empty();
+
+  @override
   Future<void> dispose() async {
     await _changes.close();
   }

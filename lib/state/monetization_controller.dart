@@ -21,6 +21,11 @@ import '../services/ads/ad_service.dart';
 import '../services/ads/interstitial_policy.dart';
 import '../services/analytics/analytics_service.dart';
 import '../services/iap/billing_service.dart';
+
+import 'package:flutter/foundation.dart';
+
+import '../services/api/api_result.dart';
+import '../services/api/purchases_api.dart';
 import 'providers.dart';
 
 /// Hints a player gets without watching anything.
@@ -103,6 +108,13 @@ class MonetizationController extends Notifier<MonetizationState> {
       (removed) => state = state.copyWith(adsRemoved: removed),
     );
     ref.onDispose(sub.cancel);
+
+    // Every receipt the store hands over goes to the server, including the
+    // ones it replays on launch. That replay IS the retry: a purchase made
+    // while the phone had no signal verifies on the next launch instead, with
+    // no queue to persist and nothing that can be lost.
+    final receipts = billing.receipts.listen(_verifyWithServer);
+    ref.onDispose(receipts.cancel);
 
     // Async: settles after build returns, which is allowed. The future is
     // KEPT, because anything that spends the hint budget has to wait for it —
@@ -293,6 +305,43 @@ class MonetizationController extends Notifier<MonetizationState> {
       state = state.copyWith(adsRemoved: true);
     }
     return outcome;
+  }
+
+  /// Sends one receipt to the server and applies what comes back.
+  ///
+  /// Nothing here can cost the player their entitlement. The local grant has
+  /// already happened — somebody who paid does not wait on our backend to stop
+  /// seeing ads — and a verification that cannot be delivered is retried by the
+  /// store's next replay. What the round trip buys is on the server: ownership
+  /// becomes exclusive to one account, and a later refund becomes something
+  /// that can be noticed at all.
+  Future<void> _verifyWithServer(PurchaseReceipt receipt) async {
+    final result = await PurchasesApi(ref.read(apiClientProvider))
+        .verify(productId: receipt.productId, purchaseToken: receipt.token);
+
+    switch (result) {
+      case ApiOk(:final value):
+        // GRANT ONLY. A `false` here is not a revocation: it is what a pending
+        // purchase looks like, what a token the server refused looks like, and
+        // what an outage half-way through looks like. Taking the entitlement
+        // away on any of those would strip somebody mid-session over a
+        // question the device cannot answer. Revocation belongs to the server's
+        // refund scan, which has Play's own word for it.
+        if (value.adsRemoved) applyServerEntitlement(true);
+
+        if (!value.isPurchased && !value.isPending) {
+          debugPrint(
+            '[iap] server verdict for ${receipt.productId}: ${value.state}'
+            '${value.error == null ? '' : ' (${value.error})'}',
+          );
+        }
+
+      case ApiFailure(:final kind):
+        // Not shown, not retried here, and not treated as a failed purchase.
+        // The store replays every owned purchase on launch, so the next one
+        // tries again.
+        debugPrint('[iap] verification deferred: $kind');
+    }
   }
 
   /// Applies an entitlement the SERVER has confirmed.
