@@ -77,6 +77,7 @@ class HintService {
     if (before == null || before.isWon) return HintOutcome.notApplicable;
 
     final id = ++_requestId;
+    final session = controller.sessionId;
     final boardAtRequest = before.board;
     final movesAtRequest = before.movesUsed;
     controller.setHintPending(true);
@@ -92,6 +93,19 @@ class HintService {
 
     // Superseded or cancelled while we were working.
     if (id != _requestId) return HintOutcome.cancelled;
+
+    // THE SESSION IS CHECKED, NOT JUST THE BOARD.
+    //
+    // The controller outlives the screen, so a player who leaves mid-solve
+    // leaves behind a live state holding the exact position they abandoned.
+    // The board therefore still matches, the answer applies cleanly, and this
+    // returned `resolved` for a hint that was shown to nobody — which the
+    // caller then charged for. Reopening a level starts a fresh board, so that
+    // hint was never seen by anyone.
+    //
+    // An answer belongs to the spell of play it was asked in. If that ended,
+    // nothing was delivered, and nothing may be charged.
+    if (!controller.isCurrentSession(session)) return HintOutcome.cancelled;
 
     final after = _ref.read(gameControllerProvider);
     if (after == null) return HintOutcome.cancelled;

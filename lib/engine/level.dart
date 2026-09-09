@@ -30,6 +30,76 @@ int starsFor({required int minMoves, required int movesUsed}) {
   return 1;
 }
 
+/// Par time, in seconds, for a level whose optimal solution is [minMoves].
+///
+/// DERIVED, NEVER AUTHORED. Par is a pure function of the one number the
+/// solver already proved, which means it costs nothing to ship: `levels.bin`
+/// is untouched, no level needs regenerating, and the backend computes the
+/// identical value from the `min_moves` it already stores. The alternative —
+/// a `par_seconds` column in the asset — would bump the format version and
+/// force the seeder and the reproducibility test to move with it, all to hand
+/// tune 150 numbers nobody would ever revisit.
+///
+/// The allowance is deliberately generous. This is a game people play in bed:
+/// par is the pace of somebody who knows what they are doing and is not
+/// hurrying, not a speedrun target. Beating it is a bonus, missing it costs a
+/// fraction of the points, and neither affects stars.
+const double kParBaseSeconds = 30;
+const double kParSecondsPerMove = 5;
+
+int parSecondsFor(int minMoves) =>
+    (kParBaseSeconds + minMoves * kParSecondsPerMove).round();
+
+/// Points scale with the level's optimal length, so a hard level is worth more
+/// than an easy one solved just as cleanly.
+const int kPointsPerOptimalMove = 100;
+
+/// How far the clock can move the score, as a multiple.
+///
+/// Bounded on BOTH sides on purpose. The ceiling means a forged elapsed time
+/// of one second is worth no more than an honest fast solve, which is most of
+/// what stops the clock being a cheat vector. The floor means a player who
+/// wandered off mid-level and came back an hour later still banks half —
+/// finishing is always worth something, the same rule the star floor follows.
+const double kMaxTimeMultiplier = 1.25;
+const double kMinTimeMultiplier = 0.5;
+
+/// The score multiplier earned by finishing in [elapsedSeconds] against
+/// [parSeconds]. Exactly 1.0 at par.
+double timeMultiplierFor({
+  required int parSeconds,
+  required int elapsedSeconds,
+}) {
+  if (parSeconds <= 0) return 1;
+  if (elapsedSeconds <= 0) return kMaxTimeMultiplier;
+  return (parSeconds / elapsedSeconds).clamp(
+    kMinTimeMultiplier,
+    kMaxTimeMultiplier,
+  );
+}
+
+/// Points for finishing a level with [minMoves] optimum in [movesUsed] moves
+/// and [elapsedSeconds] of play.
+///
+/// Two independent factors over a difficulty-scaled base: how close to optimal
+/// the solution was, and how the clock went. Stars are NOT part of this and
+/// are not affected by it — a player who takes their time still earns every
+/// star their moves deserve, and only the score reflects the clock.
+int pointsFor({
+  required int minMoves,
+  required int movesUsed,
+  required int elapsedSeconds,
+}) {
+  if (movesUsed <= 0 || minMoves <= 0) return 0;
+  final base = kPointsPerOptimalMove * minMoves;
+  final efficiency = (minMoves / movesUsed).clamp(0.0, 1.0);
+  final time = timeMultiplierFor(
+    parSeconds: parSecondsFor(minMoves),
+    elapsedSeconds: elapsedSeconds,
+  );
+  return (base * efficiency * time).round();
+}
+
 /// A shipped, solver-verified level.
 ///
 /// Every instance that reaches a player has been proven solvable by our own
@@ -83,6 +153,18 @@ final class Level {
   /// Stars a player earns for finishing this level in [movesUsed].
   int stars(int movesUsed) =>
       starsFor(minMoves: minMoves, movesUsed: movesUsed);
+
+  /// The pace this level is scored against. Derived, not stored — see
+  /// [parSecondsFor].
+  int get parSeconds => parSecondsFor(minMoves);
+
+  /// Points for finishing this level in [movesUsed] and [elapsedSeconds].
+  int points({required int movesUsed, required int elapsedSeconds}) =>
+      pointsFor(
+        minMoves: minMoves,
+        movesUsed: movesUsed,
+        elapsedSeconds: elapsedSeconds,
+      );
 
   Map<String, Object?> toJson() => {
     'id': id,

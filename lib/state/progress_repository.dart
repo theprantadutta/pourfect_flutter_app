@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../engine/level.dart';
+import '../engine/level_set.dart';
 
 /// What a player has achieved on one level.
 class LevelProgress {
@@ -33,18 +34,36 @@ class LevelProgress {
   /// Fewest moves used. The number a "new best" is measured against.
   final int bestMoves;
 
+  /// Fastest solve, in whole seconds.
+  ///
+  /// ZERO MEANS UNKNOWN, not instantaneous. Every level cleared before the
+  /// clock shipped has no time on record, and there is no honest way to invent
+  /// one — the statistics screen shows those as a dash and every comparison
+  /// here skips them.
+  final int bestTimeSeconds;
+
+  /// Highest score earned on this level. Also 0 when unknown.
+  final int bestPoints;
+
   const LevelProgress({
     required this.levelId,
     required this.levelSetVersion,
     required this.stars,
     required this.bestMoves,
+    this.bestTimeSeconds = 0,
+    this.bestPoints = 0,
   });
+
+  /// True when this level was cleared before the clock existed.
+  bool get hasTime => bestTimeSeconds > 0;
 
   Map<String, Object?> toJson() => {
     'id': levelId,
     'v': levelSetVersion,
     's': stars,
     'm': bestMoves,
+    't': bestTimeSeconds,
+    'p': bestPoints,
   };
 
   factory LevelProgress.fromJson(Map<String, Object?> json) => LevelProgress(
@@ -52,6 +71,10 @@ class LevelProgress {
     levelSetVersion: (json['v']! as num).toInt(),
     stars: (json['s']! as num).toInt(),
     bestMoves: (json['m']! as num).toInt(),
+    // Absent on every row written before the clock shipped. Defaulting rather
+    // than failing is the difference between an upgrade and a wipe.
+    bestTimeSeconds: (json['t'] as num?)?.toInt() ?? 0,
+    bestPoints: (json['p'] as num?)?.toInt() ?? 0,
   );
 
   /// Merges a fresh result, keeping the player's best of each.
@@ -59,13 +82,27 @@ class LevelProgress {
   /// Monotonic on BOTH axes and independent of arrival order — the same rule
   /// the backend sync uses. A worse replay can never take a star away, which
   /// is exactly the bug that produces "the game deleted my progress" reviews.
-  LevelProgress mergedWith({required int stars, required int moves}) =>
-      LevelProgress(
-        levelId: levelId,
-        levelSetVersion: levelSetVersion,
-        stars: stars > this.stars ? stars : this.stars,
-        bestMoves: moves < bestMoves ? moves : bestMoves,
-      );
+  LevelProgress mergedWith({
+    required int stars,
+    required int moves,
+    int timeSeconds = 0,
+    int points = 0,
+  }) => LevelProgress(
+    levelId: levelId,
+    levelSetVersion: levelSetVersion,
+    stars: stars > this.stars ? stars : this.stars,
+    bestMoves: moves < bestMoves ? moves : bestMoves,
+    // Fastest wins, but an unknown time (0) is not the fastest time — it is
+    // no time at all, and must never displace a real one.
+    bestTimeSeconds: _fastest(bestTimeSeconds, timeSeconds),
+    bestPoints: points > bestPoints ? points : bestPoints,
+  );
+
+  static int _fastest(int a, int b) {
+    if (a <= 0) return b > 0 ? b : 0;
+    if (b <= 0) return a;
+    return a < b ? a : b;
+  }
 }
 
 class ProgressRepository {
@@ -111,11 +148,37 @@ class CompletionResult {
   /// The best BEFORE this run, or null if this was the first clear.
   final int? previousBest;
 
+  /// This run's time and score, and the pace it was scored against.
+  final int elapsedSeconds;
+  final int parSeconds;
+  final int points;
+
+  /// True when this run beat the player's own previous time on this level.
+  /// False on a first clear — there was nothing to beat.
+  final bool isNewFastest;
+
+  /// The fastest BEFORE this run, or null if this level had no time on record
+  /// (a first clear, or one cleared before the clock shipped).
+  final int? previousFastest;
+
   const CompletionResult({
     required this.stars,
     required this.isNewBest,
     required this.previousBest,
+    required this.elapsedSeconds,
+    required this.parSeconds,
+    required this.points,
+    required this.isNewFastest,
+    required this.previousFastest,
   });
+
+  /// True when the level was finished at or inside its par time.
+  bool get isUnderPar => elapsedSeconds <= parSeconds;
+
+  /// How far off par this run was, as a signed fraction. -0.2 is 20% faster
+  /// than par; +0.5 is half again as long.
+  double get parDelta =>
+      parSeconds <= 0 ? 0 : (elapsedSeconds - parSeconds) / parSeconds;
 }
 
 class ProgressController extends Notifier<Map<int, LevelProgress>> {
@@ -158,33 +221,91 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
           : stored.mergedWith(
               stars: entry.value.stars,
               moves: entry.value.bestMoves,
+              timeSeconds: entry.value.bestTimeSeconds,
+              points: entry.value.bestPoints,
             );
     }
 
-    state = merged;
+    state = _latest = merged;
 
     // Anything recorded before the load arrived exists only in memory until
     // this lands, so the merged view is written back rather than assumed.
-    if (merged.length != loaded.length) _enqueueSave();
+    //
+    // COMPARED BY VALUE, not by size. This used to ask whether the map had
+    // grown, which is only true when the two sides disagree about which
+    // LEVELS exist. The damaging case is the one where they agree: a level
+    // stored at 3 stars in 5 moves, replayed badly to 1 star in 20 before the
+    // load landed. Same single key on both sides, so no save was queued —
+    // memory recovered the 3 stars and the disk kept the 1, and the next
+    // launch restored the loss as though it were the truth.
+    if (_differs(merged, loaded)) _enqueueSave();
+  }
+
+  /// Whether [merged] holds anything [loaded] does not already say.
+  ///
+  /// Only ever asked in the direction that matters: the merge is monotonic, so
+  /// a difference can only mean the merged view is BETTER, and better is worth
+  /// a write.
+  static bool _differs(
+    Map<int, LevelProgress> merged,
+    Map<int, LevelProgress> loaded,
+  ) {
+    if (merged.length != loaded.length) return true;
+
+    for (final entry in merged.entries) {
+      final stored = loaded[entry.key];
+      if (stored == null) return true;
+
+      final fresh = entry.value;
+      if (stored.stars != fresh.stars ||
+          stored.bestMoves != fresh.bestMoves ||
+          stored.bestTimeSeconds != fresh.bestTimeSeconds ||
+          stored.bestPoints != fresh.bestPoints) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Queues a write behind any already in flight.
   ///
-  /// The repository is resolved NOW, not inside the queued callback. A queued
-  /// write can run after the provider is disposed, and `ref.read` at that point
-  /// throws — the save is the last thing that should fail when a screen goes
-  /// away mid-write.
+  /// Two things here are load-bearing and neither is obvious.
+  ///
+  /// **The write waits for the restore.** A completion recorded during startup
+  /// used to be persisted immediately, and what it persisted was the whole map
+  /// as it stood: one level, because the stored snapshot had not arrived yet.
+  /// That write is not merely redundant, it is a truncation — it lands on disk
+  /// over a file that held the player's entire campaign. Waiting costs nothing
+  /// (the restore is a single prefs read) and removes the window entirely.
+  ///
+  /// **The snapshot is taken when the write RUNS, not when it is queued.**
+  /// Whatever is in memory at that moment has already absorbed everything
+  /// earlier, because every path into this state is a monotonic merge. Queuing
+  /// the value instead means a stale snapshot can be written after a fresher
+  /// one, which is the same lost-update shape in a different place.
+  ///
+  /// The repository is resolved NOW rather than inside the callback: a queued
+  /// write can run after the provider is disposed, and `ref.read` at that
+  /// point throws — the save is the last thing that should fail when a screen
+  /// goes away mid-write.
   void _enqueueSave() {
-    final snapshot = state;
     final repository = ref.read(progressRepositoryProvider);
 
     // A failed write must not poison the chain and block every later save.
     _writes = _writes
-        .then((_) => repository.save(snapshot))
+        .then((_) => _restored)
+        .then((_) => repository.save(_latest))
         .catchError((Object error) {
           debugPrint('[progress] save failed: $error');
         });
   }
+
+  /// The newest state, readable from the write chain.
+  ///
+  /// Kept alongside `state` because a queued write can outlive the provider,
+  /// and reading `state` after disposal throws — which would turn a routine
+  /// screen change into a lost save.
+  Map<int, LevelProgress> _latest = const {};
 
   LevelProgress? forLevel(int id) => state[id];
 
@@ -208,6 +329,56 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
 
   int get totalStars => state.values.fold(0, (sum, p) => sum + p.stars);
 
+  int get totalPoints => state.values.fold(0, (sum, p) => sum + p.bestPoints);
+
+  /// Sum of every level's FASTEST clear — not total time played. Time actually
+  /// spent, including runs that were slower or abandoned, lives in the play
+  /// history.
+  int get totalBestTimeSeconds =>
+      state.values.fold(0, (sum, p) => sum + p.bestTimeSeconds);
+
+  /// Levels whose fastest clear beat par.
+  int levelsUnderPar(LevelSet levels) {
+    var n = 0;
+    for (final p in state.values) {
+      if (!p.hasTime) continue;
+      final level = levels.byId(p.levelId);
+      if (level != null && p.bestTimeSeconds <= level.level.parSeconds) n++;
+    }
+    return n;
+  }
+
+  /// Mean fastest-clear time as a fraction of par, over levels that have a
+  /// time on record. 1.0 is exactly on pace; null when nothing qualifies.
+  double? averageParRatio(LevelSet levels) {
+    var sum = 0.0;
+    var n = 0;
+    for (final p in state.values) {
+      if (!p.hasTime) continue;
+      final level = levels.byId(p.levelId);
+      if (level == null || level.level.parSeconds <= 0) continue;
+      sum += p.bestTimeSeconds / level.level.parSeconds;
+      n++;
+    }
+    return n == 0 ? null : sum / n;
+  }
+
+  /// The fastest and slowest clears on record, by raw seconds.
+  LevelProgress? get fastestClear => _extremeByTime((a, b) => a < b);
+
+  LevelProgress? get slowestClear => _extremeByTime((a, b) => a > b);
+
+  LevelProgress? _extremeByTime(bool Function(int a, int b) wins) {
+    LevelProgress? best;
+    for (final p in state.values) {
+      if (!p.hasTime) continue;
+      if (best == null || wins(p.bestTimeSeconds, best.bestTimeSeconds)) {
+        best = p;
+      }
+    }
+    return best;
+  }
+
   /// Levels cleared within a band's inclusive id range.
   int clearedIn(int firstLevel, int lastLevel) {
     var n = 0;
@@ -222,21 +393,40 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
     required Level level,
     required int levelSetVersion,
     required int movesUsed,
+    required int elapsedSeconds,
   }) {
     final stars = level.stars(movesUsed);
+    final points = level.points(
+      movesUsed: movesUsed,
+      elapsedSeconds: elapsedSeconds,
+    );
     final existing = state[level.id];
     final isNewBest = existing != null && movesUsed < existing.bestMoves;
+    final previousFastest = (existing?.hasTime ?? false)
+        ? existing!.bestTimeSeconds
+        : null;
+    final isNewFastest =
+        previousFastest != null &&
+        elapsedSeconds > 0 &&
+        elapsedSeconds < previousFastest;
 
     final merged =
-        existing?.mergedWith(stars: stars, moves: movesUsed) ??
+        existing?.mergedWith(
+          stars: stars,
+          moves: movesUsed,
+          timeSeconds: elapsedSeconds,
+          points: points,
+        ) ??
         LevelProgress(
           levelId: level.id,
           levelSetVersion: levelSetVersion,
           stars: stars,
           bestMoves: movesUsed,
+          bestTimeSeconds: elapsedSeconds,
+          bestPoints: points,
         );
 
-    state = {...state, level.id: merged};
+    state = _latest = {...state, level.id: merged};
     // Still not awaited — a slow disk write must never delay the win sequence
     // — but queued, so writes cannot land out of order.
     _enqueueSave();
@@ -245,6 +435,11 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
       stars: stars,
       isNewBest: isNewBest,
       previousBest: existing?.bestMoves,
+      elapsedSeconds: elapsedSeconds,
+      parSeconds: level.parSeconds,
+      points: points,
+      isNewFastest: isNewFastest,
+      previousFastest: previousFastest,
     );
   }
 
@@ -254,13 +449,13 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
     // merge the old progress back in immediately after the wipe.
     await _restored;
 
-    state = const {};
+    state = _latest = const {};
     _enqueueSave();
     await _writes;
   }
 
   /// Test seam.
-  void debugSeed(Map<int, LevelProgress> seed) => state = seed;
+  void debugSeed(Map<int, LevelProgress> seed) => state = _latest = seed;
 }
 
 /// Opens every level, for verifying the late campaign without playing 120

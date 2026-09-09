@@ -46,10 +46,14 @@ class LevelSelectScreen extends ConsumerStatefulWidget {
   /// Opens settings.
   final VoidCallback onOpenSettings;
 
+  /// Opens the statistics screen.
+  final VoidCallback onOpenStatistics;
+
   const LevelSelectScreen({
     super.key,
     required this.onOpenLevel,
     required this.onOpenSettings,
+    required this.onOpenStatistics,
   });
 
   @override
@@ -153,6 +157,7 @@ class _LevelSelectScreenState extends ConsumerState<LevelSelectScreen> {
                     cleared: progress.length,
                     stars: controller.totalStars,
                     onOpenSettings: widget.onOpenSettings,
+                    onOpenStatistics: widget.onOpenStatistics,
                   ),
                 ),
 
@@ -261,11 +266,13 @@ class _Masthead extends StatelessWidget {
   final int cleared;
   final int stars;
   final VoidCallback onOpenSettings;
+  final VoidCallback onOpenStatistics;
 
   const _Masthead({
     required this.cleared,
     required this.stars,
     required this.onOpenSettings,
+    required this.onOpenStatistics,
   });
 
   @override
@@ -289,15 +296,38 @@ class _Masthead extends StatelessWidget {
         children: [
           Text('Pourfect', style: titleStyle(tokens).copyWith(fontSize: 22)),
           const Spacer(),
+          // The counters ARE the way in to statistics. Somebody looking at
+          // "12 solved" who wants to know more taps the number they are
+          // already reading; a chart icon in the corner would be one more
+          // piece of chrome to learn to ignore. There is nothing to tap
+          // before the first clear, which is also when the screen would have
+          // nothing on it.
           if (hasProgress) ...[
-            _Counter(
-              value: '$cleared',
-              label: 'solved',
-              color: tokens.textPrimary,
+            Pressable(
+              onPressed: onOpenStatistics,
+              semanticLabel: 'Statistics',
+              child: Row(
+                children: [
+                  _Counter(
+                    value: '$cleared',
+                    label: 'solved',
+                    color: tokens.textPrimary,
+                  ),
+                  SizedBox(width: tokens.space3),
+                  _Counter(
+                    value: '$stars',
+                    label: 'stars',
+                    color: tokens.accentWarm,
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: tokens.dimText,
+                  ),
+                ],
+              ),
             ),
-            SizedBox(width: tokens.space4),
-            _Counter(value: '$stars', label: 'stars', color: tokens.accentWarm),
-            SizedBox(width: tokens.space4),
+            SizedBox(width: tokens.space3),
           ],
           Pressable(
             onPressed: onOpenSettings,

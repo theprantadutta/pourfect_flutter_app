@@ -40,6 +40,19 @@ enum TapOutcome {
 class GameController extends Notifier<GameState?> {
   int _pourSequence = 0;
 
+  /// Identifies the current spell of play, and is bumped whenever it ends.
+  ///
+  /// The controller OUTLIVES THE BOARD SCREEN — it is a global provider, so a
+  /// player who backs out mid-solve leaves a live controller holding the
+  /// position they walked away from. Without a way to say "that session is
+  /// over", a hint that finished solving afterwards was applied to that
+  /// position, reported success, and was charged for; the board it decorated
+  /// was never on screen again, because reopening a level starts a fresh one.
+  ///
+  /// A counter rather than a flag: an answer has to be matched against the
+  /// session it was asked in, not merely against "is anything running".
+  int _session = 0;
+
   /// Levels opened this session, so `is_retry` on `level_start` is honest.
   final Set<int> _seenLevels = {};
 
@@ -51,6 +64,21 @@ class GameController extends Notifier<GameState?> {
   @override
   GameState? build() => null;
 
+  /// The session a request should be answered into.
+  int get sessionId => _session;
+
+  /// Whether [session] is still the one being played.
+  bool isCurrentSession(int session) => session == _session;
+
+  /// Ends the current spell of play, so nothing in flight can still land.
+  ///
+  /// Called when the board screen goes away, by whichever route — the back
+  /// affordance, or plain disposal. Touches NOTHING but the counter on
+  /// purpose: disposal is exactly when reading `state` or `ref` can throw, and
+  /// a settlement path that throws while tidying up is worse than the bug it
+  /// was added to fix.
+  void endSession() => _session++;
+
   AnalyticsService get _analytics => ref.read(analyticsServiceProvider);
 
   HapticsService get _haptics => ref.read(hapticsServiceProvider);
@@ -59,6 +87,9 @@ class GameController extends Notifier<GameState?> {
   void startLevel(Level level, {required int levelSetVersion}) {
     final isRetry = !_seenLevels.add(level.id);
     _terminalLogged = false;
+    // A new board is a new session: an answer asked for on the previous one
+    // must not arrive and decorate this one.
+    _session++;
     state = GameState.fresh(
       level: level,
       levelSetVersion: levelSetVersion,
@@ -149,7 +180,13 @@ class GameController extends Notifier<GameState?> {
     // No haptic here on purpose: the board view fires one per BALL as it
     // touches down, so the feedback lands with the ball rather than at the
     // moment the move was decided.
-    if (state!.isWon) _logComplete();
+    if (state!.isWon) {
+      // Stop the clock on the winning move itself, not when the win card
+      // finishes animating in — otherwise the score depends on how long the
+      // flourish takes to play.
+      pauseClock();
+      _logComplete();
+    }
 
     return result.completedDestination
         ? TapOutcome.pouredAndCompleted
@@ -196,6 +233,7 @@ class GameController extends Notifier<GameState?> {
     }
 
     _terminalLogged = false;
+    _session++;
     state = GameState.fresh(
       level: current.level,
       levelSetVersion: current.levelSetVersion,
@@ -212,6 +250,49 @@ class GameController extends Notifier<GameState?> {
         isRetry: true,
       ),
     );
+  }
+
+  // ---- the clock -----------------------------------------------------------
+
+  /// Stops the clock and banks the time run so far.
+  ///
+  /// Idempotent, so the lifecycle observer and an ad callback can both call it
+  /// without the second one losing a stretch.
+  void pauseClock() {
+    final current = state;
+    if (current == null || !current.isClockRunning) return;
+    state = current.copyWith(
+      elapsedBefore: current.elapsedAt(DateTime.now()),
+      runningSince: () => null,
+    );
+  }
+
+  /// Restarts the clock. Never restarts it on a finished level — the time on
+  /// a solved board is settled, and resuming it would let a player's score
+  /// drift while the win card sits on screen.
+  void resumeClock() {
+    final current = state;
+    if (current == null || current.isClockRunning || current.isWon) return;
+    state = current.copyWith(runningSince: () => DateTime.now());
+  }
+
+  /// Hands back the seconds played since the last call, and marks them as
+  /// handed over.
+  ///
+  /// The caller writes them to the play history. Marking here rather than
+  /// there is what makes double counting impossible: two exit paths firing on
+  /// the same departure (backgrounding while leaving, say) means the second
+  /// one gets zero.
+  int takeUnbankedSeconds() {
+    final current = state;
+    if (current == null) return 0;
+
+    final now = DateTime.now();
+    final seconds = current.unbankedSecondsAt(now);
+    if (seconds <= 0) return 0;
+
+    state = current.copyWith(bankedSeconds: current.bankedSeconds + seconds);
+    return seconds;
   }
 
   // ---- hint plumbing -------------------------------------------------------
@@ -293,7 +374,7 @@ class GameController extends Notifier<GameState?> {
         levelSetVersion: state.levelSetVersion,
         moves: state.movesUsed,
         minMoves: state.level.minMoves,
-        durationSeconds: DateTime.now().difference(state.startedAt).inSeconds,
+        durationSeconds: state.elapsedSecondsAt(DateTime.now()),
         reason: reason,
         progress: state.progress,
       ),
@@ -312,7 +393,7 @@ class GameController extends Notifier<GameState?> {
         moves: current.movesUsed,
         minMoves: current.level.minMoves,
         stars: current.stars,
-        durationSeconds: DateTime.now().difference(current.startedAt).inSeconds,
+        durationSeconds: current.elapsedSecondsAt(DateTime.now()),
         hintsUsed: current.hintsUsed,
         undosUsed: current.undosUsed,
       ),

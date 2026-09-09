@@ -12,12 +12,17 @@ import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import 'pressable.dart';
 
-/// Level identity and move count.
+/// Level identity, the clock and the move count.
 class BoardHud extends StatelessWidget {
   final int levelId;
   final String bandName;
   final int movesUsed;
   final int minMoves;
+
+  /// The running clock, built by the screen so it can own its own ticker.
+  /// Null on a board with no clock — nothing does that today, and the slot
+  /// simply collapses if anything ever does.
+  final Widget? clock;
 
   /// Back to the level map.
   final VoidCallback onExit;
@@ -29,6 +34,7 @@ class BoardHud extends StatelessWidget {
     required this.movesUsed,
     required this.minMoves,
     required this.onExit,
+    this.clock,
   });
 
   @override
@@ -73,6 +79,19 @@ class BoardHud extends StatelessWidget {
             ],
           ),
           const Spacer(),
+          // The clock sits between the two existing readings rather than
+          // beside the moves. Time and moves are separate scores and reading
+          // "12 / 9  1:07" as one figure is a coin toss.
+          if (clock != null) ...[
+            Padding(
+              // Sits on the same baseline as the numerals either side of it
+              // rather than on the same top edge, which is what makes a
+              // smaller figure read as deliberate instead of misaligned.
+              padding: EdgeInsets.only(top: tokens.space4 + 6),
+              child: clock,
+            ),
+            const Spacer(),
+          ],
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [

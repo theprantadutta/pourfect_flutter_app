@@ -11,6 +11,7 @@ import 'ui/screens/game_screen.dart';
 import 'ui/screens/legal_consent_screen.dart';
 import 'ui/screens/level_select_screen.dart';
 import 'ui/screens/settings_screen.dart';
+import 'ui/screens/statistics_screen.dart';
 import 'ui/theme/tokens.dart';
 import 'ui/theme/typography.dart';
 import 'ui/transitions.dart';
@@ -146,6 +147,16 @@ class _ShellState extends ConsumerState<_Shell> {
     );
   }
 
+  void _openStatistics() {
+    Navigator.of(context).push(
+      PourfectPageRoute<void>(
+        settings: const RouteSettings(name: '/statistics'),
+        builder: (context) =>
+            StatisticsScreen(onBack: () => Navigator.of(context).maybePop()),
+      ),
+    );
+  }
+
   void _openSettings() {
     Navigator.of(context).push(
       PourfectPageRoute<void>(
@@ -157,14 +168,14 @@ class _ShellState extends ConsumerState<_Shell> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      _showLegalGate == true
+  Widget build(BuildContext context) => _showLegalGate == true
       ? LegalConsentScreen(
           onAccepted: () => setState(() => _showLegalGate = false),
         )
       : LevelSelectScreen(
           onOpenLevel: _openLevel,
           onOpenSettings: _openSettings,
+          onOpenStatistics: _openStatistics,
         );
 }
 

@@ -11,6 +11,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../format.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 
@@ -19,6 +20,16 @@ class LevelCompleteCard extends StatelessWidget {
   final int stars;
   final int movesUsed;
   final int minMoves;
+
+  /// This run's clock, the pace it was measured against, and what it scored.
+  final int elapsedSeconds;
+  final int parSeconds;
+  final int points;
+
+  /// The player's own previous fastest on this level, or null if there wasn't
+  /// one.
+  final int? previousFastest;
+
   final VoidCallback? onNext;
   final VoidCallback onReplay;
 
@@ -28,9 +39,18 @@ class LevelCompleteCard extends StatelessWidget {
     required this.stars,
     required this.movesUsed,
     required this.minMoves,
+    required this.elapsedSeconds,
+    required this.parSeconds,
+    required this.points,
+    required this.previousFastest,
     required this.onNext,
     required this.onReplay,
   });
+
+  bool get _isNewFastest =>
+      previousFastest != null &&
+      elapsedSeconds > 0 &&
+      elapsedSeconds < previousFastest!;
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +106,37 @@ class LevelCompleteCard extends StatelessWidget {
                 style: bodyStyle(tokens).copyWith(fontSize: 13),
               ),
 
+              SizedBox(height: tokens.space4),
+              Divider(color: tokens.hairline, height: 1),
+              SizedBox(height: tokens.space3),
+
+              // Time and score sit BELOW the rule, under the stars, because
+              // that is the order of importance: the stars are the level, the
+              // clock only moves the score.
+              _Readout(
+                label: 'Time',
+                value: formatClock(elapsedSeconds),
+                note: _isNewFastest
+                    ? 'Your fastest yet'
+                    : formatParDelta(
+                        seconds: elapsedSeconds,
+                        parSeconds: parSeconds,
+                      ),
+                // Amber for a personal best or a run inside par; the same
+                // muted grey as everything else for a slower one. Nothing on
+                // this card scolds.
+                highlight:
+                    _isNewFastest ||
+                    (parSeconds > 0 && elapsedSeconds <= parSeconds),
+              ),
+              SizedBox(height: tokens.space2),
+              _Readout(
+                label: 'Points',
+                value: formatCount(points),
+                note: 'par ${formatClock(parSeconds)}',
+                highlight: false,
+              ),
+
               SizedBox(height: tokens.space5),
               _PrimaryAction(
                 label: onNext == null ? 'That’s all for now' : 'Next level',
@@ -107,6 +158,51 @@ class LevelCompleteCard extends StatelessWidget {
     2 => 'Nicely solved',
     _ => 'Solved',
   };
+}
+
+/// One labelled figure with a quiet note under it.
+class _Readout extends StatelessWidget {
+  final String label;
+  final String value;
+  final String note;
+  final bool highlight;
+
+  const _Readout({
+    required this.label,
+    required this.value,
+    required this.note,
+    required this.highlight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+
+    return Row(
+      children: [
+        Text(label, style: bodyStyle(tokens).copyWith(fontSize: 13)),
+        const Spacer(),
+        if (note.isNotEmpty) ...[
+          Text(
+            note,
+            style: bodyStyle(tokens).copyWith(
+              fontSize: 12,
+              color: highlight ? tokens.accentWarm : tokens.dimText,
+            ),
+          ),
+          SizedBox(width: tokens.space3),
+        ],
+        Text(
+          value,
+          style: numericStyle(
+            tokens,
+            size: 16,
+            color: highlight ? tokens.accentWarm : tokens.textNumeric,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// Three pips that fill as stars are earned.

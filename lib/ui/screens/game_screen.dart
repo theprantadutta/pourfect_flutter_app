@@ -10,12 +10,14 @@ import '../../state/game_controller.dart';
 import '../../state/hint_controller.dart';
 import '../../state/level_repository.dart';
 import '../../state/monetization_controller.dart';
+import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
+import '../widgets/level_clock.dart';
 import '../widgets/win_overlay.dart';
 import '../widgets/win_profile.dart';
 
@@ -48,16 +50,30 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   bool _started = false;
 
+  /// Held from initState so [dispose] never has to reach through `ref`.
+  ///
+  /// Reading a provider while the tree is being torn down is exactly when it
+  /// can throw, and the one thing dispose must do here — ending the gameplay
+  /// session — is the thing that must not be skipped.
+  late final GameController _game;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _game = ref.read(gameControllerProvider.notifier);
     _win = AnimationController(vsync: this)..addListener(_onWinTick);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    // THE BOARD IS GONE, SO THE SESSION IS OVER. Every route out of here ends
+    // in disposal — the back affordance, a system back, a parent rebuild — and
+    // this is the only place all of them pass through. Without it a solve
+    // still in flight lands on the position the player walked away from,
+    // reports success, and is charged for a hint nobody ever saw.
+    _game.endSession();
     _win.dispose();
     super.dispose();
   }
@@ -71,6 +87,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
+        // The clock stops FIRST, before anything reads a duration, so the
+        // banked time is what was actually played and not however long the
+        // phone sat in a pocket.
+        _bankPlaytime();
+        ref.read(gameControllerProvider.notifier).pauseClock();
         ref
             .read(gameControllerProvider.notifier)
             .reportAbandon(AbandonReason.backgrounded);
@@ -81,6 +102,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         // suppressed level_complete for the rest of the run and the funnel
         // lost every success that had been interrupted.
         ref.read(gameControllerProvider.notifier).reportResumed();
+        ref.read(gameControllerProvider.notifier).resumeClock();
 
         // A failed initial ad load used to last the whole session. Somebody
         // who launches offline and reconnects should not be stuck without
@@ -90,6 +112,32 @@ class _GameScreenState extends ConsumerState<GameScreen>
       case AppLifecycleState.inactive:
         break;
     }
+  }
+
+  /// Moves the time played so far out of the live clock and into today's row
+  /// of the play history.
+  ///
+  /// Called wherever a stretch of play ends without a win — backgrounding,
+  /// leaving, restarting. Without it "time played" would only ever count
+  /// levels somebody finished, and the boards they wrestled with longest, the
+  /// ones actually worth knowing about, would contribute nothing.
+  ///
+  /// Banking RESETS the live clock's accumulator, so a stretch can never be
+  /// counted twice by two callers on the same exit path.
+  void _bankPlaytime() {
+    final controller = ref.read(gameControllerProvider.notifier);
+    final seconds = controller.takeUnbankedSeconds();
+    if (seconds <= 0) return;
+    ref.read(playHistoryProvider.notifier).recordPlaytime(seconds: seconds);
+  }
+
+  void _exit() {
+    _bankPlaytime();
+    // Disposal ends the session too, but not until the route animation
+    // finishes. Ending it here means a solve that lands during the transition
+    // is already known to be undeliverable.
+    _game.endSession();
+    widget.onExit();
   }
 
   // ---- level lifecycle -----------------------------------------------------
@@ -159,12 +207,33 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final state = ref.read(gameControllerProvider);
     if (campaign == null || state == null) return;
 
+    // The controller stopped the clock on the winning move, so this reads the
+    // settled time rather than however long the win animation has been up.
+    final elapsedSeconds = state.elapsedSecondsAt(DateTime.now());
+
     final result = ref
         .read(progressProvider.notifier)
         .record(
           level: state.level,
           levelSetVersion: campaign.levelSetVersion,
           movesUsed: movesUsed,
+          elapsedSeconds: elapsedSeconds,
+        );
+
+    // The SCORE gets the whole attempt; the history gets only the part it has
+    // not already been given. An attempt interrupted by a phone call reaches
+    // the history in two instalments, and adding the full elapsed time here
+    // would count the first one twice.
+    ref
+        .read(playHistoryProvider.notifier)
+        .recordSolve(
+          levelId: levelId,
+          seconds: ref
+              .read(gameControllerProvider.notifier)
+              .takeUnbankedSeconds(),
+          moves: movesUsed,
+          stars: result.stars,
+          points: result.points,
         );
 
     // Length is EARNED, not constant. Three stars, a personal best, or the end
@@ -256,6 +325,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final levelId = ref.read(gameControllerProvider)?.level.id ?? 0;
     final money = ref.read(monetizationProvider.notifier);
 
+    // The spell of play this request belongs to. Everything below is settled
+    // against it rather than against whether this widget is still alive: the
+    // player is owed something because of what they paid and what arrived, not
+    // because of which route happens to be on screen.
+    final session = _game.sessionId;
+
     // What the player spent to get here, so it can be given back if the
     // solver cannot deliver. Charging happens before the solve — the ad has to
     // play before the work, or the wait feels like a punishment — so the
@@ -272,42 +347,104 @@ class _GameScreenState extends ConsumerState<GameScreen>
       spentFreeHint = true;
     } else {
       if (!mounted) return;
-      if (!await _confirmWatchAd()) return;
-      if (!mounted) return;
+
+      // The clock stops for the whole ad negotiation — the prompt and the
+      // video both. Charging somebody score for the time it takes to watch an
+      // ad we asked them to watch is the sort of thing that shows up in
+      // reviews. Backgrounding to the ad activity would stop it anyway on
+      // Android, but relying on that leaves the confirm dialog running and
+      // gives no cover at all on a platform that reports lifecycle
+      // differently.
+      _game.pauseClock();
+
+      if (!await _confirmWatchAd()) {
+        _game.resumeClock();
+        return;
+      }
 
       final outcome = await money.offerRewarded(
         RewardedPlacement.hint,
         levelId: levelId,
       );
-      if (!mounted) return;
+      _game.resumeClock();
 
       if (outcome != RewardOutcome.earned) {
-        _toast(switch (outcome) {
-          RewardOutcome.dismissed => 'No hint — the video was not finished.',
-          RewardOutcome.unavailable => 'No video available right now.',
-          _ => 'Something went wrong. Nothing was used.',
-        });
+        // Nothing was spent, so there is nothing to settle. Only the toast
+        // needs a screen.
+        if (mounted) {
+          _toast(switch (outcome) {
+            RewardOutcome.dismissed => 'No hint — the video was not finished.',
+            RewardOutcome.unavailable => 'No video available right now.',
+            _ => 'Something went wrong. Nothing was used.',
+          });
+        }
         return;
       }
 
-      // Banked BEFORE the solve, then spent. If the app dies between the two,
-      // the credit survives and the next request honours it.
+      // BANKED WHETHER OR NOT THE SCREEN SURVIVED.
+      //
+      // A rewarded ad ends by returning from a fullscreen activity, and coming
+      // back to a rebuilt or popped route is ordinary rather than exceptional.
+      // The `mounted` check that used to sit above this took fifteen seconds
+      // of somebody's attention and then gave back nothing, because the credit
+      // was granted after it.
+      //
+      // Banked before it is spent, so a crash in between leaves a credit
+      // rather than a debt.
       await money.grantHintCredit();
+
+      // ...and if the board that asked for it is gone, banked is where it
+      // stays. Spending it here would buy a hint for a session that ended
+      // while the video played, which is a purchase with nothing to deliver
+      // it to. Left as a credit, the next hint they ask for is free — which is
+      // what "your video is saved for the next one" already promises
+      // elsewhere.
+      if (!_game.isCurrentSession(session)) {
+        if (mounted) {
+          _toast('Your video is saved for the next hint.');
+        }
+        return;
+      }
+
       await money.consumeHintCredit();
       spentCredit = true;
     }
 
     final wasRewarded = spentCredit;
     final outcome = await hints.request(wasRewarded: wasRewarded);
-    if (!mounted) return;
 
-    // Anything other than a delivered hint means the player paid for nothing.
+    // NO `mounted` CHECK HERE, deliberately.
+    //
+    // Solving runs on an isolate and can take seconds on a late board. Leaving
+    // the screen during it is the most ordinary thing a player can do — back
+    // out, take a call, put the phone down on a hint that never arrives — and
+    // the early return that used to sit on this line skipped every refund
+    // branch below it. The free hint, or the video they had already watched,
+    // was simply gone, and nothing on screen had said so.
+    //
+    // What a player is owed does not depend on which widgets are still alive.
+    // Settlement is unconditional from here down; only the toasts are guarded,
+    // because a toast is the one part that genuinely needs a screen.
     Future<void> refund() async {
       if (spentFreeHint) await money.refundFreeHint();
       if (spentCredit) await money.grantHintCredit();
     }
 
+    // DELIVERY, not merely success, is what a hint is charged for.
+    //
+    // The session is re-checked HERE as well as inside the service, because
+    // this is where the money is decided and it must not depend on the service
+    // behaving. A solve that finishes after the player has left resolves
+    // perfectly well against the position they abandoned — same board, valid
+    // move, `resolved` — and the board carrying it is never shown again,
+    // because reopening a level starts a fresh one. Charging for that is
+    // charging for nothing.
+    final delivered = _game.isCurrentSession(session);
+
     switch (outcome) {
+      case HintOutcome.resolved when !delivered:
+        await refund();
+
       case HintOutcome.unavailable:
         await refund();
         if (!mounted) return;
@@ -326,7 +463,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         //
         // Saying nothing here is how a paid reward reads as nothing happening,
         // which is a refund request and a one-star review.
-        if (wasRewarded) {
+        if (wasRewarded && mounted) {
           _toast('Here is your hint — pour into the glowing tube.');
         }
 
@@ -438,7 +575,25 @@ class _GameScreenState extends ConsumerState<GameScreen>
                         bandName: band.name,
                         movesUsed: state.movesUsed,
                         minMoves: state.level.minMoves,
-                        onExit: widget.onExit,
+                        clock: LevelClock(
+                          // Read through the notifier rather than closing over
+                          // `state`: the ticker outlives this build, and a
+                          // captured snapshot would freeze at the time of the
+                          // last move.
+                          elapsedSeconds: () =>
+                              ref
+                                  .read(gameControllerProvider)
+                                  ?.elapsedSecondsAt(DateTime.now()) ??
+                              0,
+                          parSeconds: state.parSeconds,
+                          isRunning: state.isClockRunning,
+                          // Smaller than the level number and the move count
+                          // on either side of it. Three 26px numerals across
+                          // one bar read as three scores; the clock is the one
+                          // that only moves points, and it should look it.
+                          fontSize: 19,
+                        ),
+                        onExit: _exit,
                       ),
                     ),
                     Expanded(
@@ -472,6 +627,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                             minMoves: state.level.minMoves,
                             previousBest: result.previousBest,
                             isNewBest: result.isNewBest,
+                            elapsedSeconds: result.elapsedSeconds,
+                            parSeconds: result.parSeconds,
+                            points: result.points,
+                            previousFastest: result.previousFastest,
                             bandName: band.name,
                             bandClearedBefore: (clearedNow - 1).clamp(
                               0,
@@ -486,7 +645,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                                     state.level.id + 1,
                                   ),
                             onReplay: () => _startLevel(state.level.id),
-                            onLevels: widget.onExit,
+                            onLevels: _exit,
                             interactive: !_skipActive,
                           ),
                         ),
@@ -505,7 +664,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
                                     .undo();
                               }
                             : null,
-                        onRestart: () => _startLevel(state.level.id),
+                        onRestart: () {
+                          // Banked BEFORE the restart, which discards the
+                          // clock. Time spent on an attempt somebody threw
+                          // away is still time they played.
+                          _bankPlaytime();
+                          _startLevel(state.level.id);
+                        },
                         onHint: _onHint,
                         hintBusy: state.hintPending,
                       ),

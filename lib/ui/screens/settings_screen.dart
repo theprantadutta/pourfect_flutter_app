@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/analytics/analytics_service.dart';
 import '../../services/iap/billing_service.dart';
 import '../../state/monetization_controller.dart';
+import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../theme/ball_palette.dart';
@@ -121,6 +122,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (confirmed == true && mounted) {
       await ref.read(progressProvider.notifier).resetAll();
+      // The play history goes with it. Leaving a two-year streak standing
+      // behind a wiped campaign would be a statistics screen reporting a
+      // player who no longer exists.
+      await ref.read(playHistoryProvider.notifier).resetAll();
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
@@ -171,6 +176,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+  }
+
+  /// Re-opens the advertising consent form.
+  ///
+  /// The row only exists where the SDK says a privacy-options entry point is
+  /// REQUIRED, which is the same regions where the consent form itself is.
+  /// Showing it everywhere would put a dead control in front of most players;
+  /// showing it nowhere - which is what shipped - means somebody who consented
+  /// in the EEA had no way to change their mind, and the form the app already
+  /// knew how to open was unreachable from any screen.
+  Future<void> _openAdPrivacyOptions() async {
+    // The service applies whatever the player chooses: withdrawing consent
+    // discards inventory requested under the old answer, granting it starts
+    // filling again. This screen only has to reflect the result.
+    await ref.read(adServiceProvider).showPrivacyOptions();
+    if (mounted) setState(() {});
   }
 
   Future<void> _openPrivacy() async {
@@ -294,6 +315,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               detail: kPrivacyPolicyUrl.replaceFirst('https://', ''),
               onTap: _openPrivacy,
             ),
+            if (ref.watch(adServiceProvider).privacyOptionsRequired)
+              _ActionRow(
+                title: 'Ad privacy options',
+                detail: 'Change what you agreed to for advertising.',
+                onTap: _openAdPrivacyOptions,
+              ),
             Padding(
               padding: EdgeInsets.symmetric(vertical: tokens.space3),
               child: Row(
