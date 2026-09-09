@@ -29,10 +29,17 @@ class VerifiedPurchase {
   /// Why the store refused, when it did.
   final String? error;
 
+  /// True only when the store VOIDED the purchase behind the entitlement.
+  ///
+  /// The one "no" a client may act on. A bare [adsRemoved] of false is also
+  /// what a pending purchase, a refused token and an outage look like.
+  final bool adsRevoked;
+
   const VerifiedPurchase({
     required this.state,
     required this.adsRemoved,
     required this.error,
+    required this.adsRevoked,
   });
 
   bool get isPurchased => state == 'purchased';
@@ -64,6 +71,7 @@ class PurchasesApi {
           state: value['state'] as String? ?? 'unknown',
           adsRemoved: value['ads_removed'] as bool? ?? false,
           error: value['error'] as String?,
+          adsRevoked: value['ads_revoked'] as bool? ?? false,
         ),
       ),
       ApiFailure(:final kind, :final detail, :final statusCode) => ApiFailure(

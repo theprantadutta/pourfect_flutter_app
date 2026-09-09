@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'state/legal_acceptance.dart';
+import 'state/monetization_controller.dart';
 import 'state/providers.dart';
 import 'state/daily_controller.dart';
 import 'state/sync_controller.dart';
@@ -117,6 +118,15 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // Ads and billing initialise off the first frame too. Neither may block
       // startup: a device with no Play Services still has to reach level 1.
       ref.read(adServiceProvider).init();
+
+      // BUILT BEFORE BILLING STARTS. Monetization is a lazy provider and it is
+      // what verifies purchase receipts; billing replays every owned purchase
+      // the moment it initialises. In the other order the replay is announced
+      // to a broadcast stream with no subscriber and is simply dropped — which
+      // was the only retry a purchase whose first verification failed had.
+      // The receipt queue is persisted as a second line of defence, but the
+      // order is the fix.
+      ref.read(monetizationProvider);
       ref.read(billingServiceProvider).init();
 
       // And the first sync. Off the first frame like everything else here,

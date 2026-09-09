@@ -40,8 +40,14 @@ class DailyChallengeScreen extends ConsumerStatefulWidget {
 class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
   late final GameController _game;
 
-  /// True once this session's board has been handed to the controller.
-  bool _started = false;
+  /// The challenge THIS SCREEN is playing.
+  ///
+  /// Captured when the board is handed to the game controller and never
+  /// re-read from the shared provider afterwards. The shell refreshes the
+  /// daily on every app resume, so a board left open across midnight UTC would
+  /// otherwise have tomorrow's challenge underneath it — and the result would
+  /// be submitted against a date and an optimum the player never saw.
+  DailyChallenge? _playing;
 
   /// Set when the board is solved and the server has answered.
   DailyResult? _result;
@@ -73,8 +79,8 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
   }
 
   void _startIfReady(DailyChallenge challenge) {
-    if (_started) return;
-    _started = true;
+    if (_playing != null) return;
+    _playing = challenge;
     // Level set version zero: this board is not part of the campaign and must
     // never be mistaken for one in progress or in analytics.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -98,7 +104,8 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
 
   Future<void> _submit() async {
     final state = ref.read(gameControllerProvider);
-    if (state == null) return;
+    final playing = _playing;
+    if (state == null || playing == null) return;
 
     setState(() {
       _submitting = true;
@@ -111,6 +118,9 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
     final result = await ref
         .read(dailyProvider.notifier)
         .submit(
+          // The board that was opened, not whatever the shared provider holds
+          // now. A refresh while this screen is up must not retarget a result.
+          challenge: playing,
           movesUsed: state.movesUsed,
           durationSeconds: state.elapsedSecondsAt(DateTime.now()),
         );
@@ -137,16 +147,20 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
   Widget build(BuildContext context) {
     final tokens = PourfectTokens.of(context);
     final daily = ref.watch(dailyProvider);
-    final challenge = daily.challenge;
 
-    if (challenge != null) _startIfReady(challenge);
+    if (daily.challenge != null) _startIfReady(daily.challenge!);
+
+    // Rendered from the challenge THIS screen started, so a background refresh
+    // cannot swap the header, the optimum or the date out from under a board
+    // the player is halfway through.
+    final playing = _playing;
 
     return Scaffold(
       backgroundColor: tokens.surface,
       body: SafeArea(
-        child: challenge == null
+        child: playing == null
             ? _Unavailable(state: daily, onBack: widget.onExit)
-            : _board(tokens, challenge),
+            : _board(tokens, playing),
       ),
     );
   }
@@ -225,9 +239,10 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
   void _onUndo() => _game.undo();
 
   void _onRestart() {
-    final challenge = ref.read(dailyProvider).challenge;
-    if (challenge == null) return;
-    _game.startLevel(challenge.asLevel, levelSetVersion: 0);
+    // Restarts the board being played, not whatever is cached now.
+    final playing = _playing;
+    if (playing == null) return;
+    _game.startLevel(playing.asLevel, levelSetVersion: 0);
   }
 
   /// Whether offering the reminder is appropriate right now.

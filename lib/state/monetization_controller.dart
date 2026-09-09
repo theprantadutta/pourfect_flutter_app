@@ -116,6 +116,16 @@ class MonetizationController extends Notifier<MonetizationState> {
     final receipts = billing.receipts.listen(_verifyWithServer);
     ref.onDispose(receipts.cancel);
 
+    // Anything the store delivered before this listener existed, plus anything
+    // a previous launch failed to verify. A broadcast stream drops events with
+    // no subscriber, and at launch the store can replay a purchase before this
+    // provider has been built — which used to consume the only retry a failed
+    // verification had. The queue is persisted, so a crash between delivery
+    // and verification does not end it either.
+    for (final receipt in billing.pendingReceipts) {
+      _verifyWithServer(receipt);
+    }
+
     // Async: settles after build returns, which is allowed. The future is
     // KEPT, because anything that spends the hint budget has to wait for it —
     // see consumeFreeHint.
@@ -321,13 +331,17 @@ class MonetizationController extends Notifier<MonetizationState> {
 
     switch (result) {
       case ApiOk(:final value):
-        // GRANT ONLY. A `false` here is not a revocation: it is what a pending
-        // purchase looks like, what a token the server refused looks like, and
-        // what an outage half-way through looks like. Taking the entitlement
-        // away on any of those would strip somebody mid-session over a
-        // question the device cannot answer. Revocation belongs to the server's
-        // refund scan, which has Play's own word for it.
-        if (value.adsRemoved) applyServerEntitlement(true);
+        // The server has answered, so this receipt is settled either way and
+        // stops being retried. What it settles TO is the interesting part.
+        await ref.read(billingServiceProvider).settleReceipt(receipt.token);
+
+        if (value.adsRemoved) {
+          await applyServerEntitlement(granted: true);
+        } else if (value.adsRevoked) {
+          // The store voided this purchase. That is the only "no" worth acting
+          // on — see applyServerEntitlement.
+          await applyServerEntitlement(granted: false, revoked: true);
+        }
 
         if (!value.isPurchased && !value.isPending) {
           debugPrint(
@@ -337,25 +351,48 @@ class MonetizationController extends Notifier<MonetizationState> {
         }
 
       case ApiFailure(:final kind):
-        // Not shown, not retried here, and not treated as a failed purchase.
-        // The store replays every owned purchase on launch, so the next one
-        // tries again.
+        // NOT settled. Not shown, not retried here, and not treated as a
+        // failed purchase — the receipt stays in the pending queue so the next
+        // launch offers it again.
         debugPrint('[iap] verification deferred: $kind');
     }
   }
 
-  /// Applies an entitlement the SERVER has confirmed.
+  /// Applies an entitlement decision the SERVER has confirmed.
   ///
-  /// One direction only, and deliberately. The server knows about purchases
-  /// this device has never seen — somebody who paid, reinstalled, and now has
-  /// a store that has not replayed the token yet — so it can grant. It must
-  /// not revoke: a sync that arrives during an outage, against a stale row, or
-  /// before Play has redelivered, would take away something the player paid
-  /// for while they were using it. Revocation is a decision for the purchase
-  /// path, where there is a store verdict to act on.
-  void applyServerEntitlement(bool adsRemoved) {
-    if (!adsRemoved || state.adsRemoved) return;
-    state = state.copyWith(adsRemoved: true);
+  /// The asymmetry here is the whole design, and it took a refund escaping to
+  /// get it right.
+  ///
+  /// **A grant needs only `granted`.** The server knows about purchases this
+  /// device has never seen — somebody who paid, reinstalled, and whose store
+  /// has not replayed the token yet — so it can turn the entitlement on.
+  ///
+  /// **A revocation needs `revoked`, which is a different fact.** A bare
+  /// "not entitled" is also what a pending purchase looks like, what a
+  /// verification we could not deliver looks like, and what a fresh install
+  /// looks like. Acting on that would strip a paying player mid-session over a
+  /// question the phone cannot answer — the device grants locally the moment
+  /// the store says so, long before any server hears about it. `revoked` is
+  /// set only when Play's own voided-purchases list names the token, which can
+  /// only mean the money went back.
+  ///
+  /// The revocation reaches the BILLING CACHE too, not just this state.
+  /// Otherwise the store's replay on the next launch reads the cached grant
+  /// back out and the refund is undone once a day, forever.
+  Future<void> applyServerEntitlement({
+    required bool granted,
+    bool revoked = false,
+  }) async {
+    if (granted) {
+      if (!state.adsRemoved) state = state.copyWith(adsRemoved: true);
+      await ref.read(billingServiceProvider).confirmEntitlement();
+      return;
+    }
+
+    if (!revoked) return;
+
+    if (state.adsRemoved) state = state.copyWith(adsRemoved: false);
+    await ref.read(billingServiceProvider).revokeEntitlement();
   }
 
   /// Test seam.

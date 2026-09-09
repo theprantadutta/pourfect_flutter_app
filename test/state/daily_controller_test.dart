@@ -27,6 +27,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  /// The challenge currently loaded, which is the one every test here plays.
+  ///
+  /// Named explicitly at the call site because a submission is now bound to a
+  /// specific challenge rather than to whatever is cached — see the daily
+  /// controller for the midnight case that made that necessary.
+  DailyChallenge challengeOf(ProviderContainer container) =>
+      container.read(dailyProvider).challenge!;
+
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   String dailyBody({Map<String, Object?>? attempt, int capacity = 4}) =>
@@ -240,7 +248,7 @@ void main() {
 
       final daily = built.container.read(dailyProvider.notifier);
       await daily.ensureLoaded();
-      final result = await daily.submit(movesUsed: 4, durationSeconds: 75);
+      final result = await daily.submit(challenge: challengeOf(built.container), movesUsed: 4, durationSeconds: 75);
 
       final submit = built.calls.firstWhere(
         (c) => c.url.path.endsWith('/submit'),
@@ -284,7 +292,7 @@ void main() {
 
         final daily = built.container.read(dailyProvider.notifier);
         await daily.ensureLoaded();
-        final result = await daily.submit(movesUsed: 6, durationSeconds: 100);
+        final result = await daily.submit(challenge: challengeOf(built.container), movesUsed: 6, durationSeconds: 100);
 
         expect((result as ApiOk).value.rank, isNull);
       },
@@ -314,7 +322,7 @@ void main() {
       await daily.ensureLoaded();
       expect(built.container.read(dailyProvider).challenge!.isPlayed, isFalse);
 
-      await daily.submit(movesUsed: 4, durationSeconds: 60);
+      await daily.submit(challenge: challengeOf(built.container), movesUsed: 4, durationSeconds: 60);
 
       final challenge = built.container.read(dailyProvider).challenge!;
       expect(challenge.isPlayed, isTrue);
@@ -335,23 +343,64 @@ void main() {
 
       final daily = built.container.read(dailyProvider.notifier);
       await daily.ensureLoaded();
-      final result = await daily.submit(movesUsed: 1, durationSeconds: 5);
+      final result = await daily.submit(challenge: challengeOf(built.container), movesUsed: 1, durationSeconds: 5);
 
       expect((result as ApiFailure).kind, ApiFailureKind.refused);
       expect(built.container.read(dailyProvider).challenge!.isPlayed, isFalse);
     });
 
-    test('submitting with no board loaded is refused locally', () async {
+    test('a result for yesterday does not mark today as played', () async {
+      // There used to be a local "no board loaded" refusal here, which the
+      // signature now makes unreachable: a submission names its challenge, so
+      // there is no way to call this without one. What survived the change is
+      // the guard that matters — a slow answer for the board somebody actually
+      // played must not stamp an attempt onto the board that replaced it. That
+      // is the midnight case, and the card is the visible half of it.
       final built = harness(
-        handler: authThen((_) async => http.Response(dailyBody(), 200)),
+        handler: authThen((request) async {
+          if (request.url.path.endsWith('/submit')) {
+            return http.Response(
+              jsonEncode({
+                'stars': 3,
+                'moves': 4,
+                'is_personal_best': true,
+                'daily_streak': 2,
+                'rank': 1,
+                'total_players': 9,
+              }),
+              200,
+            );
+          }
+          return http.Response(dailyBody(), 200);
+        }),
       );
 
-      final result = await built.container
-          .read(dailyProvider.notifier)
-          .submit(movesUsed: 4, durationSeconds: 60);
+      final daily = built.container.read(dailyProvider.notifier);
+      await daily.ensureLoaded();
 
-      expect(result, isA<ApiFailure<DailyResult>>());
-      expect(built.calls, isEmpty);
+      final today = challengeOf(built.container);
+      final yesterday = DailyChallenge(
+        date: today.date.subtract(const Duration(days: 1)),
+        board: today.board,
+        minMoves: today.minMoves,
+        colorCount: today.colorCount,
+        emptyTubeCount: today.emptyTubeCount,
+        yourAttempt: null,
+      );
+
+      // The result still comes back to the caller, which is what puts the
+      // player's own score on their own screen.
+      final result = await daily.submit(
+        challenge: yesterday,
+        movesUsed: 4,
+        durationSeconds: 60,
+      );
+      expect(result, isA<ApiOk<DailyResult>>());
+
+      // The card, though, is still today's, and today is still unplayed.
+      final card = built.container.read(dailyProvider).challenge!;
+      expect(card.date, today.date);
+      expect(card.isPlayed, isFalse);
     });
   });
 }

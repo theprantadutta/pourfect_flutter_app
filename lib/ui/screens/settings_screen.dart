@@ -127,11 +127,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       // behind a wiped campaign would be a statistics screen reporting a
       // player who no longer exists.
       await ref.read(playHistoryProvider.notifier).resetAll();
-      // The next sync must be a full push rather than an empty one that reads
-      // as "nothing to say". Note what this does NOT do: it does not ask the
-      // server to forget anything. Resetting is a local act, and a player who
-      // wants their account erased has Delete account for that.
-      ref.read(syncControllerProvider.notifier).reset();
+      // ...and on the server, which is the half that used to be missing: the
+      // next sync merged every star straight back, so this confirmation
+      // promised something the app undid on the next app resume. A reset that
+      // cannot be delivered right now is remembered and blocks merging until
+      // it lands, so an offline reset is still a reset.
+      await ref.read(syncControllerProvider.notifier).reset();
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..clearSnackBars()

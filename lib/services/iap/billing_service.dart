@@ -93,6 +93,26 @@ abstract interface class BillingService {
   /// Re-reads past purchases. Play requires a user-visible way to do this.
   Future<void> restorePurchases();
 
+  /// Records that the server accepted a purchase, clearing any revocation.
+  Future<void> confirmEntitlement();
+
+  /// Receipts the store has delivered that no verification has settled.
+  ///
+  /// Survives a relaunch, because the store's replay is the only retry there
+  /// is and a dropped broadcast event would otherwise be the end of it.
+  List<PurchaseReceipt> get pendingReceipts;
+
+  /// Marks a receipt as settled, so it stops being retried.
+  Future<void> settleReceipt(String token);
+
+  /// Records that the store voided the purchase behind the entitlement.
+  ///
+  /// Wipes the cached grant AND remembers that it was revoked, because the
+  /// store replays every owned purchase on the next launch and would otherwise
+  /// hand it straight back. Cleared again only by a verification the server
+  /// accepts, which is the one thing that can mean the player owns it again.
+  Future<void> revokeEntitlement();
+
   /// Receipts worth showing the server.
   ///
   /// Emitted for a fresh purchase AND for every purchase the store replays on
@@ -107,6 +127,20 @@ abstract interface class BillingService {
 class PlayBillingService implements BillingService {
   static const _entitlementKey = 'pourfect.entitlement.remove_ads';
 
+  /// Set once the store has voided the purchase behind the entitlement.
+  ///
+  /// Persisted, because the thing it defends against happens on the NEXT
+  /// launch: the store replays every owned purchase, and without this the
+  /// replay grants the refunded entitlement straight back.
+  static const _revokedKey = 'pourfect.entitlement.revoked';
+
+  /// Tokens the store has delivered that no verification has settled.
+  ///
+  /// Persisted for the same reason the revocation is. The store's replay is
+  /// the only retry there is, and a receipt delivered before the verifier was
+  /// listening — or during a crash — would otherwise never be offered again.
+  static const _pendingKey = 'pourfect.iap.pending_receipts';
+
   final InAppPurchase _iap;
   final _changes = StreamController<bool>.broadcast();
   final _receipts = StreamController<PurchaseReceipt>.broadcast();
@@ -115,8 +149,11 @@ class PlayBillingService implements BillingService {
   Completer<PurchaseOutcome>? _pending;
 
   bool _adsRemoved = false;
+  bool _revoked = false;
   StoreProduct? _product;
   bool _available = false;
+
+  final List<PurchaseReceipt> _pendingReceipts = [];
 
   PlayBillingService({InAppPurchase? iap})
     : _iap = iap ?? InAppPurchase.instance;
@@ -176,7 +213,69 @@ class PlayBillingService implements BillingService {
   Future<void> _restoreCachedEntitlement() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _setEntitlement(prefs.getBool(_entitlementKey) ?? false);
+      _revoked = prefs.getBool(_revokedKey) ?? false;
+      // A revoked entitlement stays off even if the cached grant says
+      // otherwise. The cache is what the store last told us; the revocation is
+      // what the store's own refund list says, and it is newer by definition.
+      _setEntitlement(!_revoked && (prefs.getBool(_entitlementKey) ?? false));
+
+      for (final token in prefs.getStringList(_pendingKey) ?? const []) {
+        _pendingReceipts.add(
+          PurchaseReceipt(
+            productId: IapIds.removeAds,
+            token: token,
+            restored: true,
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
+  @override
+  List<PurchaseReceipt> get pendingReceipts =>
+      List.unmodifiable(_pendingReceipts);
+
+  @override
+  Future<void> settleReceipt(String token) async {
+    _pendingReceipts.removeWhere((r) => r.token == token);
+    await _persistPending();
+  }
+
+  Future<void> _rememberPending(PurchaseReceipt receipt) async {
+    if (_pendingReceipts.any((r) => r.token == receipt.token)) return;
+    _pendingReceipts.add(receipt);
+    await _persistPending();
+  }
+
+  Future<void> _persistPending() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        _pendingKey,
+        [for (final r in _pendingReceipts) r.token],
+      );
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> revokeEntitlement() async {
+    _revoked = true;
+    _setEntitlement(false);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_revokedKey, true);
+      await prefs.setBool(_entitlementKey, false);
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> confirmEntitlement() async {
+    _revoked = false;
+    _setEntitlement(true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_revokedKey, false);
+      await prefs.setBool(_entitlementKey, true);
     } catch (_) {}
   }
 
@@ -209,7 +308,13 @@ class PlayBillingService implements BillingService {
 
         case PurchaseStatus.purchased:
         case PurchaseStatus.restored:
-          _persistEntitlement(true);
+          // NOT granted while the entitlement stands revoked. The store
+          // replays every owned purchase on launch and keeps reporting a
+          // refunded one-time purchase as owned, so this branch is exactly
+          // where a refund would otherwise be undone once a day forever. The
+          // receipt still goes to the server below: if the refund was itself
+          // wrong, the server's verdict is what turns the entitlement back on.
+          if (!_revoked) _persistEntitlement(true);
 
           // Offered to the server on every delivery, including the replays
           // the store performs on launch. The local entitlement is granted
@@ -218,13 +323,17 @@ class PlayBillingService implements BillingService {
           // ownership exclusive and to notice a later refund.
           final token = purchase.verificationData.serverVerificationData;
           if (token.isNotEmpty) {
-            _receipts.add(
-              PurchaseReceipt(
-                productId: purchase.productID,
-                token: token,
-                restored: purchase.status == PurchaseStatus.restored,
-              ),
+            final receipt = PurchaseReceipt(
+              productId: purchase.productID,
+              token: token,
+              restored: purchase.status == PurchaseStatus.restored,
             );
+            // Remembered BEFORE it is announced. A broadcast stream drops
+            // events that nobody is listening to yet, and at launch the store
+            // can deliver a replay before the verifier exists — which used to
+            // silently consume the only retry a failed verification had.
+            _rememberPending(receipt);
+            _receipts.add(receipt);
           }
 
           _complete(
@@ -354,6 +463,18 @@ class NoopBillingService implements BillingService {
 
   @override
   Future<void> restorePurchases() async {}
+
+  @override
+  Future<void> revokeEntitlement() async {}
+
+  @override
+  Future<void> confirmEntitlement() async {}
+
+  @override
+  List<PurchaseReceipt> get pendingReceipts => const [];
+
+  @override
+  Future<void> settleReceipt(String token) async {}
 
   @override
   Stream<PurchaseReceipt> get receipts => const Stream.empty();

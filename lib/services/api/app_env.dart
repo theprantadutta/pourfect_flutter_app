@@ -94,11 +94,97 @@ class AppEnv {
   /// forgets to flip. A debug build points at the development machine's LAN
   /// address — `localhost` on a handset is the handset — and a release build
   /// can only ever reach production.
+  ///
+  /// A release URL that does not pass [releaseUrlProblem] is DISCARDED, and
+  /// the build behaves as one with no backend at all. That is not defensive
+  /// tidiness: `.env.example` ships `PROD_API_BACKEND_URL=https://example.com`
+  /// and a real `.env` copied from it inherits the placeholder, so the
+  /// alternative is a signed release quietly sending every player's progress
+  /// and Firebase token to a domain we do not own. Silence is the only safe
+  /// failure here — the campaign does not need a server, and a leaderboard
+  /// that is missing is better than one that is somebody else's.
   static String get apiBaseUrl {
-    if (_override.isNotEmpty) return _override;
-    return kReleaseMode
+    final configured = _override.isNotEmpty
+        ? _override
+        : kReleaseMode
         ? get('PROD_API_BACKEND_URL')
         : get('DEV_API_BACKEND_URL');
+
+    if (!kReleaseMode) return configured;
+
+    final problem = releaseUrlProblem(configured);
+    if (problem == null) return configured;
+
+    debugPrint('[env] release API URL refused ($problem); backend features off');
+    return '';
+  }
+
+  /// Why a URL must not be used by a RELEASE build, or null if it is fine.
+  ///
+  /// Deliberately a denylist of things that cannot be right rather than an
+  /// allowlist of hosts, which would need editing for every environment. Each
+  /// rule exists because shipping it would be worse than shipping nothing:
+  ///
+  ///  * **A placeholder** is the failure this was written for. It is what the
+  ///    example file contains, so it is what a hurried copy contains.
+  ///  * **Cleartext** would put a bearer token and a Firebase ID token on the
+  ///    wire in plain text, and a release build has no network security
+  ///    exception to permit it anyway.
+  ///  * **A private or loopback address** is a development machine. On a
+  ///    player's phone it resolves to their own network, or to their phone.
+  @visibleForTesting
+  static String? releaseUrlProblem(String url) {
+    if (url.isEmpty) return null; // Unconfigured is a supported state.
+
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      return 'not a URL';
+    }
+
+    if (uri.scheme != 'https') return 'not https';
+
+    final host = uri.host.toLowerCase();
+
+    const placeholders = {
+      'example.com',
+      'example.org',
+      'example.net',
+      'changeme',
+      'todo',
+      'your-api',
+      'api.example.com',
+    };
+    if (placeholders.contains(host)) return 'placeholder host';
+
+    // Reserved for documentation and testing; never a real deployment.
+    for (final suffix in const ['.example', '.invalid', '.test', '.local', '.localhost']) {
+      if (host.endsWith(suffix)) return 'reserved host suffix';
+    }
+
+    if (host == 'localhost' || host == '127.0.0.1' || host == '::1') {
+      return 'loopback host';
+    }
+
+    if (_isPrivateAddress(host)) return 'private network address';
+
+    return null;
+  }
+
+  static bool _isPrivateAddress(String host) {
+    final parts = host.split('.');
+    if (parts.length != 4) return false;
+
+    final octets = <int>[];
+    for (final part in parts) {
+      final value = int.tryParse(part);
+      if (value == null || value < 0 || value > 255) return false;
+      octets.add(value);
+    }
+
+    if (octets[0] == 10) return true;
+    if (octets[0] == 192 && octets[1] == 168) return true;
+    if (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31) return true;
+    return false;
   }
 
   /// The OAuth WEB client id, for Google Sign-In.

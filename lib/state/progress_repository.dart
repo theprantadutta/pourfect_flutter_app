@@ -45,6 +45,20 @@ class LevelProgress {
   /// Highest score earned on this level. Also 0 when unknown.
   final int bestPoints;
 
+  /// The moves and seconds of the ATTEMPT that earned [bestPoints].
+  ///
+  /// Kept because the other bests are independent and pairing them invents a
+  /// run that never happened. A level cleared once in 5 moves over 110 seconds
+  /// and again in 10 moves over 20 has a best-moves of 5 and a best-time of
+  /// 20 — and submitting that pair as one attempt scored 625 against two real
+  /// runs worth 250 and 313. The score doubled without anybody playing.
+  ///
+  /// Zero for a row written before this was recorded. Those rows submit their
+  /// move count with an UNKNOWN time rather than a borrowed one: stars come
+  /// from moves and survive, and a score we cannot evidence is not sent.
+  final int bestPointsMoves;
+  final int bestPointsSeconds;
+
   /// When this level was FIRST cleared, in milliseconds since the epoch, UTC.
   ///
   /// Zero means unknown, which every row written before sync existed will be.
@@ -65,6 +79,8 @@ class LevelProgress {
     required this.bestMoves,
     this.bestTimeSeconds = 0,
     this.bestPoints = 0,
+    this.bestPointsMoves = 0,
+    this.bestPointsSeconds = 0,
     this.firstClearedAtMillis = 0,
   });
 
@@ -83,6 +99,8 @@ class LevelProgress {
     'm': bestMoves,
     't': bestTimeSeconds,
     'p': bestPoints,
+    'pm': bestPointsMoves,
+    'ps': bestPointsSeconds,
     'c': firstClearedAtMillis,
   };
 
@@ -95,6 +113,8 @@ class LevelProgress {
     // than failing is the difference between an upgrade and a wipe.
     bestTimeSeconds: (json['t'] as num?)?.toInt() ?? 0,
     bestPoints: (json['p'] as num?)?.toInt() ?? 0,
+    bestPointsMoves: (json['pm'] as num?)?.toInt() ?? 0,
+    bestPointsSeconds: (json['ps'] as num?)?.toInt() ?? 0,
     firstClearedAtMillis: (json['c'] as num?)?.toInt() ?? 0,
   );
 
@@ -109,21 +129,30 @@ class LevelProgress {
     int timeSeconds = 0,
     int points = 0,
     int firstClearedAtMillis = 0,
-  }) => LevelProgress(
-    levelId: levelId,
-    levelSetVersion: levelSetVersion,
-    stars: stars > this.stars ? stars : this.stars,
-    bestMoves: moves < bestMoves ? moves : bestMoves,
-    // Fastest wins, but an unknown time (0) is not the fastest time — it is
-    // no time at all, and must never displace a real one.
-    bestTimeSeconds: _fastest(bestTimeSeconds, timeSeconds),
-    bestPoints: points > bestPoints ? points : bestPoints,
-    // The first clear is a fact about the past and cannot move forward.
-    firstClearedAtMillis: _earliest(
-      this.firstClearedAtMillis,
-      firstClearedAtMillis,
-    ),
-  );
+  }) {
+    // The scoring attempt travels WITH the score. Taking the new points but
+    // leaving the old pair behind would be the same fabrication in slower
+    // motion.
+    final takesPoints = points > bestPoints;
+
+    return LevelProgress(
+      levelId: levelId,
+      levelSetVersion: levelSetVersion,
+      stars: stars > this.stars ? stars : this.stars,
+      bestMoves: moves < bestMoves ? moves : bestMoves,
+      // Fastest wins, but an unknown time (0) is not the fastest time — it is
+      // no time at all, and must never displace a real one.
+      bestTimeSeconds: _fastest(bestTimeSeconds, timeSeconds),
+      bestPoints: takesPoints ? points : bestPoints,
+      bestPointsMoves: takesPoints ? moves : bestPointsMoves,
+      bestPointsSeconds: takesPoints ? timeSeconds : bestPointsSeconds,
+      // The first clear is a fact about the past and cannot move forward.
+      firstClearedAtMillis: _earliest(
+        this.firstClearedAtMillis,
+        firstClearedAtMillis,
+      ),
+    );
+  }
 
   static int _earliest(int a, int b) {
     if (a <= 0) return b > 0 ? b : 0;
@@ -471,6 +500,8 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
           bestMoves: movesUsed,
           bestTimeSeconds: elapsedSeconds,
           bestPoints: points,
+          bestPointsMoves: movesUsed,
+          bestPointsSeconds: elapsedSeconds,
           firstClearedAtMillis: clearedAt,
         );
 
@@ -520,10 +551,17 @@ class ProgressController extends Notifier<Map<int, LevelProgress>> {
         continue;
       }
 
+      // The server's own scoring attempt, when it sent one. Merging its
+      // points against OUR moves and time would recreate the fabrication this
+      // pair exists to prevent.
       final combined = mine.mergedWith(
         stars: row.stars,
-        moves: row.bestMoves,
-        timeSeconds: row.bestTimeSeconds,
+        moves: row.bestPoints > mine.bestPoints && row.bestPointsMoves > 0
+            ? row.bestPointsMoves
+            : row.bestMoves,
+        timeSeconds: row.bestPoints > mine.bestPoints && row.bestPointsMoves > 0
+            ? row.bestPointsSeconds
+            : row.bestTimeSeconds,
         points: row.bestPoints,
         firstClearedAtMillis: row.firstClearedAtMillis,
       );

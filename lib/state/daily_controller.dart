@@ -102,18 +102,22 @@ class DailyController extends Notifier<DailyState> {
   /// optimum and never trusts a client-sent star count, so what comes back is
   /// the authority — including the streak and the rank, neither of which this
   /// device could work out.
+  /// Submits a result against the challenge it was PLAYED on.
+  ///
+  /// The caller names the challenge rather than this reading whatever is
+  /// currently cached, and that is the fix for a real defect: the shell
+  /// refreshes the daily when the app resumes, so a board left open across
+  /// midnight UTC would have today's challenge loaded underneath it while the
+  /// player was still solving yesterday's. Submitting against `state.challenge`
+  /// then reported yesterday's moves as today's result — scored against a
+  /// different optimum, on a different day's leaderboard.
+  ///
+  /// A challenge is identified by its DATE. Nothing else about it can change.
   Future<ApiResult<DailyResult>> submit({
+    required DailyChallenge challenge,
     required int movesUsed,
     required int durationSeconds,
   }) async {
-    final challenge = state.challenge;
-    if (challenge == null) {
-      return const ApiFailure(
-        ApiFailureKind.refused,
-        detail: 'no challenge loaded',
-      );
-    }
-
     final result = await _api.submit(
       date: challenge.date,
       movesUsed: movesUsed,
@@ -121,16 +125,22 @@ class DailyController extends Notifier<DailyState> {
     );
 
     if (result case ApiOk(:final value)) {
+      // Only if the board this answers for is still the one on offer. A slow
+      // response for yesterday must not overwrite today's card with an attempt
+      // that belongs to a challenge nobody can play any more.
+      final current = state.challenge;
+      if (current == null || current.date != challenge.date) return result;
+
       state = state.copyWith(
         result: value,
         // The card the player is about to see should agree with the board
         // list they go back to.
         challenge: DailyChallenge(
-          date: challenge.date,
-          board: challenge.board,
-          minMoves: challenge.minMoves,
-          colorCount: challenge.colorCount,
-          emptyTubeCount: challenge.emptyTubeCount,
+          date: current.date,
+          board: current.board,
+          minMoves: current.minMoves,
+          colorCount: current.colorCount,
+          emptyTubeCount: current.emptyTubeCount,
           yourAttempt: DailyAttempt(
             moves: value.moves,
             stars: value.stars,

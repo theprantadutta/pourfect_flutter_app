@@ -32,7 +32,12 @@ class ReceiptBillingService implements BillingService {
   final _receipts = StreamController<PurchaseReceipt>.broadcast();
   final _changes = StreamController<bool>.broadcast();
 
-  void deliver(PurchaseReceipt receipt) => _receipts.add(receipt);
+  void deliver(PurchaseReceipt receipt) {
+    // Remembered before it is announced, exactly as the real service does:
+    // a broadcast stream drops events with no subscriber.
+    queued.add(receipt);
+    _receipts.add(receipt);
+  }
 
   @override
   Stream<PurchaseReceipt> get receipts => _receipts.stream;
@@ -54,6 +59,24 @@ class ReceiptBillingService implements BillingService {
 
   @override
   Future<void> restorePurchases() async {}
+
+  bool revoked = false;
+
+  @override
+  Future<void> revokeEntitlement() async => revoked = true;
+
+  @override
+  Future<void> confirmEntitlement() async => revoked = false;
+
+  /// Receipts delivered before anybody was listening.
+  final List<PurchaseReceipt> queued = [];
+
+  @override
+  List<PurchaseReceipt> get pendingReceipts => List.unmodifiable(queued);
+
+  @override
+  Future<void> settleReceipt(String token) async =>
+      queued.removeWhere((r) => r.token == token);
 
   @override
   Future<void> dispose() async {

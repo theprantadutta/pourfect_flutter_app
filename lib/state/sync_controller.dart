@@ -17,6 +17,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api/api_result.dart';
 import '../services/api/progress_api.dart';
@@ -74,6 +75,15 @@ class SyncController extends Notifier<SyncState> {
 
   Future<void>? _inFlight;
 
+  /// True while a progress reset has not reached the server.
+  ///
+  /// Persisted, because the moment it protects against is a relaunch: without
+  /// it, a reset performed offline is undone by the first sync of the next
+  /// session, which is exactly the shape the defect had.
+  static const _resetPendingKey = 'pourfect.sync.reset_pending';
+  bool _resetPending = false;
+  bool _restoredResetFlag = false;
+
   @override
   SyncState build() => const SyncState();
 
@@ -95,6 +105,29 @@ class SyncController extends Notifier<SyncState> {
   }
 
   Future<void> _run() async {
+    await _restoreResetFlag();
+
+    // A RESET THAT HAS NOT LANDED BLOCKS EVERYTHING. Merging the server's
+    // snapshot now would restore precisely what the player asked to erase, and
+    // pushing an empty campaign says nothing the server can act on.
+    if (_resetPending) {
+      if (!await _deliverReset()) {
+        state = state.copyWith(status: SyncStatus.unreachable);
+        return;
+      }
+
+      // The pass ENDS here, even though the reset succeeded. A push and merge
+      // in the same breath would reconcile against a snapshot the server
+      // computed before the erase, putting back exactly what was just removed.
+      // The next trigger — a level completion, an app resume — reconciles
+      // against the empty campaign that now exists.
+      state = state.copyWith(
+        status: SyncStatus.idle,
+        lastSucceededAt: DateTime.now(),
+      );
+      return;
+    }
+
     final auth = ref.read(authServiceProvider);
     final session = await auth.ensureSession();
     if (session == null) {
@@ -106,10 +139,21 @@ class SyncController extends Notifier<SyncState> {
     }
 
     // The entitlement the server knows about, applied before anything else.
-    // Somebody who paid and then reinstalled should be ad-free from the first
-    // level rather than after their first purchase round trip.
+    //
+    // Both directions, and they are not symmetric. A grant means somebody who
+    // paid and then reinstalled is ad-free from the first level rather than
+    // after their first purchase round trip. A revocation is acted on ONLY
+    // when the session says the purchase was voided — a bare "not entitled" is
+    // also what a pending purchase and a fresh install look like, and taking
+    // the entitlement away on that would strip a paying player mid-session.
     if (session.adsRemoved) {
-      ref.read(monetizationProvider.notifier).applyServerEntitlement(true);
+      await ref
+          .read(monetizationProvider.notifier)
+          .applyServerEntitlement(granted: true);
+    } else if (session.adsRevoked) {
+      await ref
+          .read(monetizationProvider.notifier)
+          .applyServerEntitlement(granted: false, revoked: true);
     }
 
     final progress = ref.read(progressProvider.notifier);
@@ -121,9 +165,18 @@ class SyncController extends Notifier<SyncState> {
     await progress.restored;
 
     final local = ref.read(progressProvider);
-    final rows = _needsFullPush
-        ? local.values.toList()
-        : [for (final id in _dirty) ?local[id]];
+
+    // WHAT THIS REQUEST CARRIES, captured before the await.
+    //
+    // The acknowledgement below removes exactly these ids and nothing else. It
+    // used to clear the whole dirty set on success, which quietly discarded
+    // every level finished WHILE the request was in flight — their results
+    // were never in the payload, so the server had not heard of them and now
+    // nothing would tell it until a full push after a restart.
+    final submitted = _needsFullPush ? local.keys.toSet() : {..._dirty};
+    final submittedFullPush = _needsFullPush;
+
+    final rows = [for (final id in submitted) ?local[id]];
 
     state = state.copyWith(status: SyncStatus.syncing);
 
@@ -135,13 +188,23 @@ class SyncController extends Notifier<SyncState> {
     switch (result) {
       case ApiOk(:final value):
         progress.mergeFromServer(value.progress);
-        _dirty.clear();
-        _needsFullPush = false;
+
+        // Only the submitted revisions are acknowledged. Anything that became
+        // dirty during the request stays dirty and goes out next.
+        _dirty.removeAll(submitted);
+        if (submittedFullPush) _needsFullPush = false;
+
         state = SyncState(
           status: SyncStatus.idle,
           lastSucceededAt: DateTime.now(),
-          pending: 0,
+          pending: _dirty.length,
         );
+
+        // Anything left dirty is carried by the NEXT trigger, which is never
+        // far away: every level completion syncs, and so does every app
+        // resume. What matters is that it is still there to carry — it used to
+        // be cleared as though it had been submitted, and then nothing
+        // mentioned it to the server until a full push after a restart.
 
         if (value.rejected > 0) {
           // Not shown to the player — there is nothing they can do — but never
@@ -167,6 +230,21 @@ class SyncController extends Notifier<SyncState> {
     }
   }
 
+  /// Reads the persisted flag once, and never over the top of a live one.
+  ///
+  /// The order matters: a reset performed a moment ago sets the flag in memory
+  /// and writes it asynchronously, so a read that raced the write would find
+  /// `false` and cheerfully merge the server's copy of everything the player
+  /// had just erased.
+  Future<void> _restoreResetFlag() async {
+    if (_restoredResetFlag || _resetPending) return;
+    _restoredResetFlag = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _resetPending = prefs.getBool(_resetPendingKey) ?? false;
+    } catch (_) {}
+  }
+
   /// Pulls the server's view without pushing anything.
   ///
   /// For a fresh install, where there is nothing local worth sending and the
@@ -184,14 +262,66 @@ class SyncController extends Notifier<SyncState> {
     return false;
   }
 
-  /// Forgets what this device believes the server has.
+  /// Erases the campaign on the server as well as on this device.
   ///
-  /// Used after a progress reset, so the next sync is a full push rather than
-  /// an empty one that would look like "nothing to say".
-  void reset() {
+  /// Local progress is already gone by the time this is called — the settings
+  /// screen wipes it first so the screen behind the confirmation is honest
+  /// immediately. What this adds is the half that used to be missing: the
+  /// server still held every star, and the next sync merged them straight
+  /// back. The confirmation said "erase every star and start from level 1"
+  /// and the app undid it on the next app resume.
+  ///
+  /// **A reset that could not be delivered is remembered, and blocks merging
+  /// until it lands.** Otherwise an offline reset is not a reset at all, it is
+  /// a pause: the flag survives a relaunch precisely because that is when the
+  /// old progress would otherwise come back.
+  Future<bool> reset() async {
     _dirty.clear();
     _needsFullPush = true;
+    _resetPending = true;
+    // Nothing may read the persisted flag over the top of this one.
+    _restoredResetFlag = true;
+    await _persistResetPending(true);
     state = const SyncState();
+
+    // Delivered through the ordinary sync path rather than inline, so there is
+    // ONE place a reset reaches the server — the one that also knows to end
+    // the pass rather than reconcile against a snapshot the server computed
+    // before the erase.
+    await syncNow();
+    return !_resetPending;
+  }
+
+  /// Sends the reset, clearing the pending flag only if the server took it.
+  Future<bool> _deliverReset() async {
+    if (await ref.read(authServiceProvider).ensureSession() == null) {
+      // No backend, or no session. A build with no server has nothing to
+      // reset remotely and the local wipe is the whole action; the flag is
+      // dropped so it does not block sync forever.
+      if (!ref.read(apiClientProvider).isConfigured) {
+        _resetPending = false;
+        await _persistResetPending(false);
+        return true;
+      }
+      return false;
+    }
+
+    final result = await _api.reset();
+    if (result.isOk) {
+      _resetPending = false;
+      await _persistResetPending(false);
+      return true;
+    }
+
+    debugPrint('[sync] reset not delivered; blocking merges until it is');
+    return false;
+  }
+
+  Future<void> _persistResetPending(bool pending) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_resetPendingKey, pending);
+    } catch (_) {}
   }
 }
 

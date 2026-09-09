@@ -40,6 +40,17 @@ class Session {
   /// anonymous, google, apple, or unknown.
   final String authProvider;
 
+  /// True only when the store VOIDED the purchase behind this entitlement.
+  ///
+  /// Separate from `adsRemoved == false`, and the separation is the whole
+  /// point. The device grants Remove Ads the moment the store says so, before
+  /// any server hears about it — so a bare false is also what a pending
+  /// verification, an unreachable Play lookup and a fresh install look like.
+  /// Revoking on that would strip a paying player mid-session over a question
+  /// the phone cannot answer. This is the one signal that can only mean the
+  /// money went back.
+  final bool adsRevoked;
+
   const Session({
     required this.accessToken,
     required this.expiresAt,
@@ -48,6 +59,7 @@ class Session {
     required this.adsRemoved,
     required this.isAnonymous,
     required this.authProvider,
+    this.adsRevoked = false,
   });
 
   /// Whether this can still be used, with room to spare.
@@ -58,7 +70,11 @@ class Session {
   bool isFreshAt(DateTime now) =>
       now.isBefore(expiresAt.subtract(kSessionRefreshMargin));
 
-  Session copyWith({String? displayName, bool? adsRemoved}) => Session(
+  Session copyWith({
+    String? displayName,
+    bool? adsRemoved,
+    bool? adsRevoked,
+  }) => Session(
     accessToken: accessToken,
     expiresAt: expiresAt,
     userId: userId,
@@ -66,6 +82,7 @@ class Session {
     adsRemoved: adsRemoved ?? this.adsRemoved,
     isAnonymous: isAnonymous,
     authProvider: authProvider,
+    adsRevoked: adsRevoked ?? this.adsRevoked,
   );
 
   Map<String, Object?> toJson() => {
@@ -76,6 +93,7 @@ class Session {
     'ads_removed': adsRemoved,
     'is_anonymous': isAnonymous,
     'auth_provider': authProvider,
+    'ads_revoked': adsRevoked,
   };
 
   static Session? fromJson(Map<String, Object?> json) {
@@ -93,6 +111,7 @@ class Session {
       adsRemoved: json['ads_removed'] as bool? ?? false,
       isAnonymous: json['is_anonymous'] as bool? ?? true,
       authProvider: json['auth_provider'] as String? ?? 'unknown',
+      adsRevoked: json['ads_revoked'] as bool? ?? false,
     );
   }
 
@@ -115,6 +134,7 @@ class Session {
       adsRemoved: body['ads_removed'] as bool? ?? false,
       isAnonymous: body['is_anonymous'] as bool? ?? true,
       authProvider: body['auth_provider'] as String? ?? 'unknown',
+      adsRevoked: body['ads_revoked'] as bool? ?? false,
     );
   }
 }

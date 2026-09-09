@@ -63,6 +63,26 @@ class ProgressApi {
     };
   }
 
+  /// Erases this account's campaign progress on the server.
+  ///
+  /// The other half of Reset progress. Without it the reset was local only and
+  /// the next sync merged every star straight back — the confirmation said
+  /// "erase every star and start from level 1" and the app could not do it.
+  Future<ApiResult<int>> reset() async {
+    final response = await _client.post('/api/v1/progress/reset', const {});
+
+    return switch (response) {
+      ApiOk(:final value) => ApiOk(
+        (value['levels_cleared'] as num?)?.toInt() ?? 0,
+      ),
+      ApiFailure(:final kind, :final detail, :final statusCode) => ApiFailure(
+        kind,
+        detail: detail,
+        statusCode: statusCode,
+      ),
+    };
+  }
+
   /// Pulls everything the server holds. For a fresh install.
   Future<ApiResult<List<LevelProgress>>> snapshot() async {
     final response = await _client.get('/api/v1/progress');
@@ -77,17 +97,38 @@ class ProgressApi {
     };
   }
 
-  static Map<String, Object?> _payload(LevelProgress row) => {
-    'level_id': row.levelId,
-    'level_set_version': row.levelSetVersion,
-    'moves_used': row.bestMoves,
-    // The clock is optional on the wire and 0 means "no time recorded", which
-    // is every row cleared before the clock shipped. The server treats that as
-    // unknown rather than as an instant solve.
-    'elapsed_seconds': row.bestTimeSeconds,
-    'completed_at': (row.firstClearedAt ?? DateTime.now().toUtc())
-        .toIso8601String(),
-  };
+  /// One row as an attempt that actually happened.
+  ///
+  /// A submission is a MOVE COUNT AND A CLOCK FROM THE SAME RUN, because the
+  /// server scores the pair. Sending the independent bests instead invents a
+  /// run nobody played: a level cleared in 5 moves over 110 seconds and again
+  /// in 10 moves over 20 has a best-moves of 5 and a best-time of 20, and that
+  /// pair scored 625 against two real attempts worth 250 and 313. Re-syncing
+  /// it doubled the stored score with nobody at the phone.
+  ///
+  /// So the scoring attempt is sent when we have one. Where we do not — every
+  /// row written before it was recorded — the move count goes up with an
+  /// UNKNOWN clock rather than a borrowed one. Stars come from moves and are
+  /// unaffected; a score we cannot evidence is simply not claimed, and the
+  /// server keeps whatever it already had.
+  static Map<String, Object?> _payload(LevelProgress row) {
+    final hasScoringAttempt = row.bestPointsMoves > 0;
+
+    return {
+      'level_id': row.levelId,
+      'level_set_version': row.levelSetVersion,
+      'moves_used': hasScoringAttempt ? row.bestPointsMoves : row.bestMoves,
+      // Zero means "no time recorded". The server treats it as unknown rather
+      // than as an instant solve.
+      'elapsed_seconds': hasScoringAttempt ? row.bestPointsSeconds : 0,
+      'completed_at': (row.firstClearedAt ?? DateTime.now().toUtc())
+          .toIso8601String(),
+      // Sent so another device can merge the score against the attempt that
+      // earned it rather than against its own bests.
+      'best_moves': row.bestMoves,
+      'best_time_seconds': row.bestTimeSeconds,
+    };
+  }
 
   static SyncOutcome _outcome(Map<String, Object?> body) => SyncOutcome(
     accepted: (body['accepted'] as num?)?.toInt() ?? 0,
@@ -128,6 +169,8 @@ class ProgressApi {
       bestMoves: (json['best_moves'] as num?)?.toInt() ?? 0,
       bestTimeSeconds: (json['best_time_seconds'] as num?)?.toInt() ?? 0,
       bestPoints: (json['best_points'] as num?)?.toInt() ?? 0,
+      bestPointsMoves: (json['best_points_moves'] as num?)?.toInt() ?? 0,
+      bestPointsSeconds: (json['best_points_seconds'] as num?)?.toInt() ?? 0,
       firstClearedAtMillis: completedAt?.toUtc().millisecondsSinceEpoch ?? 0,
     );
   }
