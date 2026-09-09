@@ -4,4 +4,11 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Cleartext to the development API, in DEBUG BUILDS ONLY.
+         This overlay is merged for debuggable builds and for nothing else, so
+         a release APK keeps Android's default and cannot talk cleartext at
+         all. See res/xml/network_security_config.xml for why it is needed and
+         how narrowly it is scoped. -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
 </manifest>

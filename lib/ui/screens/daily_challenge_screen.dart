@@ -158,7 +158,14 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
       children: [
         BoardHud(
           levelId: 0,
-          bandName: 'Daily',
+          // The day of the month, under "DAILY". A daily board has no level
+          // id, and heading one "LEVEL 00" reads as a bug.
+          titleLabel: 'DAILY',
+          titleValue: challenge.date.day.toString().padLeft(2, '0'),
+          // The right-hand block carries the move count against the proven
+          // optimum, so the label names that rather than repeating the word
+          // already at the top left.
+          bandName: 'Moves',
           movesUsed: state?.movesUsed ?? 0,
           minMoves: challenge.minMoves,
           clock: state == null

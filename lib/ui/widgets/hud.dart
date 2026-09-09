@@ -24,6 +24,13 @@ class BoardHud extends StatelessWidget {
   /// simply collapses if anything ever does.
   final Widget? clock;
 
+  /// What the left-hand block says, when it is not a campaign level.
+  ///
+  /// The daily challenge is not level zero — it has no level id at all — and
+  /// a board headed "LEVEL 00" reads as a bug rather than as a challenge.
+  final String? titleLabel;
+  final String? titleValue;
+
   /// Back to the level map.
   final VoidCallback onExit;
 
@@ -35,6 +42,8 @@ class BoardHud extends StatelessWidget {
     required this.minMoves,
     required this.onExit,
     this.clock,
+    this.titleLabel,
+    this.titleValue,
   });
 
   @override
@@ -66,10 +75,10 @@ class BoardHud extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('LEVEL', style: labelStyle(tokens)),
+              Text(titleLabel ?? 'LEVEL', style: labelStyle(tokens)),
               SizedBox(height: tokens.space1),
               Text(
-                levelId.toString().padLeft(2, '0'),
+                titleValue ?? levelId.toString().padLeft(2, '0'),
                 style: numericStyle(
                   tokens,
                   size: 26,
