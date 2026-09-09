@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'state/legal_acceptance.dart';
 import 'state/providers.dart';
+import 'state/sync_controller.dart';
 import 'ui/screens/game_screen.dart';
 import 'ui/screens/legal_consent_screen.dart';
 import 'ui/screens/level_select_screen.dart';
@@ -96,13 +97,14 @@ class _Shell extends ConsumerStatefulWidget {
   ConsumerState<_Shell> createState() => _ShellState();
 }
 
-class _ShellState extends ConsumerState<_Shell> {
+class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
   /// Null until the launch count and stored acceptance have been read.
   bool? _showLegalGate;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _resolveLegalGate();
     // Generating the sound bank takes a few milliseconds and opening the mixer
     // can take longer, so it happens off the first frame. A device with no
@@ -113,7 +115,31 @@ class _ShellState extends ConsumerState<_Shell> {
       // startup: a device with no Play Services still has to reach level 1.
       ref.read(adServiceProvider).init();
       ref.read(billingServiceProvider).init();
+
+      // And the first sync. Off the first frame like everything else here,
+      // because the level map must be on screen before any of this runs — a
+      // player on a train opens the game and plays; they do not wait for a
+      // handshake with a server they do not know exists.
+      ref.read(syncControllerProvider.notifier).syncNow();
     });
+  }
+
+  /// Syncs again when the app comes back.
+  ///
+  /// The cheapest moment to reconcile: somebody who played on another device
+  /// while this one was in their pocket sees it here, and anything that failed
+  /// to push earlier gets another go without a retry timer to tune.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(syncControllerProvider.notifier).syncNow();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   /// Decides whether the acceptance gate stands in front of the level map.

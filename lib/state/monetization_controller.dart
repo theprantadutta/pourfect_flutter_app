@@ -295,6 +295,20 @@ class MonetizationController extends Notifier<MonetizationState> {
     return outcome;
   }
 
+  /// Applies an entitlement the SERVER has confirmed.
+  ///
+  /// One direction only, and deliberately. The server knows about purchases
+  /// this device has never seen — somebody who paid, reinstalled, and now has
+  /// a store that has not replayed the token yet — so it can grant. It must
+  /// not revoke: a sync that arrives during an outage, against a stale row, or
+  /// before Play has redelivered, would take away something the player paid
+  /// for while they were using it. Revocation is a decision for the purchase
+  /// path, where there is a store verdict to act on.
+  void applyServerEntitlement(bool adsRemoved) {
+    if (!adsRemoved || state.adsRemoved) return;
+    state = state.copyWith(adsRemoved: true);
+  }
+
   /// Test seam.
   void debugSet({bool? adsRemoved, int? freeHintsUsed, int? hintCredits}) =>
       state = state.copyWith(

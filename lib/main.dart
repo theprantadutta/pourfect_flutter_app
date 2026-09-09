@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'app.dart';
 import 'firebase_options.dart';
@@ -10,6 +11,7 @@ import 'services/api/app_env.dart';
 import 'services/analytics/analytics_service.dart';
 import 'services/licenses.dart';
 import 'services/perf/frame_watch.dart';
+import 'state/providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,5 +46,21 @@ Future<void> main() async {
   // so the app measures itself.
   FrameWatch().start();
 
-  runApp(const ProviderScope(child: PourfectApp()));
+  // The version rides on the auth handshake, so the server can tell which
+  // build a report came from. Read here rather than inside auth because auth
+  // must not wait on a plugin channel to learn something this unimportant —
+  // and an empty version is a perfectly fine thing to send.
+  var appVersion = '';
+  try {
+    appVersion = (await PackageInfo.fromPlatform()).version;
+  } catch (error) {
+    developer.log('version unavailable', name: 'startup', error: error);
+  }
+
+  runApp(
+    ProviderScope(
+      overrides: [appVersionProvider.overrideWithValue(appVersion)],
+      child: const PourfectApp(),
+    ),
+  );
 }

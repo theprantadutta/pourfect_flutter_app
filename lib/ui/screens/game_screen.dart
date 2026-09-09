@@ -13,6 +13,7 @@ import '../../state/monetization_controller.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
+import '../../state/sync_controller.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/board_view.dart';
@@ -235,6 +236,14 @@ class _GameScreenState extends ConsumerState<GameScreen>
           stars: result.stars,
           points: result.points,
         );
+
+    // Straight out to the server, and nothing waits on it. A failure leaves
+    // the level marked dirty; the next successful sync — the next launch at
+    // the latest — carries it, because the merge on both sides is monotonic
+    // and re-sending is always safe.
+    ref.read(syncControllerProvider.notifier)
+      ..markDirty(levelId)
+      ..syncNow();
 
     // Length is EARNED, not constant. Three stars, a personal best, or the end
     // of a band gets the full 1820ms; a routine two-star retry on level 60 gets

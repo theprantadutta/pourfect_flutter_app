@@ -15,6 +15,7 @@ import '../../services/iap/billing_service.dart';
 import '../../state/monetization_controller.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
+import '../../state/sync_controller.dart';
 import '../../state/providers.dart';
 import '../theme/ball_palette.dart';
 import '../theme/tokens.dart';
@@ -126,6 +127,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       // behind a wiped campaign would be a statistics screen reporting a
       // player who no longer exists.
       await ref.read(playHistoryProvider.notifier).resetAll();
+      // The next sync must be a full push rather than an empty one that reads
+      // as "nothing to say". Note what this does NOT do: it does not ask the
+      // server to forget anything. Resetting is a local act, and a player who
+      // wants their account erased has Delete account for that.
+      ref.read(syncControllerProvider.notifier).reset();
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
