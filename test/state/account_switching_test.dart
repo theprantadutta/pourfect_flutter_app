@@ -194,9 +194,16 @@ void main() {
   });
 
   group('a pending reset belongs to the account that asked for it', () {
-    test('it does not follow the player into a different account', () async {
-      // Reproduced shape: reset offline, sign into another account, and that
-      // account's first sync delivered a reset nobody there requested.
+    test('an unscoped one is adopted by the first account, and only once',
+        () async {
+      // An unscoped flag has a precise meaning now that scoping exists: it can
+      // only have been written when the device did not yet know whose it was —
+      // reset offline on a launch that never authenticated. Nobody else has
+      // been here, so the first account to resolve IS the one that asked, and
+      // the reset still has to happen.
+      //
+      // What must never happen is a SECOND account inheriting it, which is why
+      // adopting clears it.
       SharedPreferences.setMockInitialValues({
         'pourfect.sync.reset_pending': true,
       });
@@ -206,11 +213,45 @@ void main() {
       await built.container.read(authServiceProvider).ensureSession();
 
       await sync.syncNow();
+      expect(
+        requests.any((r) => r.url.path.endsWith('/progress/reset')),
+        isTrue,
+        reason: 'a reset made before the account was known was silently lost',
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getBool('pourfect.sync.reset_pending'),
+        isNull,
+        reason: 'the unscoped flag survived to be inherited by somebody else',
+      );
+      expect(prefs.getBool('pourfect.sync.reset_pending.uid-1'), isFalse);
+    });
+
+    test('a reset owned by A is never delivered against B', () async {
+      // The case the scoping exists for: A's reset failed and is filed under
+      // A. Signing in as B must not deliver it.
+      SharedPreferences.setMockInitialValues({
+        'pourfect.sync.reset_pending.uid-1': true,
+      });
+
+      final built = harness(identity: FakeIdentity()..uid = 'uid-2');
+      final sync = built.container.read(syncControllerProvider.notifier);
+      await built.container.read(authServiceProvider).ensureSession();
+
+      await sync.syncNow();
 
       expect(
         requests.any((r) => r.url.path.endsWith('/progress/reset')),
         isFalse,
-        reason: 'a global pending reset was delivered against another account',
+        reason: "account A's reset was delivered against account B",
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getBool('pourfect.sync.reset_pending.uid-1'),
+        isTrue,
+        reason: "A's pending reset was consumed by B and is now lost to A",
       );
     });
   });

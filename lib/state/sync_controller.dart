@@ -276,7 +276,13 @@ class SyncController extends Notifier<SyncState> {
         // is a pre-reset copy, and re-uploading it is exactly how erased
         // progress comes back — so the reset is adopted here instead.
         if (value.resetGeneration > _resetGeneration) {
-          await _adoptRemoteReset(value.resetGeneration, value.progress);
+          // The owner is the account this whole pass was for, captured before
+          // any of it awaited.
+          await _adoptRemoteReset(
+            value.resetGeneration,
+            value.progress,
+            session.userId,
+          );
           return;
         }
 
@@ -344,20 +350,54 @@ class SyncController extends Notifier<SyncState> {
   /// somebody's reset from the other device. Erasing is the honest reading of
   /// what they asked for: the account was reset, and this device is part of
   /// the account.
+  /// Takes on a reset performed somewhere else, for ONE account.
+  ///
+  /// Every step here writes: a preference, the whole local campaign, then the
+  /// server's rows. That is three awaits, and the account can change across
+  /// any of them — the reproduction switches accounts while the erase is
+  /// mid-save, and the merge afterwards put account A's level 1 into account
+  /// B, which then uploaded it under B's token.
+  ///
+  /// So [owner] is captured by the caller and everything is measured against
+  /// it: the preference key comes from the owner rather than from mutable
+  /// shared state read after an await, and each mutation is preceded by a
+  /// check that this adoption is still the current one.
   Future<void> _adoptRemoteReset(
     int generation,
     List<LevelProgress> serverRows,
+    String? owner,
   ) async {
     debugPrint('[sync] adopting reset generation $generation from the server');
 
+    // Supersedes everything already in flight — including, deliberately, any
+    // other adoption. The stamp is taken AFTER, so this one does not read as
+    // superseded by its own increment.
     _epoch++;
+    final mine = _Stamp(
+      account: ref.read(authServiceProvider).accountEpoch,
+      local: _epoch,
+    );
+
+    await _persistResetGeneration(generation, owner);
+    if (_supersededSince(mine)) {
+      debugPrint('[sync] abandoned an adoption for a superseded account');
+      return;
+    }
+
     _dirty.clear();
     _needsFullPush = false;
     _resetGeneration = generation;
-    await _persistResetGeneration(generation);
 
     final progress = ref.read(progressProvider.notifier);
     await progress.resetAll();
+
+    // Re-checked before the merge. The erase is safe to have happened either
+    // way — the switch wipes local progress too — but the MERGE is not: these
+    // rows belong to the account this adoption started for.
+    if (_supersededSince(mine)) {
+      debugPrint('[sync] not merging an adoption into a different account');
+      return;
+    }
 
     // THEN TAKE WHAT THE SERVER ACTUALLY HAS.
     //
@@ -377,10 +417,15 @@ class SyncController extends Notifier<SyncState> {
     state = SyncState(status: SyncStatus.idle, lastSucceededAt: DateTime.now());
   }
 
-  Future<void> _persistResetGeneration(int generation) async {
+  /// Writes under [owner]'s key, not whoever happens to be signed in now.
+  ///
+  /// `_loadedAccount` is mutable shared state and a switch rewrites it, so
+  /// reading it after an await stores one account's generation against
+  /// another's name.
+  Future<void> _persistResetGeneration(int generation, String? owner) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_keyFor(_resetGenerationKey, _loadedAccount), generation);
+      await prefs.setInt(_keyFor(_resetGenerationKey, owner), generation);
     } catch (_) {}
   }
 
@@ -413,6 +458,24 @@ class SyncController extends Notifier<SyncState> {
           prefs.getBool(_keyFor(_resetPendingKey, accountId)) ?? false;
       _resetGeneration =
           prefs.getInt(_keyFor(_resetGenerationKey, accountId)) ?? 0;
+
+      // A RESET MADE BEFORE THIS DEVICE KNEW WHOSE IT WAS.
+      //
+      // Reset offline on a launch that never managed to authenticate: there
+      // was no account to file it under, so it went to the unscoped key. It
+      // still has to happen. The first account to resolve on this device IS
+      // the account that asked for it — nobody else has been here — so it is
+      // adopted, and CLEARED as part of adopting, which is what stops a later
+      // account inheriting somebody else's erase.
+      if (!_resetPending &&
+          accountId != null &&
+          (prefs.getBool(_resetPendingKey) ?? false)) {
+        debugPrint('[sync] adopting an unowned pending reset for $accountId');
+
+        _resetPending = true;
+        await prefs.setBool(_keyFor(_resetPendingKey, accountId), true);
+        await prefs.remove(_resetPendingKey);
+      }
     } catch (_) {}
   }
 
@@ -480,7 +543,13 @@ class SyncController extends Notifier<SyncState> {
   Future<bool> reset() async {
     // WHOSE reset this is, resolved before the flag is set. A reset recorded
     // against the wrong account is delivered against the wrong account.
-    final owner = await ref.read(authServiceProvider).ensureSession();
+    //
+    // From the KNOWN identity, not from a usable session. Offline with an
+    // expired login, `ensureSession` returns null while the account is not in
+    // the slightest doubt — and treating that as "no account" filed the reset
+    // under the unscoped key, so it was dropped as soon as the real account's
+    // metadata loaded and every erased star came back.
+    final owner = await ref.read(authServiceProvider).knownAccountId();
 
     _dirty.clear();
     _needsFullPush = true;
@@ -488,7 +557,7 @@ class SyncController extends Notifier<SyncState> {
 
     // Claim ownership so nothing reloads over the top of a flag set a moment
     // ago and still being written.
-    _loadedAccount = owner?.userId;
+    _loadedAccount = owner;
     _loadedAny = true;
 
     await _persistResetPending(true);
@@ -538,7 +607,7 @@ class SyncController extends Notifier<SyncState> {
     // account B's token erases a campaign nobody asked to erase, which is
     // exactly what the switching reproduction showed.
     final owner = _loadedAccount;
-    final current = ref.read(authServiceProvider).accountId;
+    final current = await ref.read(authServiceProvider).knownAccountId();
 
     if (owner != current) {
       debugPrint('[sync] not delivering a reset owned by another account');
@@ -559,7 +628,7 @@ class SyncController extends Notifier<SyncState> {
       // so a device still on the old one cannot put the erased stars back.
       _resetGeneration = value;
       await _persistResetPending(false);
-      await _persistResetGeneration(value);
+      await _persistResetGeneration(value, owner);
       return true;
     }
 

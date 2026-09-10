@@ -84,7 +84,45 @@ class AuthService {
   int get accountEpoch => _accountEpoch;
 
   /// The Firebase uid the current session was issued for, if any.
+  ///
+  /// Deliberately NOT gated on the session still being fresh. An expired
+  /// session identifies its account perfectly well; what it cannot do is
+  /// authorize a request. Conflating the two is how an offline reset lost its
+  /// owner — see [knownAccountId].
   String? get accountId => _session?.userId;
+
+  /// Who this device belongs to, whether or not a token can be obtained.
+  ///
+  /// **Identity and authorization are different questions.** `ensureSession`
+  /// answers the second: it returns null when Firebase cannot be reached, and
+  /// callers that used it to ask the FIRST question then concluded there was
+  /// no account at all. A reset performed offline with an expired login was
+  /// therefore recorded against nobody, filed under the unscoped preference
+  /// key, and discarded the moment connectivity returned and the real
+  /// account's metadata was loaded — putting the erased campaign back.
+  ///
+  /// Reads from disk when memory is empty, so a cold start knows its account
+  /// before it can authenticate one.
+  Future<String?> knownAccountId() async {
+    // Memory, then disk — neither needs the network, so an expired login still
+    // answers instantly and offline.
+    final cached = _session;
+    if (cached != null) return cached.userId;
+
+    if (!_resolveClient().isConfigured) return null;
+
+    final stored = await _store.load();
+    if (stored != null) {
+      _session ??= stored;
+      return _session?.userId;
+    }
+
+    // Nothing known at all. That is a different situation from an expired
+    // login: there is no account to preserve, so ask for one. Returning null
+    // here instead would file the caller's work under no account and lose it
+    // the moment a real one resolved.
+    return (await ensureSession())?.userId;
+  }
 
   /// The exchange currently in flight, if any.
   ///

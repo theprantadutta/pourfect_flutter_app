@@ -633,6 +633,25 @@ NEW generation and are play from another device, so dropping them showed the
 player an empty campaign until the next sync. They are merged from that same
 response, which keeps the rows and the generation consistent with each other.
 
+**Identity and authorization are different questions.** `ensureSession` answers
+the second and returns null offline; asking it WHO we are made an offline reset
+with an expired login belong to nobody, so it was filed under the unscoped key
+and dropped when the real account resolved. `knownAccountId()` answers the
+first: memory, then disk, then — only when nothing at all is known — obtaining
+a session. An expired login still names its account perfectly well.
+
+**An unscoped pending reset means "made before this device knew whose it was".**
+That is the only way one can be written now, so the first account to resolve is
+the one that asked for it, and adopting it CLEARS the unscoped key so a second
+account cannot inherit it.
+
+**An owner captured before an await is not `_loadedAccount` after it.** Anything
+that persists across an await carries its owner as a parameter, because a
+switch rewrites the shared field underneath. `_adoptRemoteReset` takes the
+account it started for, stamps itself after its own epoch bump, and re-checks
+before each mutation — otherwise a switch during the campaign erase merged
+account A's rows into account B, which then uploaded them under B's token.
+
 **Persisted account state is keyed by uid.** A pending reset stored under a
 global key migrated: reset offline, sign in as somebody else, and their first
 sync delivered a reset they never asked for.
