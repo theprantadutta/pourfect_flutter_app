@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/api/identity.dart';
 import '../../state/account_controller.dart';
+import '../../state/progress_repository.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/pressable.dart';
@@ -38,6 +39,13 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   bool _registering = true;
 
   String? _problem;
+
+  /// Shown once Google reports the credential already belongs to an account.
+  ///
+  /// Without it the ordinary returning player on a new phone reached a dead
+  /// end: an explanation, and a Google button that could only retry the same
+  /// link and fail the same way.
+  bool _offerExistingAccount = false;
 
   @override
   void dispose() {
@@ -69,14 +77,81 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     IdentityOutcome.tooManyAttempts =>
       'Too many tries. Wait a few minutes and try again.',
     IdentityOutcome.needsRecentLogin => 'Please sign in again first.',
+    // Firebase took the sign-in; our own server did not answer. The account
+    // is real and the next sync will pick it up, so this is not a failure to
+    // undo — just one worth being honest about.
+    IdentityOutcome.sessionUnavailable =>
+      'Signed in, but your progress has not been saved to the server yet. '
+          'It will sync when the connection is back.',
     IdentityOutcome.unavailable =>
       'Could not reach the server. Your progress is still safe on this device.',
   };
 
   Future<void> _google() async {
-    setState(() => _problem = null);
+    setState(() {
+      _problem = null;
+      _offerExistingAccount = false;
+    });
     final result = await ref.read(accountProvider.notifier).continueWithGoogle();
+
+    if (result.outcome == IdentityOutcome.credentialBelongsToAnotherAccount) {
+      // Not a retry of the same thing. Signing into the existing account is a
+      // DIFFERENT operation with a cost attached, so it gets its own button
+      // underneath the sentence that explains the cost.
+      if (mounted) setState(() => _offerExistingAccount = true);
+    }
     _settle(result);
+  }
+
+  /// Joins the account the credential already belongs to.
+  ///
+  /// Confirmed first, because it abandons whatever this device had. Firebase
+  /// cannot merge two uids, and pretending otherwise would lose somebody's
+  /// progress without telling them.
+  Future<void> _useExistingAccount() async {
+    final tokens = PourfectTokens.of(context);
+    final cleared = ref.read(progressProvider).length;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: tokens.surfaceRaised,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.panelRadius),
+          side: BorderSide(color: tokens.hairline),
+        ),
+        title: Text('Use your existing account?', style: titleStyle(tokens)),
+        content: Text(
+          cleared == 0
+              ? 'This phone will load the stars already saved to that account.'
+              : 'This phone has $cleared solved '
+                    '${cleared == 1 ? "level" : "levels"} that are not on that '
+                    'account. They cannot be combined, so they will be '
+                    'replaced by whatever the account already holds.',
+          style: bodyStyle(tokens),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: actionStyle(tokens, color: tokens.textMuted),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Use that account', style: actionStyle(tokens)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _problem = null);
+    _settle(
+      await ref.read(accountProvider.notifier).useExistingGoogleAccount(),
+    );
   }
 
   Future<void> _submit() async {
@@ -205,6 +280,15 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 ],
               ),
             ),
+
+            if (_offerExistingAccount) ...[
+              SizedBox(height: tokens.space3),
+              _PrimaryButton(
+                label: 'Sign in to that account',
+                busy: account.busy,
+                onPressed: account.busy ? null : _useExistingAccount,
+              ),
+            ],
 
             if (_problem != null) ...[
               SizedBox(height: tokens.space3),

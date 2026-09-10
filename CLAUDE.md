@@ -404,6 +404,10 @@ splits them per device.
 - **No Sign in with Apple.** Android-only for now, so it costs nothing yet — but
   it blocks the first iOS submission, because Apple requires it alongside any
   other social login.
+- **The existing-Google-account path has never run against real Firebase.** The
+  logic and its tests are in (`signInToExistingGoogleAccount`), but a returning
+  player on a new phone with an already-registered Google account has not been
+  exercised on hardware.
 - **No IAP product exists yet.** The Play and App Store product ids and the
   Play license key are still blank in `generated/ad_config.md`, so Remove Ads
   shows an em dash instead of a price. That is the correct degraded state, not
@@ -567,6 +571,55 @@ delete their own data again.
 **Apple is not built yet.** The backend enum already has it, and it becomes
 mandatory the moment an iOS build ships with Google on it — App Store review
 rejects any app offering a social login without Sign in with Apple.
+
+## Everything account-scoped is scoped to an ACCOUNT
+
+The rule that came out of the September 10 recheck, and the one most likely to
+be broken again by an innocent-looking change.
+
+**Linking and switching are different operations.** `linkWithCredential` keeps
+the uid, so the session, its token and the local campaign all still belong to
+the right player. Signing into an account that already exists REPLACES the uid,
+and then every one of those belongs to somebody else. Treating a switch as a
+link sent one player's progress under another player's bearer token.
+
+`AuthService.accountEpoch` is how that is enforced. It increments on `forget()`
+and on `abandonAccount()`, and anything asynchronous captures it before it
+starts and checks it before it writes:
+
+- a sync response for the previous account is DISCARDED, not merged;
+- a response that arrives after a deletion cannot resurrect the deleted rows;
+- a response computed before a reset cannot undo the reset.
+
+`SyncController.invalidateInFlight()` is the same idea for local causes. The
+requests cannot be recalled — they are already with the server — so what
+changes is that their answers are dropped on arrival.
+
+**Persisted account state is keyed by uid.** A pending reset stored under a
+global key migrated: reset offline, sign in as somebody else, and their first
+sync delivered a reset they never asked for.
+
+**Acknowledgements name a revision, not a level.** `_dirty` maps level id to a
+revision, and a response only clears entries still at the revision it carried.
+Improving a level while its previous result is in flight used to mark the
+better run as delivered.
+
+**Resets carry a generation the server recognises.** Serializing the reset
+orders it against a concurrent upload but cannot tell obsolete progress from
+new play, so a second phone that was offline across the reset put every erased
+star back. `User.ProgressResetGeneration` advances on reset; uploads quote the
+generation they were recorded under and older ones are refused; a device seeing
+a newer generation adopts it by erasing locally and pulling.
+
+**A refund corrects the cached session too.** The session is a snapshot and it
+outlives the facts in it: after a refund it still said `adsRemoved: true`, and
+the next sync read that stale true and handed the entitlement back.
+`AuthService.recordEntitlement` is called by every authoritative change.
+
+**"No session" is not "no account".** Deletion with an unauthenticated session
+used to wipe locally, sign out and report success — destroying the credentials
+needed to retry while the server account stayed. It now reports
+`AccountDeletion.notAuthenticated` and keeps the identity.
 
 **Purchases do NOT depend on any of this.** A Play entitlement belongs to the
 Google Play account, not to the Firebase identity: `restorePurchases()` runs on

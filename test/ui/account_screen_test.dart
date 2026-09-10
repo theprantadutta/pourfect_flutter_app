@@ -23,6 +23,10 @@ class StubIdentity implements Identity {
   StubIdentity({this.result = const IdentityResult.ok()});
 
   IdentityResult result;
+
+  /// What the existing-account path returns, when it differs from [result].
+  IdentityResult? existingAccountResult;
+
   final calls = <String>[];
 
   @override
@@ -36,6 +40,12 @@ class StubIdentity implements Identity {
   Future<IdentityResult> continueWithGoogle() async {
     calls.add('google');
     return result;
+  }
+
+  @override
+  Future<IdentityResult> signInToExistingGoogleAccount() async {
+    calls.add('existingGoogle');
+    return existingAccountResult ?? result;
   }
 
   @override

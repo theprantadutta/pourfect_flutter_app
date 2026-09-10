@@ -33,11 +33,18 @@ class SyncOutcome {
   /// The server's merged view of every level, not just the ones sent.
   final List<LevelProgress> progress;
 
+  /// The reset this account is currently on.
+  ///
+  /// Higher than ours means somebody reset the account from another device
+  /// while this one was away, and everything held here predates it.
+  final int resetGeneration;
+
   const SyncOutcome({
     required this.accepted,
     required this.rejected,
     required this.changed,
     required this.progress,
+    this.resetGeneration = 0,
   });
 }
 
@@ -47,10 +54,17 @@ class ProgressApi {
   const ProgressApi(this._client);
 
   /// Pushes results and returns the merged server view.
-  Future<ApiResult<SyncOutcome>> sync(Iterable<LevelProgress> rows) async {
+  Future<ApiResult<SyncOutcome>> sync(
+    Iterable<LevelProgress> rows, {
+    int resetGeneration = 0,
+  }) async {
     final items = [for (final row in rows) _payload(row)];
     final response = await _client.post('/api/v1/progress/sync', {
       'items': items,
+      // Which reset these rows were recorded under. The server refuses rows
+      // from before its own latest reset, so a device that was offline across
+      // one cannot upload the progress that reset erased.
+      'reset_generation': resetGeneration,
     });
 
     return switch (response) {
@@ -72,8 +86,9 @@ class ProgressApi {
     final response = await _client.post('/api/v1/progress/reset', const {});
 
     return switch (response) {
+      // The new generation, which every later upload is measured against.
       ApiOk(:final value) => ApiOk(
-        (value['levels_cleared'] as num?)?.toInt() ?? 0,
+        (value['reset_generation'] as num?)?.toInt() ?? 0,
       ),
       ApiFailure(:final kind, :final detail, :final statusCode) => ApiFailure(
         kind,
@@ -135,6 +150,7 @@ class ProgressApi {
     rejected: (body['rejected'] as num?)?.toInt() ?? 0,
     changed: (body['changed'] as num?)?.toInt() ?? 0,
     progress: _rows(body['progress']),
+    resetGeneration: (body['reset_generation'] as num?)?.toInt() ?? 0,
   );
 
   static List<LevelProgress> _rows(Object? raw) {

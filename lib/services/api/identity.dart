@@ -51,6 +51,10 @@ enum IdentityOutcome {
   /// Firebase wants a fresh sign-in before it will do something destructive.
   needsRecentLogin,
 
+  /// Firebase accepted the sign-in but our own backend would not issue a
+  /// session for it. The identity stands; the sync does not.
+  sessionUnavailable,
+
   /// Offline, or Firebase itself is unhappy.
   unavailable,
 }
@@ -97,6 +101,16 @@ abstract class Identity {
 
   /// Links Google to the current anonymous account, or signs in with it.
   Future<IdentityResult> continueWithGoogle();
+
+  /// Signs into the Google account a credential already belongs to.
+  ///
+  /// On the interface, not just the concrete class, because
+  /// [IdentityOutcome.credentialBelongsToAnotherAccount] is otherwise a dead
+  /// end: it used to be reachable only by a method nothing could call, so the
+  /// ordinary returning player on a new phone was told what had happened and
+  /// given no way through it. **Abandons the anonymous account's progress** —
+  /// Firebase cannot merge two uids — so callers must say so first.
+  Future<IdentityResult> signInToExistingGoogleAccount();
 
   /// Creates an email account, linking it to the current anonymous one.
   Future<IdentityResult> createWithEmail(String email, String password);
@@ -215,12 +229,39 @@ class FirebaseIdentity implements Identity {
   /// Deliberately a SEPARATE call from [continueWithGoogle], because it throws
   /// away the anonymous account's progress and nothing should be able to reach
   /// it without the player having been told that.
-  Future<IdentityResult> signInAbandoningLocalAccount(
-    AuthCredential credential,
-  ) async {
+  ///
+  /// It runs the Google chooser again rather than reusing the credential from
+  /// the failed link. A one-time OAuth credential cannot be replayed, and
+  /// asking again is also the last point at which somebody can back out.
+  @override
+  Future<IdentityResult> signInToExistingGoogleAccount() async {
+    if (!isReady) return const IdentityResult(IdentityOutcome.unavailable);
+
     try {
-      await _firebase.signInWithCredential(credential);
+      final google = _google ?? GoogleSignIn.instance;
+      await google.initialize(serverClientId: AppEnv.googleWebClientId);
+
+      final account = await google.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null) {
+        return const IdentityResult(IdentityOutcome.unavailable);
+      }
+
+      // signIn, never link. Linking is what already failed, and it is the
+      // wrong verb here: the destination account exists and this device is
+      // joining it.
+      await _firebase.signInWithCredential(
+        GoogleAuthProvider.credential(idToken: idToken),
+      );
       return const IdentityResult.ok();
+    } on GoogleSignInException catch (error) {
+      if (error.code == GoogleSignInExceptionCode.canceled) {
+        return const IdentityResult(IdentityOutcome.cancelled);
+      }
+      return IdentityResult(
+        IdentityOutcome.unavailable,
+        message: error.description,
+      );
     } on FirebaseAuthException catch (error) {
       return _mapError(error);
     }
@@ -368,6 +409,10 @@ class OfflineIdentity implements Identity {
 
   @override
   Future<IdentityResult> continueWithGoogle() async =>
+      const IdentityResult(IdentityOutcome.unavailable);
+
+  @override
+  Future<IdentityResult> signInToExistingGoogleAccount() async =>
       const IdentityResult(IdentityOutcome.unavailable);
 
   @override

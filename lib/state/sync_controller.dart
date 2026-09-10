@@ -63,7 +63,25 @@ class SyncState {
 
 class SyncController extends Notifier<SyncState> {
   /// Levels whose local result has not been accepted by the server yet.
-  final Set<int> _dirty = {};
+  /// Level id to the revision at which it became dirty.
+  final Map<int, int> _dirty = {};
+
+  /// Bumped by anything that makes an outstanding response obsolete for a
+  /// reason of our own — a reset, or adopting one from another device. The
+  /// account side of the same question lives in AuthService.accountEpoch.
+  int _epoch = 0;
+
+  /// The reset the local campaign was recorded under.
+  ///
+  /// Sent with every push and compared by the server. A device that has been
+  /// offline across a reset is still holding pre-reset progress; without this
+  /// its next upload restores every star the player erased, which is exactly
+  /// what the audit reproduced against PostgreSQL.
+  static const _resetGenerationKey = 'pourfect.sync.reset_generation';
+  int _resetGeneration = 0;
+
+  /// Monotonic, process-local. Only ever compared for equality.
+  int _revision = 0;
 
   /// True until a full push has succeeded in this install.
   ///
@@ -90,8 +108,14 @@ class SyncController extends Notifier<SyncState> {
   ProgressApi get _api => ProgressApi(ref.read(apiClientProvider));
 
   /// Marks a level as needing to reach the server.
+  ///
+  /// Records a REVISION, not just the id. A level improved while its previous
+  /// result is in flight is dirty again at a higher revision, and the
+  /// acknowledgement below only clears entries still sitting at the revision
+  /// it actually sent — so the better run survives instead of being marked as
+  /// delivered by a response that never carried it.
   void markDirty(int levelId) {
-    _dirty.add(levelId);
+    _dirty[levelId] = ++_revision;
     state = state.copyWith(pending: _dirty.length);
   }
 
@@ -116,6 +140,13 @@ class SyncController extends Notifier<SyncState> {
   }
 
   Future<void> _run() async {
+    // Captured before anything awaits, and compared again before anything is
+    // written. See [_supersededSince].
+    final startedAt = _Stamp(
+      account: ref.read(authServiceProvider).accountEpoch,
+      local: _epoch,
+    );
+
     await _restoreResetFlag();
 
     // A RESET THAT HAS NOT LANDED BLOCKS EVERYTHING. Merging the server's
@@ -184,25 +215,54 @@ class SyncController extends Notifier<SyncState> {
     // every level finished WHILE the request was in flight — their results
     // were never in the payload, so the server had not heard of them and now
     // nothing would tell it until a full push after a restart.
-    final submitted = _needsFullPush ? local.keys.toSet() : {..._dirty};
+    final ids = _needsFullPush ? local.keys.toSet() : _dirty.keys.toSet();
+
+    // The revision each id was at when it went out. A null means the id was
+    // not dirty at all (a full push sends everything), and anything that
+    // becomes dirty during the request will therefore not match either.
+    final submitted = <int, int?>{for (final id in ids) id: _dirty[id]};
     final submittedFullPush = _needsFullPush;
 
-    final rows = [for (final id in submitted) ?local[id]];
+    final rows = [for (final id in ids) ?local[id]];
 
     state = state.copyWith(status: SyncStatus.syncing);
 
     // An empty local campaign still syncs. A fresh install on a phone whose
     // owner already has progress has nothing to push and everything to pull,
     // and that is the case where sync matters most.
-    final result = await _api.sync(rows);
+    final result = await _api.sync(rows, resetGeneration: _resetGeneration);
+
+    // THE ANSWER MAY NO LONGER BE ABOUT US.
+    //
+    // Everything below writes into the local campaign, and this request was
+    // issued for a particular account under a particular reset. If the player
+    // signed out, switched account, deleted the account or reset their
+    // progress while it was in flight, this snapshot describes a world that
+    // no longer exists — merging it puts back exactly what was just erased.
+    // All three were reproduced.
+    if (_supersededSince(startedAt)) {
+      debugPrint('[sync] discarded a response for a superseded account/reset');
+      return;
+    }
 
     switch (result) {
       case ApiOk(:final value):
+        // Another device reset this account while we were away. Our campaign
+        // is a pre-reset copy, and re-uploading it is exactly how erased
+        // progress comes back — so the reset is adopted here instead.
+        if (value.resetGeneration > _resetGeneration) {
+          await _adoptRemoteReset(value.resetGeneration);
+          return;
+        }
+
         progress.mergeFromServer(value.progress);
 
-        // Only the submitted revisions are acknowledged. Anything that became
-        // dirty during the request stays dirty and goes out next.
-        _dirty.removeAll(submitted);
+        // Only the submitted REVISIONS are acknowledged. A level whose
+        // revision moved while the request was in flight is a different
+        // result from the one the server just took, so it stays dirty.
+        submitted.forEach((id, revision) {
+          if (_dirty[id] == revision) _dirty.remove(id);
+        });
         if (submittedFullPush) _needsFullPush = false;
 
         state = SyncState(
@@ -241,6 +301,55 @@ class SyncController extends Notifier<SyncState> {
     }
   }
 
+  /// True when the account or the local campaign moved on since [stamp].
+  bool _supersededSince(_Stamp stamp) =>
+      ref.read(authServiceProvider).accountEpoch != stamp.account ||
+      _epoch != stamp.local;
+
+  /// Invalidates every response still in flight.
+  ///
+  /// Called by anything that erases or replaces the local campaign. The
+  /// requests themselves cannot be cancelled — they are already with the
+  /// server — so what changes is that their answers are dropped on arrival.
+  void invalidateInFlight() => _epoch++;
+
+  /// Takes on a reset performed somewhere else.
+  ///
+  /// The local campaign predates it, so keeping it and pushing would undo
+  /// somebody's reset from the other device. Erasing is the honest reading of
+  /// what they asked for: the account was reset, and this device is part of
+  /// the account.
+  Future<void> _adoptRemoteReset(int generation) async {
+    debugPrint('[sync] adopting reset generation $generation from the server');
+
+    _epoch++;
+    _dirty.clear();
+    _needsFullPush = false;
+    _resetGeneration = generation;
+    await _persistResetGeneration(generation);
+    await ref.read(progressProvider.notifier).resetAll();
+
+    state = SyncState(status: SyncStatus.idle, lastSucceededAt: DateTime.now());
+  }
+
+  Future<void> _persistResetGeneration(int generation) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_accountKey(_resetGenerationKey), generation);
+    } catch (_) {}
+  }
+
+  /// Scopes a preference to the account that owns it.
+  ///
+  /// A pending reset belongs to the player who asked for it. Left global, it
+  /// migrates: sign out, sign in as somebody else, and their first sync
+  /// delivers a reset they never requested against progress that was never
+  /// erased.
+  String _accountKey(String base) {
+    final account = ref.read(authServiceProvider).accountId;
+    return account == null ? base : '$base.$account';
+  }
+
   /// Reads the persisted flag once, and never over the top of a live one.
   ///
   /// The order matters: a reset performed a moment ago sets the flag in memory
@@ -252,7 +361,9 @@ class SyncController extends Notifier<SyncState> {
     _restoredResetFlag = true;
     try {
       final prefs = await SharedPreferences.getInstance();
-      _resetPending = prefs.getBool(_resetPendingKey) ?? false;
+      _resetPending = prefs.getBool(_accountKey(_resetPendingKey)) ?? false;
+      _resetGeneration =
+          prefs.getInt(_accountKey(_resetGenerationKey)) ?? _resetGeneration;
     } catch (_) {}
   }
 
@@ -295,6 +406,21 @@ class SyncController extends Notifier<SyncState> {
     await _persistResetPending(true);
     state = const SyncState();
 
+    // EVERY RESPONSE STILL IN FLIGHT IS NOW OBSOLETE. Each was computed by the
+    // server before the erase, so merging one restores what was just deleted.
+    // Reproduced: hold a sync response, reset, release it, and every star is
+    // back.
+    invalidateInFlight();
+
+    // Waits for the running pass rather than JOINING it. `syncNow` collapses
+    // concurrent callers into whatever is already going, and what is already
+    // going was started before the reset existed — so it would neither deliver
+    // the reset nor be allowed to merge. The reset needs a pass of its own.
+    final running = _inFlight;
+    if (running != null) {
+      await running;
+    }
+
     // Delivered through the ordinary sync path rather than inline, so there is
     // ONE place a reset reaches the server — the one that also knows to end
     // the pass rather than reconcile against a snapshot the server computed
@@ -318,9 +444,14 @@ class SyncController extends Notifier<SyncState> {
     }
 
     final result = await _api.reset();
-    if (result.isOk) {
+
+    if (result case ApiOk(:final value)) {
       _resetPending = false;
+      // Adopt the generation the reset created. Every later upload carries it,
+      // so a device still on the old one cannot put the erased stars back.
+      _resetGeneration = value;
       await _persistResetPending(false);
+      await _persistResetGeneration(value);
       return true;
     }
 
@@ -331,7 +462,7 @@ class SyncController extends Notifier<SyncState> {
   Future<void> _persistResetPending(bool pending) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_resetPendingKey, pending);
+      await prefs.setBool(_accountKey(_resetPendingKey), pending);
     } catch (_) {}
   }
 }
@@ -339,3 +470,12 @@ class SyncController extends Notifier<SyncState> {
 final syncControllerProvider = NotifierProvider<SyncController, SyncState>(
   SyncController.new,
 );
+
+/// What the account and the local campaign looked like when a pass began.
+@immutable
+class _Stamp {
+  const _Stamp({required this.account, required this.local});
+
+  final int account;
+  final int local;
+}

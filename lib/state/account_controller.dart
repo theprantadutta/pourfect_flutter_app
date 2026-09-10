@@ -28,6 +28,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/api/identity.dart';
+import 'play_history.dart';
 import 'progress_repository.dart';
 import 'providers.dart';
 import 'sync_controller.dart';
@@ -117,20 +118,47 @@ class AccountController extends Notifier<AccountState> {
     state = state.copyWith(busy: true);
     try {
       final identity = ref.read(identityProvider);
+
+      // Captured BEFORE, because what happens afterwards depends entirely on
+      // whether this was a link or a switch, and only the uid can say.
+      final before = identity.current?.uid;
+
       final result = await operation(identity);
       if (!result.isOk) return result;
 
-      await _adoptCurrentIdentity();
-      return result;
+      return await _adoptCurrentIdentity(previousUid: before);
     } finally {
       state = state.copyWith(busy: false);
     }
   }
 
-  /// Re-exchanges the session and pushes, so the server and the UI agree.
-  Future<void> _adoptCurrentIdentity() async {
+  /// Makes the session, the server and the UI agree with the identity.
+  ///
+  /// **Linking and switching are different operations and this is where the
+  /// difference lives.** Linking a credential to the anonymous account keeps
+  /// the uid, so the existing session is still about the right player and only
+  /// needs refreshing to carry the new provider. Signing into an account that
+  /// already exists REPLACES the uid, and then the cached session belongs to
+  /// somebody else — reusing its token writes one player's progress into
+  /// another player's row. Reproduced: sign in as a second account, fail the
+  /// exchange, and the next write still carried `Bearer jwt-uid-1`.
+  Future<IdentityResult> _adoptCurrentIdentity({String? previousUid}) async {
     final identity = ref.read(identityProvider);
     final snapshot = identity.current;
+    final auth = ref.read(authServiceProvider);
+
+    final switched = previousUid != null &&
+        snapshot != null &&
+        snapshot.uid != previousUid;
+
+    if (switched) {
+      // No token, no session, new epoch — before anything can be sent. Every
+      // response still in flight for the old account is now discarded rather
+      // than merged into this one.
+      await auth.abandonAccount();
+      ref.read(syncControllerProvider.notifier).invalidateInFlight();
+      await ref.read(progressProvider.notifier).resetAll();
+    }
 
     state = state.copyWith(
       signedIn: snapshot != null && !snapshot.isAnonymous,
@@ -140,14 +168,41 @@ class AccountController extends Notifier<AccountState> {
     // FORCED. The cached session still looks fresh — it has not expired, it is
     // simply describing a player who no longer exists in the same form. Only a
     // new token carries the new sign_in_provider.
-    await ref.read(authServiceProvider).ensureSession(forceRefresh: true);
+    final session = await auth.ensureSession(forceRefresh: true);
+
+    if (session == null) {
+      // NOTHING IS SYNCED. The identity changed and we could not get a session
+      // for it; pushing now would either use no token at all or, worse, the
+      // previous account's. The Firebase sign-in itself stands, so the next
+      // ordinary trigger will try the exchange again.
+      debugPrint('[account] signed in, but no session yet; not syncing');
+      return const IdentityResult(IdentityOutcome.sessionUnavailable);
+    }
+
+    if (switched) {
+      // The local campaign was erased above, so there is nothing to push and
+      // everything to pull: this device now belongs to a different player.
+      await ref.read(syncControllerProvider.notifier).pullOnly();
+      return const IdentityResult.ok();
+    }
 
     // The uid did not change, so this is the same server row and there is
     // nothing to migrate. It is a push because somebody who has just signed in
     // has said their progress matters, and "it will go up next time you finish
     // a level" is not a good enough answer to that.
     await ref.read(syncControllerProvider.notifier).pushEverything();
+    return const IdentityResult.ok();
   }
+
+  /// Signs into the account a credential already belongs to.
+  ///
+  /// The other half of [IdentityOutcome.credentialBelongsToAnotherAccount],
+  /// and the reason that outcome is not a dead end. Firebase cannot merge two
+  /// uids, so this ABANDONS whatever the anonymous account had on this device
+  /// and adopts the existing one instead — which is why it is a separate call
+  /// that the screen only makes after saying so.
+  Future<IdentityResult> useExistingGoogleAccount() =>
+      _run((identity) => identity.signInToExistingGoogleAccount());
 
   /// Deletes the account: the server row first, then the Firebase identity.
   ///
@@ -165,13 +220,25 @@ class AccountController extends Notifier<AccountState> {
     state = state.copyWith(busy: true);
 
     try {
+      final client = ref.read(apiClientProvider);
       final session = await ref.read(authServiceProvider).ensureSession();
+
       if (session == null) {
-        // No session means nothing of theirs is on the server to delete. The
-        // local wipe below is then the whole of it, and reporting failure
-        // would strand somebody with no way to finish.
-        await _wipeLocally();
-        return AccountDeletion.deleted;
+        // NO SESSION IS NOT NO ACCOUNT.
+        //
+        // An expired session with Firebase unreachable looks identical to
+        // having nothing on the server, and this used to wipe locally, sign
+        // out and report success — destroying the very credentials needed to
+        // retry, while the account and everything in it stayed on the server.
+        // The one case where there is genuinely nothing to delete is a build
+        // with no backend at all.
+        if (!client.isConfigured) {
+          await _wipeLocally();
+          return AccountDeletion.deleted;
+        }
+
+        debugPrint('[account] deletion needs a session; keeping credentials');
+        return AccountDeletion.notAuthenticated;
       }
 
       final result = await ref.read(usersApiProvider).deleteAccount();
@@ -179,6 +246,12 @@ class AccountController extends Notifier<AccountState> {
         debugPrint('[account] server deletion refused');
         return AccountDeletion.serverRefused;
       }
+
+      // The row is gone. Anything still in flight for it describes an account
+      // that no longer exists, and merging one puts the deleted progress
+      // straight back — reproduced by holding a sync response across the
+      // delete.
+      ref.read(syncControllerProvider.notifier).invalidateInFlight();
 
       final removed = await ref.read(identityProvider).deleteAccount();
       if (removed.outcome == IdentityOutcome.needsRecentLogin) {
@@ -197,9 +270,19 @@ class AccountController extends Notifier<AccountState> {
   }
 
   Future<void> _wipeLocally() async {
+    // Ordered: invalidate first, so nothing that lands during the wipe is
+    // still considered current.
+    ref.read(syncControllerProvider.notifier).invalidateInFlight();
+
     await ref.read(identityProvider).signOut();
     await ref.read(authServiceProvider).forget();
     await ref.read(progressProvider.notifier).resetAll();
+
+    // The campaign is not the only thing keyed to the account. A streak and a
+    // best-times history left standing behind a deleted account is a
+    // statistics screen describing somebody who asked to be forgotten.
+    await ref.read(playHistoryProvider.notifier).resetAll();
+
     state = const AccountState(available: true);
   }
 
@@ -229,7 +312,19 @@ class AccountController extends Notifier<AccountState> {
 }
 
 /// How a deletion attempt ended.
-enum AccountDeletion { deleted, serverRefused, busy }
+enum AccountDeletion {
+  deleted,
+
+  /// The server was reached and refused. Retryable.
+  serverRefused,
+
+  /// There was no session to delete with, and the account was NOT touched.
+  /// Distinct from [serverRefused] because the fix is different: sign in
+  /// again rather than wait for the network.
+  notAuthenticated,
+
+  busy,
+}
 
 final accountProvider = NotifierProvider<AccountController, AccountState>(
   AccountController.new,

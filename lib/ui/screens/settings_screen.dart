@@ -312,15 +312,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // A refusal has to be VISIBLE. Silently failing here leaves somebody
     // believing their data is gone when it is not, which is worse than the
     // deletion never having been offered.
-    if (outcome == AccountDeletion.serverRefused) {
+    final problem = switch (outcome) {
+      AccountDeletion.serverRefused =>
+        'Could not reach the server. Nothing was deleted — try again when '
+            'you are back online.',
+      // Distinct from the above, because the fix is different. Reporting
+      // success here is what the audit caught: no request was ever sent, the
+      // account was untouched, and the credentials needed to retry had been
+      // thrown away.
+      AccountDeletion.notAuthenticated =>
+        'Could not confirm it is you. Sign in again, then delete your '
+            'account — nothing has been deleted yet.',
+      AccountDeletion.busy || AccountDeletion.deleted => null,
+    };
+
+    if (problem != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: tokens.surfaceRaised,
-          content: Text(
-            'Could not reach the server. Nothing was deleted — try again '
-            'when you are back online.',
-            style: bodyStyle(tokens),
-          ),
+          content: Text(problem, style: bodyStyle(tokens)),
         ),
       );
     }

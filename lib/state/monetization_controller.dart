@@ -386,6 +386,7 @@ class MonetizationController extends Notifier<MonetizationState> {
     if (granted) {
       if (!state.adsRemoved) state = state.copyWith(adsRemoved: true);
       await ref.read(billingServiceProvider).confirmEntitlement();
+      await ref.read(authServiceProvider).recordEntitlement(adsRemoved: true);
       return;
     }
 
@@ -393,6 +394,15 @@ class MonetizationController extends Notifier<MonetizationState> {
 
     if (state.adsRemoved) state = state.copyWith(adsRemoved: false);
     await ref.read(billingServiceProvider).revokeEntitlement();
+
+    // AND THE CACHED SESSION, which is the half that was missing.
+    //
+    // The session is a snapshot taken when it was issued, and it outlives the
+    // facts inside it. After a refund it still said adsRemoved: true, so the
+    // very next sync read that stale true and handed the entitlement straight
+    // back — a confirmed revocation undone by a value that predated it.
+    // Reproduced: refund, then sync, and the ads were gone again.
+    await ref.read(authServiceProvider).recordEntitlement(adsRemoved: false);
   }
 
   /// Test seam.

@@ -70,6 +70,22 @@ class AuthService {
 
   Session? _session;
 
+  int _accountEpoch = 0;
+
+  /// Bumped whenever the account this service speaks for stops being the one
+  /// it spoke for a moment ago.
+  ///
+  /// Anything asynchronous that touches account-scoped data captures this
+  /// before it starts and checks it before applying what came back. Without
+  /// it, a progress response for the account somebody just signed out of gets
+  /// merged into the account they signed in to — which was reproduced as
+  /// deleted progress reappearing, and as a write for uid-1 landing while the
+  /// player was uid-2.
+  int get accountEpoch => _accountEpoch;
+
+  /// The Firebase uid the current session was issued for, if any.
+  String? get accountId => _session?.userId;
+
   /// The exchange currently in flight, if any.
   ///
   /// Single-flight, and it has to be. Five services wake up at launch and all
@@ -190,9 +206,45 @@ class AuthService {
   }
 
   /// Drops the session locally. Does not delete anything on the server.
+  ///
+  /// Also bumps [accountEpoch]. Forgetting a session is precisely the moment
+  /// every account-scoped request already in flight stopped being about the
+  /// current account, and the results of those must be discarded rather than
+  /// applied to whoever comes next.
   Future<void> forget() async {
     _session = null;
+    _accountEpoch++;
     await _store.clear();
+  }
+
+  /// Abandons the current account entirely: no cached session, no cached
+  /// token, and a new epoch.
+  ///
+  /// For a genuine identity CHANGE, as distinct from linking a credential to
+  /// the account that already exists. Linking keeps the uid, so the session
+  /// stays valid and only needs refreshing; switching does not, and reusing
+  /// the old token then authenticates as the previous player. Reproduced
+  /// exactly that way: sign into a second account, fail the exchange, and the
+  /// next progress write still carried the first account's bearer token.
+  Future<void> abandonAccount() async {
+    // Any exchange already running was started for the old identity.
+    _inFlight = null;
+    await forget();
+  }
+
+  /// Applies an authoritative entitlement change to the cached session.
+  ///
+  /// The session is a snapshot taken at sign-in, and it outlives the facts it
+  /// describes. A purchase refunded after it was issued leaves `adsRemoved`
+  /// true inside it, and the next sync reads that stale true and hands the
+  /// entitlement back — which is exactly what happened. Anything that learns
+  /// an entitlement changed has to correct the snapshot too.
+  Future<void> recordEntitlement({required bool adsRemoved}) async {
+    final session = _session;
+    if (session == null || session.adsRemoved == adsRemoved) return;
+
+    _session = session.copyWith(adsRemoved: adsRemoved);
+    await _store.save(_session!);
   }
 
   /// Forgets the session AND the Firebase identity behind it.

@@ -60,6 +60,15 @@ class FakeIdentity implements Identity {
   @override
   Future<IdentityResult> continueWithGoogle() async => _apply('google');
 
+  /// Joining an account that already exists CHANGES THE UID. That is the whole
+  /// difference from linking, and a fake that kept the uid would hide the bug
+  /// the switch handling exists to prevent.
+  @override
+  Future<IdentityResult> signInToExistingGoogleAccount() async {
+    if (next.isOk) uid = 'uid-existing';
+    return _apply('existingGoogle');
+  }
+
   @override
   Future<IdentityResult> createWithEmail(String email, String password) async =>
       _apply('create', becomesEmail: email);
