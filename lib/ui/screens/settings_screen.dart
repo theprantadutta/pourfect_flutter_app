@@ -16,8 +16,11 @@ import '../../state/monetization_controller.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/sync_controller.dart';
+import '../../state/account_controller.dart';
 import '../../state/providers.dart';
 import '../theme/ball_palette.dart';
+import '../transitions.dart';
+import 'account_screen.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/ball.dart';
@@ -216,6 +219,113 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _openAccount() async {
+    await Navigator.of(context).push(
+      PourfectPageRoute<void>(builder: (_) => const AccountScreen()),
+    );
+  }
+
+  Future<void> _confirmSignOut() async {
+    final tokens = PourfectTokens.of(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: tokens.surfaceRaised,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.panelRadius),
+          side: BorderSide(color: tokens.hairline),
+        ),
+        title: Text('Sign out?', style: titleStyle(tokens)),
+        content: Text(
+          // True, and worth saying: the campaign is on the device and stays
+          // there. Signing out changes which account it syncs into next, and
+          // the merge is monotonic, so nothing can be taken away by it.
+          'Your progress stays on this phone. You can sign back in any time '
+          'to pick it up somewhere else.',
+          style: bodyStyle(tokens),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Stay signed in',
+              style: actionStyle(tokens, color: tokens.textMuted),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Sign out', style: actionStyle(tokens)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await ref.read(accountProvider.notifier).signOut();
+    }
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final tokens = PourfectTokens.of(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: tokens.surfaceRaised,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.panelRadius),
+          side: BorderSide(color: tokens.hairline),
+        ),
+        title: Text('Delete your account?', style: titleStyle(tokens)),
+        content: Text(
+          'This removes your account, your stars, your streak and your '
+          'leaderboard entry, on this phone and on our server. It cannot be '
+          'undone.\n\nRemove Ads is not affected — it belongs to your Google '
+          'Play account, and restores if you play again.',
+          style: bodyStyle(tokens),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Keep it',
+              style: actionStyle(tokens, color: tokens.textMuted),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              'Delete everything',
+              style: actionStyle(tokens, color: const Color(0xFFC85F72)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final outcome = await ref.read(accountProvider.notifier).deleteAccount();
+    if (!mounted) return;
+
+    // A refusal has to be VISIBLE. Silently failing here leaves somebody
+    // believing their data is gone when it is not, which is worse than the
+    // deletion never having been offered.
+    if (outcome == AccountDeletion.serverRefused) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: tokens.surfaceRaised,
+          content: Text(
+            'Could not reach the server. Nothing was deleted — try again '
+            'when you are back online.',
+            style: bodyStyle(tokens),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = PourfectTokens.of(context);
@@ -308,12 +418,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             SizedBox(height: tokens.space5),
             _SectionLabel('Progress'),
+            // Hidden entirely in a build with no Firebase, rather than shown
+            // as a control that cannot work.
+            if (ref.watch(accountProvider).available) ...[
+              if (ref.watch(accountProvider).signedIn)
+                _ActionRow(
+                  title: 'Signed in',
+                  detail:
+                      ref.watch(accountProvider).email ??
+                      'Your progress moves with your account.',
+                  onTap: _confirmSignOut,
+                )
+              else
+                _ActionRow(
+                  title: 'Save your progress',
+                  // The honest claim, and the whole of it. Not "your progress
+                  // is safe" — an anonymous account already survives a crash;
+                  // what it does NOT survive is a new phone.
+                  detail: 'Keep your stars if you change phones.',
+                  onTap: _openAccount,
+                ),
+            ],
             _ActionRow(
               title: 'Reset progress',
               detail: 'Erase every star and start from level 1.',
               onTap: _confirmReset,
               destructive: true,
             ),
+            // Required by Play for any app that lets people create accounts,
+            // and it must be reachable IN the app rather than only on the web.
+            if (ref.watch(accountProvider).available)
+              _ActionRow(
+                title: 'Delete account',
+                detail: 'Remove your account and everything stored with it.',
+                onTap: _confirmDeleteAccount,
+                destructive: true,
+              ),
 
             SizedBox(height: tokens.space5),
             _SectionLabel('About'),

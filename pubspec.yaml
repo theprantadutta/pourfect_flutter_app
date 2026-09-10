@@ -69,6 +69,11 @@ dependencies:
   in_app_purchase: ^3.2.0
   http: ^1.6.0
   firebase_auth: ^6.6.1
+  # Sign-in is an UPGRADE from anonymous, never a migration: Firebase keeps the
+  # same uid through linkWithCredential, so the server row and every star under
+  # it survive. Needs GOOGLE_WEB_CLIENT_ID as serverClientId or Android returns
+  # an account with a null idToken.
+  google_sign_in: ^7.1.1
   firebase_messaging: ^16.6.0
 
 dev_dependencies:

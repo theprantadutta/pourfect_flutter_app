@@ -104,6 +104,17 @@ class SyncController extends Notifier<SyncState> {
     return _inFlight ??= _run().whenComplete(() => _inFlight = null);
   }
 
+  /// Sends the whole campaign, not just what is marked dirty.
+  ///
+  /// For the moment somebody signs in. Linking preserves the uid, so this is
+  /// the same server row and nothing needs migrating — but a player who has
+  /// just asked for their progress to be saved deserves better than "it will
+  /// go up next time you finish a level".
+  Future<void> pushEverything() {
+    _needsFullPush = true;
+    return syncNow();
+  }
+
   Future<void> _run() async {
     await _restoreResetFlag();
 

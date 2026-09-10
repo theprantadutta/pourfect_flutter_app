@@ -401,6 +401,9 @@ splits them per device.
   point, and `assets/licenses/` still needs the two OFL texts.
 - **No daily challenge or leaderboard screens.** Both wait on the client work;
   the backend serves them already.
+- **No Sign in with Apple.** Android-only for now, so it costs nothing yet — but
+  it blocks the first iOS submission, because Apple requires it alongside any
+  other social login.
 - **No IAP product exists yet.** The Play and App Store product ids and the
   Play license key are still blank in `generated/ad_config.md`, so Remove Ads
   shows an em dash instead of a price. That is the correct degraded state, not
@@ -513,18 +516,65 @@ settings screen simply was not there. The cheap defence is a test that merely
 CONSTRUCTS every Notifier a screen can reach; it catches this class of bug in
 milliseconds instead of a build-install-screenshot round trip.
 
-## Auth — v1 limitation to be honest about
+## Auth — anonymous by default, sign-in as an upgrade
 
-v1 uses **Firebase anonymous auth only**. No sign-in wall; first-launch friction
-is a measurable D1 killer and nothing in v1 needs a real identity.
+Players still start **anonymous, with no sign-in wall**, and that is not
+negotiable: first-launch friction is a measurable D1 killer and nothing about a
+ball-sort puzzle needs a real identity. Signing in is offered from Settings and
+from nowhere else.
 
-**An anonymous Firebase UID does not survive uninstall or a device change.** So
-v1 "cloud sync" protects against app-data loss only — NOT device migration.
-Never surface it in the UI as anything stronger than that: do not say "your
-progress is safe" or show a device-transfer affordance. Leave a clean seam for
-linking the anonymous UID to a real account later (Firebase supports
-`linkWithCredential` on the existing anonymous user, which preserves the UID and
-therefore all server-side progress).
+Google and email/password both land. `services/api/identity.dart` owns the
+Firebase side behind an `Identity` seam, so the whole flow is testable without a
+project, an emulator or a network; `state/account_controller.dart` owns
+everything that has to happen around it.
+
+**Signing in is an UPGRADE, never a migration.** `linkWithCredential` keeps the
+same uid, so the server row and every star hanging off it survive untouched.
+This is why anonymous-first costs nothing later. Three rules fall out of it, all
+pinned by tests:
+
+- **Link when anonymous, sign in when not.** Signing in from an anonymous
+  session switches to a different uid and silently abandons the progress.
+- **Force a session re-exchange afterwards.** The backend learns somebody signed
+  in ONLY from `sign_in_provider` in the next token it verifies. The cached
+  session has not expired — it is simply describing a player who no longer
+  exists in that form — so `ensureSession(forceRefresh: true)` is what makes the
+  server agree. Without it the row stays anonymous and the UI keeps offering a
+  sign-in already done.
+- **`credential-already-in-use` is the player's decision, not ours.** Firebase
+  cannot merge two uids. The only way forward abandons the anonymous account's
+  progress, so it surfaces as its own outcome and says so in words rather than
+  being retried quietly.
+
+**`AuthProvider.Email` had to be added to the backend for this.** Firebase
+reports email/password as `"password"`, which mapped to `Unknown`, and a new
+user with an unknown provider was stored as `Anonymous` — so an account with a
+real email would have been recorded as anonymous while `IsAnonymous` said
+otherwise.
+
+**Password reset never reveals whether an address is registered.** The screen
+says the same sentence either way; only the log distinguishes them. "No account
+with that address" is exactly what somebody probing for registered emails wants.
+
+**Delete account is required by Play** for any app that lets people create
+accounts, and it must be reachable in-app rather than only on the web. The
+SERVER row goes first and the Firebase identity second: the database is the act
+of record, so a failure after it means the data is already gone and the worst
+case is an orphaned login that provisions a fresh empty account. Reversed, a
+failure destroys the login while the row survives and nobody can ever reach or
+delete their own data again.
+
+**Apple is not built yet.** The backend enum already has it, and it becomes
+mandatory the moment an iOS build ships with Google on it — App Store review
+rejects any app offering a social login without Sign in with Apple.
+
+**Purchases do NOT depend on any of this.** A Play entitlement belongs to the
+Google Play account, not to the Firebase identity: `restorePurchases()` runs on
+every launch and the server transfers token ownership to whoever presents it, so
+Remove Ads already survives a reinstall and a new phone with nobody signed in.
+What sign-in protects is PROGRESS, which has no token to replay. Do not justify
+auth work with monetization — the argument is a player on level 96 with a
+40-day streak changing phones.
 
 ## Secrets
 

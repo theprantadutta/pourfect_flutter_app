@@ -68,7 +68,7 @@ class NextLevelHero extends StatelessWidget {
             SizedBox(
               width: 260,
               child: Text(
-                'Pour balls between tubes until every colour has a tube of '
+                'Pour balls between tubes until every color has a tube of '
                 'its own.',
                 textAlign: TextAlign.center,
                 style: bodyStyle(tokens).copyWith(fontSize: 14),
@@ -97,7 +97,7 @@ class NextLevelHero extends StatelessWidget {
       ),
       child: BoardPreview(
         board: board,
-        // Sized so a 3-colour tutorial board and an 8-colour board both sit
+        // Sized so a 3-color tutorial board and an 8-color board both sit
         // comfortably without the widest case forcing a tiny ball.
         ballSize: board.tubeCount <= 6 ? 26 : 20,
         boldGlyphs: boldGlyphs,

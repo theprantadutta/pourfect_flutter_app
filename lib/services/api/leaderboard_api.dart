@@ -153,4 +153,25 @@ class UsersApi {
       ),
     };
   }
+
+  /// Deletes the account and everything hanging off it.
+  ///
+  /// Required by Play: an app that lets people create accounts must offer
+  /// in-app deletion, not only a web form. Cascades do the work server-side, so
+  /// a table added later cannot be forgotten here.
+  ///
+  /// The SERVER goes first and the Firebase identity second — see
+  /// AccountController for why that order is the safe one.
+  Future<ApiResult<void>> deleteAccount() async {
+    final response = await _client.delete('/api/v1/users/me');
+
+    return switch (response) {
+      ApiOk() => const ApiOk(null),
+      ApiFailure(:final kind, :final detail, :final statusCode) => ApiFailure(
+        kind,
+        detail: detail,
+        statusCode: statusCode,
+      ),
+    };
+  }
 }

@@ -22,6 +22,8 @@ import '../services/audio/audio_service.dart';
 import '../services/audio/soloud_audio_service.dart';
 import '../services/api/api_client.dart';
 import '../services/api/auth_service.dart';
+import '../services/api/identity.dart';
+import '../services/api/leaderboard_api.dart';
 import '../services/api/push_service.dart';
 import '../services/haptics/haptics_service.dart';
 import 'game_controller.dart';
@@ -200,6 +202,20 @@ final Provider<AuthService> authServiceProvider = Provider<AuthService>(
     client: () => ref.read(apiClientProvider),
     appVersion: () => ref.read(appVersionProvider),
   ),
+);
+
+/// Who the player is to Firebase, and how that can change.
+///
+/// Separate from [authServiceProvider], which owns the exchange with our own
+/// backend. Overridden in tests with a fake, so the whole account flow runs
+/// without a Firebase project.
+final Provider<Identity> identityProvider = Provider<Identity>(
+  (ref) => FirebaseIdentity(),
+);
+
+/// The leaderboard name, and account deletion.
+final Provider<UsersApi> usersApiProvider = Provider<UsersApi>(
+  (ref) => UsersApi(ref.read(apiClientProvider)),
 );
 
 /// Push registration, and the one moment it is appropriate to ask.
