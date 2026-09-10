@@ -126,13 +126,56 @@ class AuthService {
       return Future.value(cached);
     }
 
-    return _inFlight ??= _exchange(forceRefresh: forceRefresh).whenComplete(() {
-      _inFlight = null;
+    // Single-flight, still. Five services wake at launch and all want a token;
+    // without this they each sign in and four of five sessions are thrown
+    // away — five round trips for one player opening the app.
+    final running = _inFlight;
+    if (running != null) return running;
+
+    // The cleanup clears only the future it belongs to.
+    //
+    // `_inFlight = null` in a shared callback is wrong once anything else can
+    // replace the pointer: an abandoned exchange finishing later would null
+    // out the pointer to the NEW account's exchange, and the next caller would
+    // start a third. Comparing identity first makes the callback harmless when
+    // it is late.
+    late final Future<Session?> mine;
+    mine = _exchange(
+      forceRefresh: forceRefresh,
+      epoch: _accountEpoch,
+    ).whenComplete(() {
+      if (identical(_inFlight, mine)) _inFlight = null;
     });
+
+    return _inFlight = mine;
   }
 
-  Future<Session?> _exchange({required bool forceRefresh}) async {
-    _session ??= await _store.load();
+  /// Exchanges a Firebase token for one of ours, for ONE account.
+  ///
+  /// [epoch] is the account this work belongs to. Every step that touches
+  /// shared state re-checks it, because each `await` here is a place the
+  /// player can have signed out, switched account or deleted it in the
+  /// meantime — and this request is then about somebody who is no longer the
+  /// current player.
+  ///
+  /// Dropping `_inFlight` does NOT cancel an HTTP request. That was the bug:
+  /// abandoning an account advanced the epoch and cleared the pointer, and the
+  /// old request carried on to assign `_session` and write it to disk. Holding
+  /// A's response, abandoning A, authenticating B, then releasing A put both
+  /// memory and SessionStore back to A — a successful switch silently undone.
+  Future<Session?> _exchange({
+    required bool forceRefresh,
+    required int epoch,
+  }) async {
+    if (_accountEpoch != epoch) return null;
+
+    // Loaded only when it is still this account's turn, and assigned only if
+    // nothing has replaced it in the meantime.
+    if (_session == null) {
+      final stored = await _store.load();
+      if (_accountEpoch != epoch) return null;
+      _session ??= stored;
+    }
 
     // Re-checked inside the single-flight. Several callers can queue behind
     // one exchange; the ones that arrive after it finished must not start
@@ -165,6 +208,15 @@ class AuthService {
       },
     );
 
+    // The answer is here, and it may be about somebody who is no longer the
+    // player. Nothing below may touch shared state if so — not the session,
+    // not the disk, and not `forget`, which would clear a NEWER account's
+    // session on behalf of an older one's failure.
+    if (_accountEpoch != epoch) {
+      debugPrint('[auth] discarded a superseded exchange');
+      return null;
+    }
+
     switch (response) {
       case ApiOk(:final value):
         final session = Session.fromAuthResponse(value, _now());
@@ -174,6 +226,15 @@ class AuthService {
         }
         _session = session;
         await _store.save(session);
+
+        // Re-checked after the write, too. If the account changed while the
+        // save was in flight, this session is stale on disk and the current
+        // one has to win — so put it back.
+        if (_accountEpoch != epoch) {
+          final current = _session;
+          if (current != null) await _store.save(current);
+          return null;
+        }
         return session;
 
       case ApiFailure(:final kind, :final detail):
@@ -214,6 +275,10 @@ class AuthService {
   Future<void> forget() async {
     _session = null;
     _accountEpoch++;
+    // An exchange running for the account being forgotten must not be handed
+    // to the next caller as though it were theirs. It will return null on its
+    // own epoch check; this stops anyone waiting on it in the meantime.
+    _inFlight = null;
     await _store.clear();
   }
 
@@ -227,8 +292,8 @@ class AuthService {
   /// exactly that way: sign into a second account, fail the exchange, and the
   /// next progress write still carried the first account's bearer token.
   Future<void> abandonAccount() async {
-    // Any exchange already running was started for the old identity.
-    _inFlight = null;
+    // forget() drops the in-flight exchange too; the old identity's request
+    // cannot become the new identity's session.
     await forget();
   }
 

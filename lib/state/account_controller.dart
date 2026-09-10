@@ -156,7 +156,14 @@ class AccountController extends Notifier<AccountState> {
       // response still in flight for the old account is now discarded rather
       // than merged into this one.
       await auth.abandonAccount();
-      ref.read(syncControllerProvider.notifier).invalidateInFlight();
+
+      final sync = ref.read(syncControllerProvider.notifier);
+      sync.invalidateInFlight();
+      // The previous account's reset metadata must not stay in memory. Its
+      // preference keys are scoped, but the controller outlives the account,
+      // and an undelivered reset left in these fields is delivered against
+      // whoever signs in next.
+      sync.forgetAccountState();
       await ref.read(progressProvider.notifier).resetAll();
     }
 

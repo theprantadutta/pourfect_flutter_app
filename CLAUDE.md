@@ -595,6 +595,44 @@ starts and checks it before it writes:
 requests cannot be recalled — they are already with the server — so what
 changes is that their answers are dropped on arrival.
 
+**Dropping a Future does not cancel the request behind it.** `_inFlight = null`
+looks like a cancel and is not: the HTTP call carries on and still assigns
+`_session` and writes to `SessionStore`. Abandoning account A, authenticating
+B, then letting A's response land put both memory and disk back to A. Every
+step of `_exchange` now re-checks the epoch it was started under — before the
+load, after the response, and after the save — and its single-flight cleanup
+clears the pointer only if it is still its own.
+
+**Account state is loaded AFTER the account is known, and once per account.**
+The order was itself a bug. `_restoreResetFlag` ran before `ensureSession`, so
+on a cold start `accountId` was null, the scoped preference keys fell back to
+their unscoped forms, and a one-shot flag marked restoration done for an
+account that had not been resolved. The results were a pending reset that was
+never delivered and a stored generation that was never read — so every launch
+uploaded generation 0 and the server rejected legitimate progress as stale,
+after which the client erased it. `_loadAccountState(accountId)` replaces it,
+keyed by account and reloaded when the account changes.
+
+**Namespacing a preference key is not enough on its own.** `_resetPending` and
+`_resetGeneration` live in a controller that outlives a sign-out, so account
+A's undelivered reset stayed in memory and was delivered with account B's
+token. Three things now stop that, deliberately redundant because the failure
+is destructive: the load is keyed by account, a switch calls
+`forgetAccountState()`, and `_deliverReset` refuses to send a reset whose owner
+is not the current account — checked before the request and again after it.
+
+**Every write path takes the guard, not just the obvious one.** `pullOnly()`
+had none of `_run()`'s checks and is now on the account-switch path, so holding
+a progress GET across an account deletion put the deleted campaign back.
+Guards go before the request, after it, and after the local restore — each
+`await` is its own opportunity for the account to have gone.
+
+**Adopting a remote reset keeps the rows from the same response.** Clearing
+local progress was half the job; the response's rows were recorded under the
+NEW generation and are play from another device, so dropping them showed the
+player an empty campaign until the next sync. They are merged from that same
+response, which keeps the rows and the generation consistent with each other.
+
 **Persisted account state is keyed by uid.** A pending reset stored under a
 global key migrated: reset offline, sign in as somebody else, and their first
 sync delivered a reset they never asked for.

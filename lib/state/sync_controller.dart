@@ -100,7 +100,13 @@ class SyncController extends Notifier<SyncState> {
   /// session, which is exactly the shape the defect had.
   static const _resetPendingKey = 'pourfect.sync.reset_pending';
   bool _resetPending = false;
-  bool _restoredResetFlag = false;
+
+  /// Whose reset metadata is currently in memory, and whether any is.
+  ///
+  /// Null is a real account here — a build with no backend — so "loaded
+  /// nothing yet" needs its own flag rather than being inferred from null.
+  String? _loadedAccount;
+  bool _loadedAny = false;
 
   @override
   SyncState build() => const SyncState();
@@ -147,7 +153,36 @@ class SyncController extends Notifier<SyncState> {
       local: _epoch,
     );
 
-    await _restoreResetFlag();
+    // THE ACCOUNT IS RESOLVED BEFORE ITS METADATA IS READ.
+    //
+    // This used to be the other way round, and the order was the bug. On a
+    // cold start AuthService has no session yet, so accountId was null, the
+    // per-account preference keys resolved to their unscoped fallbacks, and a
+    // one-shot "already restored" flag was set — permanently, for the wrong
+    // account. A pending reset was never delivered and a stored generation was
+    // never read, so the first sync of every launch uploaded generation 0 and
+    // the server rejected legitimate progress as stale.
+    final auth = ref.read(authServiceProvider);
+    final session = await auth.ensureSession();
+
+    if (session == null) {
+      // No backend configured, no network at first launch, or Firebase never
+      // initialised. All of them are ordinary and none of them is worth
+      // telling the player about.
+      //
+      // A build with no server still has to finish a local reset, or the flag
+      // blocks sync forever in an app that has nothing to sync with.
+      if (!ref.read(apiClientProvider).isConfigured) {
+        await _loadAccountState(null);
+        if (_resetPending) await _deliverReset();
+      }
+
+      state = state.copyWith(status: SyncStatus.off);
+      return;
+    }
+
+    await _loadAccountState(session.userId);
+    if (_supersededSince(startedAt)) return;
 
     // A RESET THAT HAS NOT LANDED BLOCKS EVERYTHING. Merging the server's
     // snapshot now would restore precisely what the player asked to erase, and
@@ -167,16 +202,6 @@ class SyncController extends Notifier<SyncState> {
         status: SyncStatus.idle,
         lastSucceededAt: DateTime.now(),
       );
-      return;
-    }
-
-    final auth = ref.read(authServiceProvider);
-    final session = await auth.ensureSession();
-    if (session == null) {
-      // No backend configured, no network at first launch, or Firebase never
-      // initialised. All of them are ordinary and none of them is worth
-      // telling the player about.
-      state = state.copyWith(status: SyncStatus.off);
       return;
     }
 
@@ -251,7 +276,7 @@ class SyncController extends Notifier<SyncState> {
         // is a pre-reset copy, and re-uploading it is exactly how erased
         // progress comes back — so the reset is adopted here instead.
         if (value.resetGeneration > _resetGeneration) {
-          await _adoptRemoteReset(value.resetGeneration);
+          await _adoptRemoteReset(value.resetGeneration, value.progress);
           return;
         }
 
@@ -319,7 +344,10 @@ class SyncController extends Notifier<SyncState> {
   /// somebody's reset from the other device. Erasing is the honest reading of
   /// what they asked for: the account was reset, and this device is part of
   /// the account.
-  Future<void> _adoptRemoteReset(int generation) async {
+  Future<void> _adoptRemoteReset(
+    int generation,
+    List<LevelProgress> serverRows,
+  ) async {
     debugPrint('[sync] adopting reset generation $generation from the server');
 
     _epoch++;
@@ -327,7 +355,24 @@ class SyncController extends Notifier<SyncState> {
     _needsFullPush = false;
     _resetGeneration = generation;
     await _persistResetGeneration(generation);
-    await ref.read(progressProvider.notifier).resetAll();
+
+    final progress = ref.read(progressProvider.notifier);
+    await progress.resetAll();
+
+    // THEN TAKE WHAT THE SERVER ACTUALLY HAS.
+    //
+    // Erasing was only half of it. The rows in this very response were
+    // recorded under the NEW generation — they are play that happened after
+    // the reset, on some other device — and dropping them left the player
+    // staring at an empty campaign they had just filled. It came back on the
+    // next sync, so it was temporary, but "temporary" here means a player
+    // opening the app to find their progress gone.
+    //
+    // The same response, so the rows and the generation are consistent with
+    // each other; a separate pull could straddle another change.
+    if (serverRows.isNotEmpty) {
+      progress.mergeFromServer(serverRows);
+    }
 
     state = SyncState(status: SyncStatus.idle, lastSucceededAt: DateTime.now());
   }
@@ -335,50 +380,85 @@ class SyncController extends Notifier<SyncState> {
   Future<void> _persistResetGeneration(int generation) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_accountKey(_resetGenerationKey), generation);
+      await prefs.setInt(_keyFor(_resetGenerationKey, _loadedAccount), generation);
     } catch (_) {}
   }
 
-  /// Scopes a preference to the account that owns it.
-  ///
-  /// A pending reset belongs to the player who asked for it. Left global, it
-  /// migrates: sign out, sign in as somebody else, and their first sync
-  /// delivers a reset they never requested against progress that was never
-  /// erased.
-  String _accountKey(String base) {
-    final account = ref.read(authServiceProvider).accountId;
-    return account == null ? base : '$base.$account';
-  }
 
-  /// Reads the persisted flag once, and never over the top of a live one.
+  /// Loads the reset metadata belonging to [accountId].
   ///
-  /// The order matters: a reset performed a moment ago sets the flag in memory
-  /// and writes it asynchronously, so a read that raced the write would find
-  /// `false` and cheerfully merge the server's copy of everything the player
-  /// had just erased.
-  Future<void> _restoreResetFlag() async {
-    if (_restoredResetFlag || _resetPending) return;
-    _restoredResetFlag = true;
+  /// Once per ACCOUNT, not once per controller. Namespacing the preference
+  /// keys was not enough on its own: `_resetPending`, `_resetGeneration` and
+  /// the restored flag all lived in one controller that outlives a sign-out,
+  /// so account A's undelivered reset stayed in memory and the next sync
+  /// delivered it against account B's token — reproduced through the real
+  /// switching path, with B receiving a destructive reset nobody asked for.
+  ///
+  /// A reset that could not be delivered stays on disk under A's key, so it is
+  /// still waiting when A signs back in.
+  Future<void> _loadAccountState(String? accountId) async {
+    if (_loadedAccount == accountId && _loadedAny) return;
+
+    _loadedAccount = accountId;
+    _loadedAny = true;
+
+    // Cleared before the read, so a failure to read cannot leave the previous
+    // account's values standing.
+    _resetPending = false;
+    _resetGeneration = 0;
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      _resetPending = prefs.getBool(_accountKey(_resetPendingKey)) ?? false;
+      _resetPending =
+          prefs.getBool(_keyFor(_resetPendingKey, accountId)) ?? false;
       _resetGeneration =
-          prefs.getInt(_accountKey(_resetGenerationKey)) ?? _resetGeneration;
+          prefs.getInt(_keyFor(_resetGenerationKey, accountId)) ?? 0;
     } catch (_) {}
   }
+
+  /// Forgets which account's metadata is loaded, so the next pass reloads.
+  void forgetAccountState() {
+    _loadedAccount = null;
+    _loadedAny = false;
+    _resetPending = false;
+    _resetGeneration = 0;
+  }
+
+  static String _keyFor(String base, String? accountId) =>
+      accountId == null ? base : '$base.$accountId';
 
   /// Pulls the server's view without pushing anything.
   ///
   /// For a fresh install, where there is nothing local worth sending and the
   /// question is only what the account already has.
   Future<bool> pullOnly() async {
+    // The same stamp the push path takes, for the same reason. This writes
+    // into the local campaign too, and it is now on the account-switch path,
+    // so it is at least as exposed: holding a progress GET, deleting the
+    // account, then releasing it put the deleted campaign straight back.
+    final startedAt = _Stamp(
+      account: ref.read(authServiceProvider).accountEpoch,
+      local: _epoch,
+    );
+
     if (await ref.read(authServiceProvider).ensureSession() == null) {
       return false;
     }
+    if (_supersededSince(startedAt)) return false;
 
     final result = await _api.snapshot();
+    if (_supersededSince(startedAt)) {
+      debugPrint('[sync] discarded a pull for a superseded account/reset');
+      return false;
+    }
+
     if (result case ApiOk(:final value)) {
       await ref.read(progressProvider.notifier).restored;
+
+      // Re-checked after the restore, which is its own await and its own
+      // chance for the account to have gone.
+      if (_supersededSince(startedAt)) return false;
+
       return ref.read(progressProvider.notifier).mergeFromServer(value);
     }
     return false;
@@ -398,11 +478,19 @@ class SyncController extends Notifier<SyncState> {
   /// a pause: the flag survives a relaunch precisely because that is when the
   /// old progress would otherwise come back.
   Future<bool> reset() async {
+    // WHOSE reset this is, resolved before the flag is set. A reset recorded
+    // against the wrong account is delivered against the wrong account.
+    final owner = await ref.read(authServiceProvider).ensureSession();
+
     _dirty.clear();
     _needsFullPush = true;
     _resetPending = true;
-    // Nothing may read the persisted flag over the top of this one.
-    _restoredResetFlag = true;
+
+    // Claim ownership so nothing reloads over the top of a flag set a moment
+    // ago and still being written.
+    _loadedAccount = owner?.userId;
+    _loadedAny = true;
+
     await _persistResetPending(true);
     state = const SyncState();
 
@@ -443,7 +531,27 @@ class SyncController extends Notifier<SyncState> {
       return false;
     }
 
+    // WHOSE reset is this, and is that still who we are?
+    //
+    // A reset is destructive and unauthenticated by nothing but the bearer
+    // token attached to it. Delivering account A's undelivered reset with
+    // account B's token erases a campaign nobody asked to erase, which is
+    // exactly what the switching reproduction showed.
+    final owner = _loadedAccount;
+    final current = ref.read(authServiceProvider).accountId;
+
+    if (owner != current) {
+      debugPrint('[sync] not delivering a reset owned by another account');
+      return false;
+    }
+
     final result = await _api.reset();
+
+    // Re-checked after the await. The answer is here; the player may not be.
+    if (ref.read(authServiceProvider).accountId != owner) {
+      debugPrint('[sync] discarded a reset answer for a superseded account');
+      return false;
+    }
 
     if (result case ApiOk(:final value)) {
       _resetPending = false;
@@ -462,7 +570,7 @@ class SyncController extends Notifier<SyncState> {
   Future<void> _persistResetPending(bool pending) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_accountKey(_resetPendingKey), pending);
+      await prefs.setBool(_keyFor(_resetPendingKey, _loadedAccount), pending);
     } catch (_) {}
   }
 }
