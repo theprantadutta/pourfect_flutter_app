@@ -37,7 +37,10 @@ const double _kPeriod = 7.5;
 /// Room above the first level and below the last, so neither is jammed into a
 /// screen edge.
 const double kJourneyPadTop = 180;
-const double kJourneyPadBottom = 240;
+// Room for a band label beside level 1 and no more. It was 240 to clear a
+// floating action bar that now lives in the fixed head above the path, and
+// the difference was dead space under the first level.
+const double kJourneyPadBottom = 90;
 
 /// Total scrollable height for [levelCount] levels.
 double journeyHeight(int levelCount) =>

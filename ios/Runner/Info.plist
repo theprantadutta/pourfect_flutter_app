@@ -11,6 +11,14 @@
 	<string>ca-app-pub-9242904787767394~8772809792</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- Full screen, like the Android side. A game does not need the clock and
+	     the battery above its board. UIViewControllerBasedStatusBarAppearance
+	     must be false or iOS asks the view controller instead and ignores the
+	     key below. -->
+	<key>UIStatusBarHidden</key>
+	<true/>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

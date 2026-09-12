@@ -18,6 +18,8 @@
 ///     whole of [JourneyScreen] seen through a window.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -69,13 +71,25 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: tokens.surface,
+      // ONE SCREEN, and only the path moves.
+      //
+      // The whole thing used to be a ListView, so the board and the primary
+      // action scrolled away together and the screen had no fixed shape. A
+      // game's home is a place: what you are playing and the button that
+      // plays it stay put, and the road ahead is the part you travel.
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            tokens.space4, tokens.space3, tokens.space4, tokens.space5,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                tokens.space4, tokens.space3, tokens.space4, 0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
             _TopRow(
               onOpenAccount: onOpenAccount,
               onOpenSettings: onOpenSettings,
@@ -119,47 +133,58 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
 
-            SizedBox(height: tokens.space5),
+                  SizedBox(height: tokens.space4),
 
-            // The board, ON the ground. No panel, no frame, no border — the
-            // tubes are the containers and wrapping them in another one is
-            // exactly the app furniture this screen exists to remove.
-            if (board != null)
-              Center(
-                child: BoardPreview(
+                  // The board, ON the ground. No panel, no frame, no border — the
+                  // tubes are the containers and wrapping them in another one is
+                  // exactly the app furniture this screen exists to remove.
+                  if (board != null)
+                    Center(
+                      child: BoardPreview(
                   board: board,
-                  ballSize: board.tubeCount <= 6 ? 44 : 32,
+                  // 25, measured off the reference rather than guessed: the
+                  // ball is 68px on a 1080-wide design, which is 25 logical
+                  // pixels at this density. It was 44, and the board ate the
+                  // room the path needs.
+                  ballSize: board.tubeCount <= 6 ? 25 : 20,
                   boldGlyphs: ref.watch(settingsProvider).boldSymbols,
-                ),
+                      ),
+                    ),
+
+                  SizedBox(height: tokens.space4),
+                  Text(
+                    'LEVEL ${_pad(current)}  ·  ${bandNameForLevel(current).toUpperCase()}',
+                    style: labelStyle(tokens).copyWith(letterSpacing: 1.8),
+                  ),
+
+                  SizedBox(height: tokens.space3),
+                  _ContinuePill(
+                    level: current,
+                    onTap: () => onOpenLevel(current, null),
+                  ),
+
+                  SizedBox(height: tokens.space5),
+                  _LiveRow(
+                    onOpenDaily: onOpenDaily,
+                    onOpenLeaderboard: onOpenLeaderboard,
+                  ),
+
+                  SizedBox(height: tokens.space4),
+                  Text(
+                    'THE WAY AHEAD',
+                    style: labelStyle(tokens).copyWith(letterSpacing: 1.8),
+                  ),
+                ],
               ),
-
-            SizedBox(height: tokens.space4),
-            Text(
-              'LEVEL ${_pad(current)}  ·  ${bandNameForLevel(current).toUpperCase()}',
-              style: labelStyle(tokens).copyWith(letterSpacing: 1.8),
             ),
 
-            SizedBox(height: tokens.space3),
-            _ContinuePill(
-              level: current,
-              onTap: () => onOpenLevel(current, null),
-            ),
-
-            SizedBox(height: tokens.space5),
-            _LiveRow(
-              onOpenDaily: onOpenDaily,
-              onOpenLeaderboard: onOpenLeaderboard,
-            ),
-
-            SizedBox(height: tokens.space5),
-            Text('THE WAY AHEAD', style: labelStyle(tokens).copyWith(
-              letterSpacing: 1.8,
-            )),
-            SizedBox(height: tokens.space2),
-            _JourneyTeaser(
-              levelSet: levelSet,
-              current: current,
-              onTap: onOpenJourney,
+            // Everything left over, and the only thing that scrolls.
+            Expanded(
+              child: _JourneyStrip(
+                levelSet: levelSet,
+                current: current,
+                onOpenLevel: onOpenLevel,
+              ),
             ),
           ],
         ),
@@ -280,12 +305,14 @@ class _LiveRow extends ConsumerWidget {
           child: Pressable(
             onPressed: onOpenDaily,
             semanticLabel: "Today's challenge",
-            child: Figure(
-              label: "TODAY'S CHALLENGE",
-              value: played ? 'SOLVED' : 'OPEN',
-              color: played ? tokens.textMuted : tokens.accentWarm,
-              stacked: true,
-            ),
+            child: played
+                ? Figure(
+                    label: "TODAY'S CHALLENGE",
+                    value: 'SOLVED',
+                    color: tokens.textMuted,
+                    stacked: true,
+                  )
+                : const _DailyCountdown(),
           ),
         ),
         Expanded(
@@ -301,6 +328,64 @@ class _LiveRow extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// How long today's board has left.
+///
+/// A challenge that is merely "open" says nothing about whether to play it now.
+/// The clock is the whole reason a daily works, so it is on the screen rather
+/// than discoverable by opening it.
+///
+/// Counts to the next UTC midnight, because that is when the SERVER rolls the
+/// board over. A local-midnight countdown would hit zero at the wrong moment
+/// for everybody outside UTC and read as broken.
+///
+/// Its own widget so the per-second rebuild is confined to eight characters
+/// rather than dragging the screen through a frame.
+class _DailyCountdown extends StatefulWidget {
+  const _DailyCountdown();
+
+  @override
+  State<_DailyCountdown> createState() => _DailyCountdownState();
+}
+
+class _DailyCountdownState extends State<_DailyCountdown> {
+  Timer? _tick;
+  late Duration _left = _remaining();
+
+  static Duration _remaining() {
+    final now = DateTime.now().toUtc();
+    final midnight = DateTime.utc(now.year, now.month, now.day + 1);
+    return midnight.difference(now);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _left = _remaining());
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+    String two(int v) => v.toString().padLeft(2, '0');
+
+    return Figure(
+      label: "TODAY'S CHALLENGE",
+      value: '${two(_left.inHours)}:${two(_left.inMinutes % 60)}'
+          ':${two(_left.inSeconds % 60)}',
+      color: tokens.accentWarm,
+      stacked: true,
     );
   }
 }
@@ -359,31 +444,58 @@ class _ContinuePill extends StatelessWidget {
   }
 }
 
-/// A window onto the campaign path.
+/// The campaign path, in whatever room the fixed head leaves.
 ///
-/// The same painter the full journey uses, clipped to a strip and scrolled to
-/// where the player actually is. It is a teaser rather than a second
-/// implementation: one geometry, one painter, so the slice shown here and the
-/// screen it opens cannot disagree about where a level sits.
-class _JourneyTeaser extends ConsumerWidget {
-  const _JourneyTeaser({
+/// The real thing rather than a preview: it scrolls, it opens levels, and it
+/// uses the same painter and the same geometry as the full-screen journey, so
+/// the two cannot disagree about where a level sits.
+///
+/// Opens centred on the player. The campaign is roughly 10,000px tall and
+/// somebody on level 96 should not arrive at the bottom of it.
+class _JourneyStrip extends ConsumerStatefulWidget {
+  const _JourneyStrip({
     required this.levelSet,
     required this.current,
-    required this.onTap,
+    required this.onOpenLevel,
   });
 
   final dynamic levelSet;
   final int current;
-  final VoidCallback onTap;
-
-  static const double _height = 230;
+  final void Function(int levelId, Rect? origin) onOpenLevel;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = PourfectTokens.of(context);
-    if (levelSet == null) return const SizedBox.shrink();
+  ConsumerState<_JourneyStrip> createState() => _JourneyStripState();
+}
 
-    final count = levelSet.levels.length as int;
+class _JourneyStripState extends ConsumerState<_JourneyStrip>
+    with SingleTickerProviderStateMixin {
+  final _scroll = ScrollController();
+  late final AnimationController _pulse;
+  bool _placed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+    if (widget.levelSet == null) return const SizedBox.shrink();
+
+    final count = widget.levelSet.levels.length as int;
+    final current = widget.current;
     final progress = ref.watch(progressProvider);
     final progressOps = ref.read(progressProvider.notifier);
 
@@ -413,52 +525,73 @@ class _JourneyTeaser extends ConsumerWidget {
         ),
     ];
 
-    return Pressable(
-      onPressed: onTap,
-      semanticLabel: 'The way ahead',
-      scale: 0.99,
-      child: SizedBox(
-        height: _height,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            // Centred on the player, so the strip always shows the road just
-            // travelled and the next few stones.
-            final centre = journeyPosition(current, count, width).dy;
-            final top = centre - _height * 0.62;
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
-            return ClipRect(
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: -top,
-                    left: 0,
-                    width: width,
-                    height: journeyHeight(count),
-                    child: CustomPaint(
-                      painter: JourneyPainter(
-                        levels: levels,
-                        bands: bands,
-                        tokens: tokens,
-                        boldGlyphs: ref.watch(settingsProvider).boldSymbols,
-                        // Still, not breathing. The hub should not carry a
-                        // forever-running animation just to decorate a strip.
-                        pulse: 0,
-                        visibleTop: top,
-                        visibleBottom: top + _height,
-                      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final viewport = constraints.maxHeight;
+
+        if (!_placed) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || !_scroll.hasClients || _placed) return;
+            final target =
+                journeyPosition(current, count, width).dy - viewport * 0.46;
+            final max = journeyHeight(count) - viewport;
+            _scroll.jumpTo(target.clamp(0.0, max < 0 ? 0.0 : max));
+            _placed = true;
+          });
+        }
+
+        return ClipRect(
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                controller: _scroll,
+                child: SizedBox(
+                  height: journeyHeight(count),
+                  width: width,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (details) {
+                      final id = JourneyPainter.levelAt(
+                        details.localPosition,
+                        count,
+                        width,
+                      );
+                      if (id != null && progressOps.isUnlocked(id)) {
+                        widget.onOpenLevel(id, null);
+                      }
+                    },
+                    child: AnimatedBuilder(
+                      animation: Listenable.merge([_pulse, _scroll]),
+                      builder: (context, _) {
+                        final offset = _scroll.hasClients ? _scroll.offset : 0.0;
+                        return CustomPaint(
+                          size: Size(width, journeyHeight(count)),
+                          painter: JourneyPainter(
+                            levels: levels,
+                            bands: bands,
+                            tokens: tokens,
+                            boldGlyphs:
+                                ref.watch(settingsProvider).boldSymbols,
+                            pulse: reduceMotion ? 0 : _pulse.value,
+                            visibleTop: offset,
+                            visibleBottom: offset + viewport,
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  // Fades at both edges, so the path runs off rather than
-                  // stopping at a line. A hard edge would read as a card.
-                  _EdgeFade(top: true),
-                  _EdgeFade(top: false),
-                ],
+                ),
               ),
-            );
-          },
-        ),
-      ),
+              // The path runs off rather than stopping at a line. A hard edge
+              // would read as the top of a card.
+              const _EdgeFade(top: true),
+            ],
+          ),
+        );
+      },
     );
   }
 }

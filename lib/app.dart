@@ -294,7 +294,18 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
 /// and a grey status-bar strip above a near-black game is the sort of detail
 /// that makes an app feel unfinished.
 void configureSystemChrome() {
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  // FULL SCREEN. No status bar, no navigation bar.
+  //
+  // A game does not need the clock and the battery on top of its board, and
+  // the strip they sit in is the most reliable way to make a full-bleed dark
+  // screen look like a web page. `immersiveSticky` rather than `immersive`:
+  // the bars come back on a swipe from the edge and then hide themselves
+  // again, so nothing is unreachable and nothing stays.
+  //
+  // iOS hides its status bar from Info.plist rather than from here —
+  // UIStatusBarHidden, with UIViewControllerBasedStatusBarAppearance false so
+  // the plist is what decides.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,

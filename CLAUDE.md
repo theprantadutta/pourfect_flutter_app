@@ -712,6 +712,22 @@ test maps a tap back to a level. It clips to the viewport, because the canvas is
 the whole campaign — around 10,000px — and the current level's breathing ring
 would otherwise repaint all of it every frame.
 
+**One screen, and only the path moves.** The home screen is exactly the
+viewport: a fixed head — identity, the board, Continue, the challenge clock —
+and the campaign path filling whatever is left. It was a single ListView, so
+the board and the primary action scrolled away together and the screen had no
+shape. What you are playing and the button that plays it stay put.
+
+**Sizes come off the reference, not off a guess.** The ball is 68px on the
+1080-wide design, which is 25 logical pixels at this density. It was 44, and
+the board ate the room the path needs. Measure the artwork.
+
+**No status bar, either platform.** `SystemUiMode.immersiveSticky` on Android;
+`UIStatusBarHidden` with `UIViewControllerBasedStatusBarAppearance` false on
+iOS, because otherwise iOS asks the view controller and ignores the key. A game
+does not need the clock and the battery above its board, and that strip is the
+most reliable way to make a full-bleed dark screen look like a web page.
+
 **The current level is the ACCENT, never a palette color.** Deriving it the way
 solved levels are derived put the player's own position on indigo, the darkest
 ball there is, so "where you are" was the least visible thing on a near-black
