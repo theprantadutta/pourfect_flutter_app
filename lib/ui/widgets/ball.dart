@@ -122,105 +122,7 @@ class _BallPainter extends CustomPainter {
         ).createShader(rect),
     );
 
-    _paintGlyph(canvas, size);
-  }
-
-  /// Glyphs are drawn in translucent ink rather than a per-color foreground,
-  /// so one rule works on the palest ball and the deepest without a lookup
-  /// table that would inevitably fall out of sync with the palette.
-  void _paintGlyph(Canvas canvas, Size size) {
-    // Bold mode scales the glyph up and takes the ink to near-opaque, so shape
-    // alone can carry the distinction.
-    final scale = bold ? 1.18 : 1.0;
-    final s = size.width / 100 * scale;
-    final sy = size.height / 100 * scale;
-    final ink = const Color(0xFF0A0C10).withValues(alpha: bold ? 0.92 : 0.72);
-
-    final fill = Paint()
-      ..color = ink
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-    final stroke = Paint()
-      ..color = ink
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 9 * s
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..isAntiAlias = true;
-
-    final dx = (size.width - 100 * s) / 2;
-    final dy = (size.height - 100 * sy) / 2;
-    Offset p(double x, double y) => Offset(dx + x * s, dy + y * sy);
-
-    switch (glyph) {
-      case BallGlyph.dot:
-        canvas.drawCircle(p(50, 50), 13 * s, fill);
-      case BallGlyph.ring:
-        canvas.drawCircle(p(50, 50), 17 * s, stroke);
-      case BallGlyph.triangle:
-        canvas.drawPath(
-          Path()
-            ..moveTo(p(50, 30).dx, p(50, 30).dy)
-            ..lineTo(p(69, 64).dx, p(69, 64).dy)
-            ..lineTo(p(31, 64).dx, p(31, 64).dy)
-            ..close(),
-          fill,
-        );
-      case BallGlyph.square:
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(dx + 33 * s, dy + 33 * sy, 34 * s, 34 * sy),
-            Radius.circular(3 * s),
-          ),
-          fill,
-        );
-      case BallGlyph.plus:
-        canvas
-          ..drawLine(p(50, 30), p(50, 70), stroke)
-          ..drawLine(p(30, 50), p(70, 50), stroke);
-      case BallGlyph.bar:
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(dx + 28 * s, dy + 43 * sy, 44 * s, 14 * sy),
-            Radius.circular(7 * s),
-          ),
-          fill,
-        );
-      case BallGlyph.diamond:
-        canvas.drawPath(
-          Path()
-            ..moveTo(p(50, 28).dx, p(50, 28).dy)
-            ..lineTo(p(70, 50).dx, p(70, 50).dy)
-            ..lineTo(p(50, 72).dx, p(50, 72).dy)
-            ..lineTo(p(30, 50).dx, p(30, 50).dy)
-            ..close(),
-          fill,
-        );
-      case BallGlyph.cross:
-        canvas
-          ..drawLine(p(35, 35), p(65, 65), stroke)
-          ..drawLine(p(65, 35), p(35, 65), stroke);
-      case BallGlyph.arc:
-        canvas.drawArc(
-          Rect.fromLTWH(dx + 30 * s, dy + 38 * sy, 40 * s, 48 * sy),
-          math.pi,
-          math.pi,
-          false,
-          stroke,
-        );
-      case BallGlyph.hexagon:
-        canvas.drawPath(
-          Path()
-            ..moveTo(p(50, 28).dx, p(50, 28).dy)
-            ..lineTo(p(69, 39).dx, p(69, 39).dy)
-            ..lineTo(p(69, 61).dx, p(69, 61).dy)
-            ..lineTo(p(50, 72).dx, p(50, 72).dy)
-            ..lineTo(p(31, 61).dx, p(31, 61).dy)
-            ..lineTo(p(31, 39).dx, p(31, 39).dy)
-            ..close(),
-          stroke,
-        );
-    }
+    paintBallGlyph(canvas, size, glyph, bold: bold);
   }
 
   @override
@@ -229,4 +131,113 @@ class _BallPainter extends CustomPainter {
       old.glyph != glyph ||
       old.glow != glow ||
       old.bold != bold;
+}
+
+/// Glyphs are drawn in translucent ink rather than a per-color foreground,
+/// so one rule works on the palest ball and the deepest without a lookup
+/// table that would inevitably fall out of sync with the palette.
+///
+/// Public because the journey path paints its own balls: it draws hundreds on
+/// a long scroll and cannot afford a widget each, and a second copy of this
+/// switch would drift from the palette the first time a glyph changed.
+void paintBallGlyph(
+Canvas canvas,
+Size size,
+BallGlyph glyph, {
+bool bold = false,
+double opacity = 1,
+}) {
+  // Bold mode scales the glyph up and takes the ink to near-opaque, so shape
+  // alone can carry the distinction.
+  final scale = bold ? 1.18 : 1.0;
+  final s = size.width / 100 * scale;
+  final sy = size.height / 100 * scale;
+  final ink = const Color(0xFF0A0C10)
+      .withValues(alpha: (bold ? 0.92 : 0.72) * opacity);
+
+  final fill = Paint()
+    ..color = ink
+    ..style = PaintingStyle.fill
+    ..isAntiAlias = true;
+  final stroke = Paint()
+    ..color = ink
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 9 * s
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round
+    ..isAntiAlias = true;
+
+  final dx = (size.width - 100 * s) / 2;
+  final dy = (size.height - 100 * sy) / 2;
+  Offset p(double x, double y) => Offset(dx + x * s, dy + y * sy);
+
+  switch (glyph) {
+    case BallGlyph.dot:
+      canvas.drawCircle(p(50, 50), 13 * s, fill);
+    case BallGlyph.ring:
+      canvas.drawCircle(p(50, 50), 17 * s, stroke);
+    case BallGlyph.triangle:
+      canvas.drawPath(
+        Path()
+          ..moveTo(p(50, 30).dx, p(50, 30).dy)
+          ..lineTo(p(69, 64).dx, p(69, 64).dy)
+          ..lineTo(p(31, 64).dx, p(31, 64).dy)
+          ..close(),
+        fill,
+      );
+    case BallGlyph.square:
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(dx + 33 * s, dy + 33 * sy, 34 * s, 34 * sy),
+          Radius.circular(3 * s),
+        ),
+        fill,
+      );
+    case BallGlyph.plus:
+      canvas
+        ..drawLine(p(50, 30), p(50, 70), stroke)
+        ..drawLine(p(30, 50), p(70, 50), stroke);
+    case BallGlyph.bar:
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(dx + 28 * s, dy + 43 * sy, 44 * s, 14 * sy),
+          Radius.circular(7 * s),
+        ),
+        fill,
+      );
+    case BallGlyph.diamond:
+      canvas.drawPath(
+        Path()
+          ..moveTo(p(50, 28).dx, p(50, 28).dy)
+          ..lineTo(p(70, 50).dx, p(70, 50).dy)
+          ..lineTo(p(50, 72).dx, p(50, 72).dy)
+          ..lineTo(p(30, 50).dx, p(30, 50).dy)
+          ..close(),
+        fill,
+      );
+    case BallGlyph.cross:
+      canvas
+        ..drawLine(p(35, 35), p(65, 65), stroke)
+        ..drawLine(p(65, 35), p(35, 65), stroke);
+    case BallGlyph.arc:
+      canvas.drawArc(
+        Rect.fromLTWH(dx + 30 * s, dy + 38 * sy, 40 * s, 48 * sy),
+        math.pi,
+        math.pi,
+        false,
+        stroke,
+      );
+    case BallGlyph.hexagon:
+      canvas.drawPath(
+        Path()
+          ..moveTo(p(50, 28).dx, p(50, 28).dy)
+          ..lineTo(p(69, 39).dx, p(69, 39).dy)
+          ..lineTo(p(69, 61).dx, p(69, 61).dy)
+          ..lineTo(p(50, 72).dx, p(50, 72).dy)
+          ..lineTo(p(31, 61).dx, p(31, 61).dy)
+          ..lineTo(p(31, 39).dx, p(31, 39).dy)
+          ..close(),
+        stroke,
+      );
+  }
 }

@@ -15,7 +15,8 @@ import 'ui/screens/game_screen.dart';
 import 'ui/screens/legal_consent_screen.dart';
 import 'ui/screens/leaderboard_screen.dart';
 import 'ui/screens/account_screen.dart';
-import 'ui/screens/level_select_screen.dart';
+import 'ui/screens/home_screen.dart';
+import 'ui/screens/journey_screen.dart';
 import 'ui/screens/settings_screen.dart';
 import 'ui/screens/statistics_screen.dart';
 import 'ui/theme/tokens.dart';
@@ -245,6 +246,23 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     );
   }
 
+  /// The campaign path, full screen. The hub shows a slice of the same thing.
+  void _openJourney() {
+    Navigator.of(context).push(
+      PourfectPageRoute<void>(
+        settings: const RouteSettings(name: '/journey'),
+        builder: (context) => JourneyScreen(
+          onOpenLevel: _openLevel,
+          onOpenSettings: _openSettings,
+          onOpenStatistics: _openStatistics,
+          onOpenDaily: _openDaily,
+          onOpenLeaderboard: _openLeaderboard,
+          onOpenAccount: _openAccount,
+        ),
+      ),
+    );
+  }
+
   void _openAccount() {
     Navigator.of(context).push(
       PourfectPageRoute<void>(
@@ -259,13 +277,14 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       ? LegalConsentScreen(
           onAccepted: () => setState(() => _showLegalGate = false),
         )
-      : LevelSelectScreen(
+      : HomeScreen(
           onOpenLevel: _openLevel,
           onOpenSettings: _openSettings,
           onOpenStatistics: _openStatistics,
           onOpenDaily: _openDaily,
           onOpenLeaderboard: _openLeaderboard,
           onOpenAccount: _openAccount,
+          onOpenJourney: _openJourney,
         );
 }
 

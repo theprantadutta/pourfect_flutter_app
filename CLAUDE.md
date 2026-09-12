@@ -680,32 +680,44 @@ What sign-in protects is PROGRESS, which has no token to replay. Do not justify
 auth work with monetization — the argument is a player on level 96 with a
 40-day streak changing phones.
 
-## Level select IS the hub — read the screen, not the class name
+## The home screen has no cards in it
 
-`LevelSelectScreen` is not a list. It opens with a board preview, the wordmark,
-inline solved/stars counters, Continue, Today's challenge and Leaderboard, and
-only then the levels. It has been doing hub duty all along.
+The diagnosis behind "this feels like an app, not a game" was not a missing
+element. The screen was built from CARDS — a bordered panel round the board, a
+grouped row with a divider, a grid of bordered tiles, a section rule. That is
+Material vocabulary. **Monument Valley, Two Dots and Mini Metro contain no
+rounded rectangle with a 1px border anywhere.** They group by distance and
+scale. Every box drawn on a game screen is a piece of app furniture, and a
+screen made of them reads as Settings however well it is lit.
 
-This is worth writing down because it was got wrong once, expensively: a
-separate `HomeScreen` was built and put in front of it on the strength of the
-class NAME, without anybody opening the screen. What shipped was a worse copy of
-something that already existed — a flat accent slab where this screen has a
-restrained outlined button, empty rounded rectangles where this screen has the
-game's own tubes with star pips. It was reverted the same day.
+So `HomeScreen` has none. The board's tubes sit directly on the ground — they
+are already containers and wrapping them in another was the whole problem. The
+challenge and rank are plain label-and-value pairs. The only filled shape is
+the Continue pill, because it is the one primary action.
 
-**The only thing genuinely missing was identity.** Signing in changed nothing
-visible anywhere in the app: you came back from the account screen to exactly
-the screen you left. `PlayerCrest` in the masthead is the answer — present on
-every launch, different once there is an account, and the way back to it.
+This cost two wrong turns worth recording. A `HomeScreen` was once built and
+put in FRONT of level select on the strength of the class name, without anybody
+opening the screen — it was a worse copy of something that already existed, and
+was reverted the same day. Then the campaign path replaced the home screen
+entirely; it looked striking and carried almost no information, because a path
+through 150 levels is mostly empty ground.
 
-`PlayerCrest` is **generated, never a photo**: it works for an anonymous player,
-which is most players for most of their first session; it costs no privacy
-surface, with no image to fetch, cache, moderate or delete on request; and it is
-made of the game's own balls. **One ball, not three.** The first version stacked
-three in a circle and at masthead size they were illegible dots — the glyph is
-what identifies a ball and a glyph needs room.
+**`JourneyScreen` is the level browser, and the hub shows a slice of it.** One
+geometry, one painter: `journey_path.dart` owns where a level sits, so the strip
+on the hub and the full screen it opens cannot disagree.
 
-## App icon — five masters, everything else derived
+That path is **painted, never built**. 150 levels as widgets is 150 layouts on a
+scroll that has to hold 60fps, so one `CustomPainter` draws the lot and a hit
+test maps a tap back to a level. It clips to the viewport, because the canvas is
+the whole campaign — around 10,000px — and the current level's breathing ring
+would otherwise repaint all of it every frame.
+
+**The current level is the ACCENT, never a palette color.** Deriving it the way
+solved levels are derived put the player's own position on indigo, the darkest
+ball there is, so "where you are" was the least visible thing on a near-black
+screen. Measured on device: 0.4% janky frames over 246, scrolling.
+
+## App icon — five masters, everything else derived## App icon — five masters, everything else derived
 
 `generated/store/` holds the Play 512; the masters are the five 1024px PNGs the
 design produced. **Every density is RESAMPLED from those**, never hand-exported
