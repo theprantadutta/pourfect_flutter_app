@@ -40,6 +40,7 @@ class AccountState {
     this.signedIn = false,
     this.email,
     this.available = false,
+    this.userId,
   });
 
   /// An identity operation is in flight. The UI disables its buttons on this
@@ -55,16 +56,26 @@ class AccountState {
   /// rather than shown broken.
   final bool available;
 
+  /// The account the session belongs to, or null before one is known.
+  ///
+  /// Here rather than read off `AuthService.current` at the point of use: the
+  /// service is behind a plain Provider and cannot tell a widget it changed,
+  /// so every screen that read it drew whatever happened to be in memory
+  /// during its first build and never corrected itself. Screens watch this.
+  final String? userId;
+
   AccountState copyWith({
     bool? busy,
     bool? signedIn,
     String? email,
     bool? available,
+    String? userId,
   }) => AccountState(
     busy: busy ?? this.busy,
     signedIn: signedIn ?? this.signedIn,
     email: email ?? this.email,
     available: available ?? this.available,
+    userId: userId ?? this.userId,
   );
 }
 
@@ -72,12 +83,65 @@ class AccountController extends Notifier<AccountState> {
   @override
   AccountState build() {
     final identity = ref.read(identityProvider);
+    final auth = ref.read(authServiceProvider);
     final snapshot = identity.current;
+
+    // Registered FIRST, so it is set before the cancellations below run.
+    // Both sources here outlive this controller — a ValueNotifier on a service
+    // and a disk read already in flight — and writing `state` after disposal
+    // is an error Riverpod throws rather than ignores.
+    var gone = false;
+    ref.onDispose(() => gone = true);
+
+    // WATCHED, NOT SAMPLED — both of them.
+    //
+    // This used to read `identity.current` once and keep the answer forever.
+    // Firebase restores its user asynchronously while the first frame is
+    // already on screen, so on a cold start the sample is null, `signedIn` was
+    // false, and nothing ever said otherwise. A player who had signed in with
+    // Google reopened the app and was shown as a guest — "my account is gone
+    // after the app restarted" — while the credential and the session sat
+    // intact on the device.
+    final identitySub = identity.changes.listen((snapshot) {
+      if (gone) return;
+      state = state.copyWith(
+        signedIn: snapshot != null && !snapshot.isAnonymous,
+        email: snapshot?.email,
+      );
+    });
+    ref.onDispose(identitySub.cancel);
+
+    void adoptSession() {
+      if (gone) return;
+      final session = auth.sessions.value;
+      if (session == null) return;
+
+      state = state.copyWith(
+        userId: session.userId,
+        // PROMOTES ONLY. The server's `is_anonymous` is authoritative about
+        // being signed IN, but a session can lag behind a sign-in it has not
+        // been re-exchanged for yet, and demoting on that would flicker the
+        // UI back to guest between the sign-in and its refresh. Signing out
+        // and deletion clear the whole state explicitly, and the identity
+        // stream above is what reports a genuine drop.
+        signedIn: session.isAnonymous ? null : true,
+      );
+    }
+
+    auth.sessions.addListener(adoptSession);
+    ref.onDispose(() => auth.sessions.removeListener(adoptSession));
+
+    // THE SESSION IS ON DISK AND NOTHING WAS READING IT. `ensureSession` only
+    // ran when a sync happened to start, which is a Firebase round trip away,
+    // so the identity on screen was blank for the first seconds of every
+    // launch and stale for the rest of it. This is a local file read.
+    auth.restore().then((_) => adoptSession());
 
     return AccountState(
       available: identity.isReady,
       signedIn: snapshot != null && !snapshot.isAnonymous,
       email: snapshot?.email,
+      userId: auth.current?.userId,
     );
   }
 

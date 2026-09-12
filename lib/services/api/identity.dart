@@ -99,6 +99,14 @@ abstract class Identity {
 
   IdentitySnapshot? get current;
 
+  /// Fires whenever the signed-in user changes, INCLUDING the restore that
+  /// Firebase performs shortly after launch.
+  ///
+  /// [current] is a sample, and a sample taken during startup is taken too
+  /// early. Anything that has to keep agreeing with the identity listens here
+  /// instead of asking once.
+  Stream<IdentitySnapshot?> get changes;
+
   /// Links Google to the current anonymous account, or signs in with it.
   Future<IdentityResult> continueWithGoogle();
 
@@ -153,6 +161,21 @@ class FirebaseIdentity implements Identity {
       displayName: user.displayName,
     );
   }
+
+  @override
+  Stream<IdentitySnapshot?> get changes {
+    if (!isReady) return const Stream<IdentitySnapshot?>.empty();
+    return _firebase.authStateChanges().map(_snapshotOf);
+  }
+
+  static IdentitySnapshot? _snapshotOf(User? user) => user == null
+      ? null
+      : IdentitySnapshot(
+          uid: user.uid,
+          isAnonymous: user.isAnonymous,
+          email: user.email,
+          displayName: user.displayName,
+        );
 
   @override
   Future<IdentityResult> continueWithGoogle() async {
@@ -406,6 +429,10 @@ class OfflineIdentity implements Identity {
 
   @override
   IdentitySnapshot? get current => null;
+
+  @override
+  Stream<IdentitySnapshot?> get changes =>
+      const Stream<IdentitySnapshot?>.empty();
 
   @override
   Future<IdentityResult> continueWithGoogle() async =>

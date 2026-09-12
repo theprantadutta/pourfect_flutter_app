@@ -211,7 +211,6 @@ class _TopRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = PourfectTokens.of(context);
     final account = ref.watch(accountProvider);
-    final session = ref.watch(authServiceProvider).current;
 
     return Row(
       children: [
@@ -221,7 +220,7 @@ class _TopRow extends ConsumerWidget {
             semanticLabel:
                 account.signedIn ? 'Your account' : 'Save your progress',
             child: PlayerCrest(
-              seed: session?.userId,
+              seed: account.userId,
               signedIn: account.signedIn,
               size: 38,
             ),

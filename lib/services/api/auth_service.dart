@@ -68,7 +68,21 @@ class AuthService {
        _appVersion = appVersion ?? (() => ''),
        _now = now ?? DateTime.now;
 
-  Session? _session;
+  /// The session, and a way to be told when it changes.
+  ///
+  /// **A plain field here is invisible to the UI.** `authServiceProvider` is a
+  /// plain `Provider`, so watching it hands out the same AuthService instance
+  /// forever and never rebuilds — a screen that read `auth.current` during
+  /// build captured whatever was in memory at that instant and kept it. On a
+  /// cold start that instant is before the session has been read off disk, so
+  /// a player who had signed in with Google came back to a home screen that
+  /// drew them as a guest, and nothing ever redrew it. Reported as "my account
+  /// is gone after the app restarted"; the session was on the device the whole
+  /// time.
+  final ValueNotifier<Session?> sessions = ValueNotifier<Session?>(null);
+
+  Session? get _session => sessions.value;
+  set _session(Session? value) => sessions.value = value;
 
   int _accountEpoch = 0;
 
@@ -139,8 +153,9 @@ class AuthService {
   /// Loads a stored session into memory, without contacting anything.
   ///
   /// Called at startup so the first sync can go out immediately rather than
-  /// after a Firebase round trip. A session read from disk may be expired; the
-  /// freshness check at use time is what decides.
+  /// after a Firebase round trip, and so the UI knows who it is drawing for
+  /// before any network call could possibly answer. A session read from disk
+  /// may be expired; the freshness check at use time is what decides.
   Future<Session?> restore() async {
     if (!_resolveClient().isConfigured) return null;
     _session ??= await _store.load();

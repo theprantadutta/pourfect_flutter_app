@@ -672,6 +672,30 @@ used to wipe locally, sign out and report success — destroying the credentials
 needed to retry while the server account stayed. It now reports
 `AccountDeletion.notAuthenticated` and keeps the identity.
 
+**A plain Provider cannot tell anybody it changed.** `AuthService` and
+`Identity` are mutable objects behind `Provider`, so `ref.watch(...)` hands out
+the same instance forever and a widget that reads `auth.current` or
+`identity.current` during build keeps whatever was there at that instant. Both
+are asynchronous on a cold start — Firebase restores its user after launch, and
+nothing called `AuthService.restore()` at all, so the session sat unread on disk
+until some later sync needed a token. The crest therefore drew the ANONYMOUS
+player for the first visible frames of every launch and corrected itself only
+when an unrelated rebuild happened to come along. Measured with a burst of
+screencaps across a cold start: the first painted frame carried the generic
+amber ball, the next the real account's.
+
+So `AccountController` subscribes rather than samples: `Identity.changes` for
+the Firebase side, `AuthService.sessions` (a ValueNotifier) for the session, and
+`restore()` is kicked off from `build()` because a local file read should not
+wait on a network round trip. `AccountState.userId` is where screens read the
+account from — never `authServiceProvider.current` at a point of use.
+
+**The session may only PROMOTE to signed-in.** A session that has not been
+re-exchanged since the sign-in still says `is_anonymous: true`, and believing it
+puts the screen back to guest for the length of a round trip. Signing out and
+deletion clear the whole state explicitly, and the identity stream is what
+reports a genuine drop.
+
 **Purchases do NOT depend on any of this.** A Play entitlement belongs to the
 Google Play account, not to the Firebase identity: `restorePurchases()` runs on
 every launch and the server transfers token ownership to whoever presents it, so

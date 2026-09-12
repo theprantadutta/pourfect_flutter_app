@@ -10,6 +10,7 @@
 //     resolved quietly, because the only resolution loses progress;
 //   * deletion has to remove the server row BEFORE the login that reaches it.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,6 +45,15 @@ class FakeIdentity implements Identity {
   @override
   IdentitySnapshot? get current =>
       IdentitySnapshot(uid: uid, isAnonymous: isAnonymous, email: email);
+
+  /// Driven by hand, so a test can play the late restore Firebase performs
+  /// after launch rather than pretending the user was there all along.
+  final announcements = StreamController<IdentitySnapshot?>.broadcast();
+
+  @override
+  Stream<IdentitySnapshot?> get changes => announcements.stream;
+
+  void announce(IdentitySnapshot? snapshot) => announcements.add(snapshot);
 
   /// Succeeding means the anonymous account was UPGRADED: same uid, no longer
   /// anonymous. That is what Firebase's linkWithCredential does, and getting

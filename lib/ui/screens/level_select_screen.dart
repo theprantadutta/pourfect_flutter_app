@@ -320,7 +320,6 @@ class _Masthead extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = PourfectTokens.of(context);
     final account = ref.watch(accountProvider);
-    final session = ref.watch(authServiceProvider).current;
 
     // Zeros are not a first impression. A brand-new player was greeted by
     // "SOLVED 0 / STARS 0", which is a scoreboard reporting that they have
@@ -354,7 +353,7 @@ class _Masthead extends ConsumerWidget {
                   ? 'Your account'
                   : 'Save your progress',
               child: PlayerCrest(
-                seed: session?.userId,
+                seed: account.userId,
                 signedIn: account.signedIn,
               ),
             ),

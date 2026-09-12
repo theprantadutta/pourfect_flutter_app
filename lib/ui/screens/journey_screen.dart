@@ -255,7 +255,6 @@ class _Header extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = PourfectTokens.of(context);
     final account = ref.watch(accountProvider);
-    final session = ref.watch(authServiceProvider).current;
     final daily = ref.watch(dailyProvider);
 
     return SafeArea(
@@ -276,7 +275,7 @@ class _Header extends ConsumerWidget {
                         ? 'Your account'
                         : 'Save your progress',
                     child: PlayerCrest(
-                      seed: session?.userId,
+                      seed: account.userId,
                       signedIn: account.signedIn,
                     ),
                   ),

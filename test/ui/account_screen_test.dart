@@ -37,6 +37,10 @@ class StubIdentity implements Identity {
       const IdentitySnapshot(uid: 'u', isAnonymous: true);
 
   @override
+  Stream<IdentitySnapshot?> get changes =>
+      const Stream<IdentitySnapshot?>.empty();
+
+  @override
   Future<IdentityResult> continueWithGoogle() async {
     calls.add('google');
     return result;
