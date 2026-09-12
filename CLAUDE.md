@@ -718,11 +718,17 @@ and the campaign path filling whatever is left. It was a single ListView, so
 the board and the primary action scrolled away together and the screen had no
 shape. What you are playing and the button that plays it stay put.
 
-**The name sits between the crest and the settings icon, not on its own line.**
-A 44px wordmark below the row had presence and cost a whole band of vertical
-space, which on this screen comes straight out of the path. It is a Stack
-rather than a Row so the title is centred on the SCREEN — in a Row it drifts as
-the crest appears and disappears with the Firebase build.
+**The wordmark is big and LEFT, on its own line.** Centring it between the
+crest and the settings icon saved a line and lost the thing the whole left
+column aligns to — the stat row then hung off nothing. Tried and reverted.
+
+**Where the screen deliberately differs from the reference.** The design draws
+tubes far taller than the balls in them, with three balls resting at the
+bottom. No real Pourfect board looks like that: level 3 is three colors of four
+against a capacity of four, so its tubes are genuinely full. The board is drawn
+AIRIER — wider gaps, more padding, via `BoardPreview.airiness` — rather than
+misreported. The tube's shape is likewise the playable board's, not the
+reference's pill, so the home screen shows the same object the game does.
 
 **Sizes come off the reference, not off a guess.** The ball is 68px on the
 1080-wide design, which is 25 logical pixels at this density. It was 44, and

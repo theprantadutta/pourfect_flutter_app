@@ -25,19 +25,29 @@ class BoardPreview extends StatelessWidget {
   /// Whether balls carry their larger, higher-contrast glyphs.
   final bool boldGlyphs;
 
+  /// Extra room around the balls, as a multiple of the default.
+  ///
+  /// The tight default is right where the preview is one element among many.
+  /// On the home screen the board is the hero and the same proportions read as
+  /// cramped — tubes nearly touching, no headroom above the balls, so the
+  /// vessels stop looking like vessels. Airier there, unchanged everywhere
+  /// else.
+  final double airiness;
+
   const BoardPreview({
     super.key,
     required this.board,
     this.ballSize = 26,
     this.boldGlyphs = false,
+    this.airiness = 1,
   });
 
   @override
   Widget build(BuildContext context) {
     final tokens = PourfectTokens.of(context);
 
-    final gap = ballSize * 0.22;
-    final tubePadding = ballSize * 0.12;
+    final gap = ballSize * 0.22 * airiness;
+    final tubePadding = ballSize * 0.12 * airiness;
     final tubeWidth = ballSize + tubePadding * 2;
     // The hairline border eats its own width out of the content box, so the
     // stack of balls needs it back or the bottom ball is clipped.

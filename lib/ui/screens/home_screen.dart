@@ -95,7 +95,23 @@ class HomeScreen extends ConsumerWidget {
                     onOpenSettings: onOpenSettings,
                   ),
 
-                  SizedBox(height: tokens.space4),
+                  SizedBox(height: tokens.space2),
+
+                  // Big, and LEFT. Centring it saved a line and lost the thing
+                  // the whole left column is aligned to — the stats below read
+                  // as hanging off the wordmark, and with the title in the
+                  // middle they were hanging off nothing.
+                  Text(
+                    'Pourfect',
+                    style: titleStyle(tokens).copyWith(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1,
+                      height: 1.05,
+                    ),
+                  ),
+
+                  SizedBox(height: tokens.space3),
             Pressable(
               onPressed: onOpenStatistics,
               semanticLabel: 'Statistics',
@@ -128,11 +144,14 @@ class HomeScreen extends ConsumerWidget {
                     Center(
                       child: BoardPreview(
                   board: board,
-                  // 25, measured off the reference rather than guessed: the
-                  // ball is 68px on a 1080-wide design, which is 25 logical
-                  // pixels at this density. It was 44, and the board ate the
-                  // room the path needs.
-                  ballSize: board.tubeCount <= 6 ? 25 : 20,
+                  // The ball measures 25 logical pixels off the reference,
+                  // but the reference also draws its tubes far taller than the
+                  // balls in them. At the default tightness that came out
+                  // cramped — tubes almost touching, no headroom — so the
+                  // board is drawn airier rather than larger, which keeps the
+                  // measurement honest and still gives the vessels presence.
+                  ballSize: board.tubeCount <= 6 ? 28 : 22,
+                  airiness: 2.4,
                   boldGlyphs: ref.watch(settingsProvider).boldSymbols,
                       ),
                     ),
@@ -194,58 +213,26 @@ class _TopRow extends ConsumerWidget {
     final account = ref.watch(accountProvider);
     final session = ref.watch(authServiceProvider).current;
 
-    // The name sits BETWEEN the two controls rather than on a line of its own.
-    //
-    // A 44px wordmark below the row had presence and cost a whole band of
-    // vertical space, which on this screen comes straight out of the path. A
-    // centred title is the ordinary game-header shape and buys that back.
-    //
-    // Stack rather than Row, so the title is centred on the SCREEN and not on
-    // whatever is left between two controls of different widths — with a Row
-    // it would drift left or right as the crest appears and disappears.
-    return SizedBox(
-      height: 44,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Text(
-            'Pourfect',
-            style: titleStyle(tokens).copyWith(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.4,
+    return Row(
+      children: [
+        if (account.available)
+          Pressable(
+            onPressed: onOpenAccount,
+            semanticLabel:
+                account.signedIn ? 'Your account' : 'Save your progress',
+            child: PlayerCrest(
+              seed: session?.userId,
+              signedIn: account.signedIn,
+              size: 38,
             ),
           ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: account.available
-                ? Pressable(
-                    onPressed: onOpenAccount,
-                    semanticLabel: account.signedIn
-                        ? 'Your account'
-                        : 'Save your progress',
-                    child: PlayerCrest(
-                      seed: session?.userId,
-                      signedIn: account.signedIn,
-                      size: 38,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Pressable(
-              onPressed: onOpenSettings,
-              semanticLabel: 'Settings',
-              child: Icon(
-                Icons.tune_rounded,
-                size: 22,
-                color: tokens.textMuted,
-              ),
-            ),
-          ),
-        ],
-      ),
+        const Spacer(),
+        Pressable(
+          onPressed: onOpenSettings,
+          semanticLabel: 'Settings',
+          child: Icon(Icons.tune_rounded, size: 22, color: tokens.textMuted),
+        ),
+      ],
     );
   }
 }
