@@ -90,26 +90,12 @@ class HomeScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-            _TopRow(
-              onOpenAccount: onOpenAccount,
-              onOpenSettings: onOpenSettings,
-            ),
+                  _TopRow(
+                    onOpenAccount: onOpenAccount,
+                    onOpenSettings: onOpenSettings,
+                  ),
 
-            SizedBox(height: tokens.space4),
-
-            // The name, with the presence a game's name should have. It sat at
-            // 22px regular for a long time, which is a settings header.
-            Text(
-              'Pourfect',
-              style: titleStyle(tokens).copyWith(
-                fontSize: 44,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1,
-                height: 1,
-              ),
-            ),
-
-            SizedBox(height: tokens.space3),
+                  SizedBox(height: tokens.space4),
             Pressable(
               onPressed: onOpenStatistics,
               semanticLabel: 'Statistics',
@@ -208,26 +194,58 @@ class _TopRow extends ConsumerWidget {
     final account = ref.watch(accountProvider);
     final session = ref.watch(authServiceProvider).current;
 
-    return Row(
-      children: [
-        if (account.available)
-          Pressable(
-            onPressed: onOpenAccount,
-            semanticLabel:
-                account.signedIn ? 'Your account' : 'Save your progress',
-            child: PlayerCrest(
-              seed: session?.userId,
-              signedIn: account.signedIn,
-              size: 38,
+    // The name sits BETWEEN the two controls rather than on a line of its own.
+    //
+    // A 44px wordmark below the row had presence and cost a whole band of
+    // vertical space, which on this screen comes straight out of the path. A
+    // centred title is the ordinary game-header shape and buys that back.
+    //
+    // Stack rather than Row, so the title is centred on the SCREEN and not on
+    // whatever is left between two controls of different widths — with a Row
+    // it would drift left or right as the crest appears and disappears.
+    return SizedBox(
+      height: 44,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Text(
+            'Pourfect',
+            style: titleStyle(tokens).copyWith(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
             ),
           ),
-        const Spacer(),
-        Pressable(
-          onPressed: onOpenSettings,
-          semanticLabel: 'Settings',
-          child: Icon(Icons.tune_rounded, size: 22, color: tokens.textMuted),
-        ),
-      ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: account.available
+                ? Pressable(
+                    onPressed: onOpenAccount,
+                    semanticLabel: account.signedIn
+                        ? 'Your account'
+                        : 'Save your progress',
+                    child: PlayerCrest(
+                      seed: session?.userId,
+                      signedIn: account.signedIn,
+                      size: 38,
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Pressable(
+              onPressed: onOpenSettings,
+              semanticLabel: 'Settings',
+              child: Icon(
+                Icons.tune_rounded,
+                size: 22,
+                color: tokens.textMuted,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

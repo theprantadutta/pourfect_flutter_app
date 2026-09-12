@@ -23,9 +23,9 @@ import 'ball.dart' show paintBallGlyph;
 
 /// Vertical distance between consecutive levels.
 /// Tuned on a device, not guessed. At 104 only five levels fitted a screen and
-/// the path read as scattered marbles; the climb needs enough rungs visible at
-/// once to look like one.
-const double kJourneyStep = 70;
+/// the path read as scattered marbles. 52 is as tight as the swing allows
+/// before consecutive levels start to overlap on a narrow phone.
+const double kJourneyStep = 52;
 
 /// How far the path swings either side of centre, as a fraction of width.
 const double _kSwing = 0.30;
