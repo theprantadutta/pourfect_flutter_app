@@ -14,7 +14,6 @@ import 'ui/screens/daily_challenge_screen.dart';
 import 'ui/screens/game_screen.dart';
 import 'ui/screens/legal_consent_screen.dart';
 import 'ui/screens/leaderboard_screen.dart';
-import 'ui/screens/home_screen.dart';
 import 'ui/screens/account_screen.dart';
 import 'ui/screens/level_select_screen.dart';
 import 'ui/screens/settings_screen.dart';
@@ -246,21 +245,6 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     );
   }
 
-  void _openLevels() {
-    Navigator.of(context).push(
-      PourfectPageRoute<void>(
-        settings: const RouteSettings(name: '/levels'),
-        builder: (context) => LevelSelectScreen(
-          onOpenLevel: _openLevel,
-          onOpenSettings: _openSettings,
-          onOpenStatistics: _openStatistics,
-          onOpenDaily: _openDaily,
-          onOpenLeaderboard: _openLeaderboard,
-        ),
-      ),
-    );
-  }
-
   void _openAccount() {
     Navigator.of(context).push(
       PourfectPageRoute<void>(
@@ -270,26 +254,17 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     );
   }
 
-  /// Opens the level list scrolled to where the player is, then the level.
-  ///
-  /// Continue goes STRAIGHT to the board rather than to the list. The list is
-  /// still one tap away and is where somebody goes to replay an old level; the
-  /// hub's primary action should not make a returning player navigate to the
-  /// thing they opened the app to do.
-  void _continue(int levelId) => _openLevel(levelId, null);
-
   @override
   Widget build(BuildContext context) => _showLegalGate == true
       ? LegalConsentScreen(
           onAccepted: () => setState(() => _showLegalGate = false),
         )
-      : HomeScreen(
-          onContinue: _continue,
-          onOpenLevels: _openLevels,
-          onOpenDaily: _openDaily,
-          onOpenStatistics: _openStatistics,
-          onOpenLeaderboard: _openLeaderboard,
+      : LevelSelectScreen(
+          onOpenLevel: _openLevel,
           onOpenSettings: _openSettings,
+          onOpenStatistics: _openStatistics,
+          onOpenDaily: _openDaily,
+          onOpenLeaderboard: _openLeaderboard,
           onOpenAccount: _openAccount,
         );
 }

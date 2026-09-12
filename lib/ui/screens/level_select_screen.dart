@@ -23,12 +23,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/daily_controller.dart';
 import '../../state/level_repository.dart';
 import '../../state/progress_repository.dart';
+import '../../state/account_controller.dart';
 import '../../state/providers.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../transitions.dart';
 import '../widgets/daily_card.dart';
 import '../widgets/next_level_hero.dart';
+import '../widgets/player_crest.dart';
 import '../widgets/pressable.dart';
 
 /// Tile metrics. Kept here because the scroll-to-current maths needs them
@@ -57,6 +59,9 @@ class LevelSelectScreen extends ConsumerStatefulWidget {
   /// Opens the leaderboards.
   final VoidCallback onOpenLeaderboard;
 
+  /// Opens the account screen. Reached from the crest in the masthead.
+  final VoidCallback onOpenAccount;
+
   const LevelSelectScreen({
     super.key,
     required this.onOpenLevel,
@@ -64,6 +69,7 @@ class LevelSelectScreen extends ConsumerStatefulWidget {
     required this.onOpenStatistics,
     required this.onOpenDaily,
     required this.onOpenLeaderboard,
+    required this.onOpenAccount,
   });
 
   @override
@@ -165,6 +171,7 @@ class _LevelSelectScreenState extends ConsumerState<LevelSelectScreen> {
               slivers: [
                 SliverToBoxAdapter(
                   child: _Masthead(
+                    onOpenAccount: widget.onOpenAccount,
                     cleared: progress.length,
                     stars: controller.totalStars,
                     onOpenSettings: widget.onOpenSettings,
@@ -294,22 +301,26 @@ class _LevelSelectScreenState extends ConsumerState<LevelSelectScreen> {
   }
 }
 
-class _Masthead extends StatelessWidget {
+class _Masthead extends ConsumerWidget {
   final int cleared;
   final int stars;
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenStatistics;
+  final VoidCallback onOpenAccount;
 
   const _Masthead({
     required this.cleared,
     required this.stars,
     required this.onOpenSettings,
     required this.onOpenStatistics,
+    required this.onOpenAccount,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tokens = PourfectTokens.of(context);
+    final account = ref.watch(accountProvider);
+    final session = ref.watch(authServiceProvider).current;
 
     // Zeros are not a first impression. A brand-new player was greeted by
     // "SOLVED 0 / STARS 0", which is a scoreboard reporting that they have
@@ -326,6 +337,29 @@ class _Masthead extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // WHO IS PLAYING, before what the game is called.
+          //
+          // Signing in used to change nothing visible anywhere in the app: you
+          // came back from the account screen to exactly the screen you left.
+          // The crest is the smallest honest answer to that — it is here on
+          // every launch, it is different once you have an account, and it is
+          // the way back to the account screen.
+          //
+          // Hidden entirely in a build with no Firebase, rather than shown as
+          // a control that cannot do anything.
+          if (account.available) ...[
+            Pressable(
+              onPressed: onOpenAccount,
+              semanticLabel: account.signedIn
+                  ? 'Your account'
+                  : 'Save your progress',
+              child: PlayerCrest(
+                seed: session?.userId,
+                signedIn: account.signedIn,
+              ),
+            ),
+            SizedBox(width: tokens.space3),
+          ],
           Text('Pourfect', style: titleStyle(tokens).copyWith(fontSize: 22)),
           const Spacer(),
           // The counters ARE the way in to statistics. Somebody looking at

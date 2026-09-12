@@ -680,31 +680,30 @@ What sign-in protects is PROGRESS, which has no token to replay. Do not justify
 auth work with monetization — the argument is a player on level 96 with a
 40-day streak changing phones.
 
-## The hub — why the game opens on a place
+## Level select IS the hub — read the screen, not the class name
 
-It used to open straight into the level list, and that one fact was most of why
-the app read as a utility: you launched it and got a table of contents. The
-comparison that made it obvious was Snake Classic, which tells you who you are,
-what you own and what there is to do before you have pressed anything.
+`LevelSelectScreen` is not a list. It opens with a board preview, the wordmark,
+inline solved/stars counters, Continue, Today's challenge and Leaderboard, and
+only then the levels. It has been doing hub duty all along.
 
-**The restraint was never the problem and was not traded away.** The palette,
-the hairlines and the near-black ground are untouched; what the hub adds is the
-furniture a calm game still needs and this one lacked — an identity, a streak,
-a number that moves, and one obvious thing to press. The references this design
-has always cited, meditation apps and premium habit trackers, all have those
-and none of them look like a toy.
+This is worth writing down because it was got wrong once, expensively: a
+separate `HomeScreen` was built and put in front of it on the strength of the
+class NAME, without anybody opening the screen. What shipped was a worse copy of
+something that already existed — a flat accent slab where this screen has a
+restrained outlined button, empty rounded rectangles where this screen has the
+game's own tubes with star pips. It was reverted the same day.
 
-`PlayerCrest` is **generated, never a photo**, for three reasons in order of
-weight: it works for an anonymous player, which is most players for most of
-their first session; it costs no privacy surface — no image to fetch, cache,
-moderate or delete on request; and it is built from the game's own balls, so
-the hub is furnished with the product rather than a borrowed grey silhouette.
-The arrangement is derived from the account id, so it is stable for a player
-and different between two people sitting together.
+**The only thing genuinely missing was identity.** Signing in changed nothing
+visible anywhere in the app: you came back from the account screen to exactly
+the screen you left. `PlayerCrest` in the masthead is the answer — present on
+every launch, different once there is an account, and the way back to it.
 
-Continue goes STRAIGHT to the board, not to the list. The list is one tap away
-and is where somebody goes to replay; the primary action should not make a
-returning player navigate to the thing they opened the app to do.
+`PlayerCrest` is **generated, never a photo**: it works for an anonymous player,
+which is most players for most of their first session; it costs no privacy
+surface, with no image to fetch, cache, moderate or delete on request; and it is
+made of the game's own balls. **One ball, not three.** The first version stacked
+three in a circle and at masthead size they were illegible dots — the glyph is
+what identifies a ball and a glyph needs room.
 
 ## App icon — five masters, everything else derived
 
