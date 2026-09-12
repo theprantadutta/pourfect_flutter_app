@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The adaptive launcher icon, used from Android 8.0 onward.
+
+  Three layers, and the third is the one that is easy to get wrong. The system
+  MASKS this to whatever shape the launcher prefers — circle, squircle, rounded
+  square — and it may parallax the foreground against the background, so the
+  mark is drawn inside the central 66dp safe circle rather than filling the
+  108dp canvas. That is why the foreground artwork sits visibly smaller in its
+  frame than the Play Store icon does.
+
+  <monochrome> drives themed icons on Android 13+. The system throws away its
+  colour entirely and tints the alpha with one wallpaper colour, so that asset
+  is a flat white silhouette with the balls knocked out as holes. A greyscale
+  copy of the colour icon would look right in a preview and render as a solid
+  block on a themed launcher.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@mipmap/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
+</adaptive-icon>

@@ -2,7 +2,8 @@
     <application
         android:label="Pourfect"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round">
         <!-- AdMob APP id. Note the TILDE: an app id uses '~', an ad UNIT id
              uses '/'. Putting a unit id here crashes on launch with
              "Invalid application ID"; putting an app id in Dart silently
@@ -15,6 +16,17 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-9242904787767394~3712054804"/>
+
+        <!-- The status-bar icon for the evening daily reminder.
+
+             Android IGNORES the colour in a notification icon: it keeps the
+             alpha and tints the rest. Pointing this at the launcher icon is
+             the usual mistake and renders a featureless grey square, because
+             every opaque pixel becomes the tint colour. ic_notification is a
+             white-on-transparent silhouette of one tube for that reason. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
 
         <activity
             android:name=".MainActivity"

@@ -686,6 +686,39 @@ What sign-in protects is PROGRESS, which has no token to replay. Do not justify
 auth work with monetization — the argument is a player on level 96 with a
 40-day streak changing phones.
 
+## App icon — five masters, everything else derived
+
+`generated/store/` holds the Play 512; the masters are the five 1024px PNGs the
+design produced. **Every density is RESAMPLED from those**, never hand-exported
+per size — twenty separate exports drift apart, one source cannot.
+
+The artwork is two tubes, one mixed (amber/indigo/rose) and one solved (all
+sky), on the radial ground `#181C24` → `#0E1116`. It was chosen off a 48px
+thumbnail row against loud competitor icons, not off the full-size artboards:
+at icon size the only thing that survives is silhouette and lightness contrast,
+and the in-app hairline/frosted-glass look turns to mush.
+
+Three layer rules, each of which looks fine in a preview and fails on a device
+if broken:
+
+- **The adaptive foreground is drawn SMALLER in frame than the store icon.**
+  Android crops 108dp to 72dp and then masks it, so everything essential sits
+  inside a centred 66dp circle — 626px on a 1024px master. The store icon has
+  no such crop and fills ~74%. That size difference is correct.
+- **`<monochrome>` is a flat white silhouette, not a greyscale icon.** Android
+  13+ throws the color away entirely and tints the alpha with one wallpaper
+  color, so the tubes are solid white with the balls knocked out as holes. A
+  desaturated copy of the color icon renders as a featureless block.
+- **The notification icon is white-on-transparent and simpler still.** Same
+  tinting rule, drawn at 24dp, so it is ONE tube. Pointing
+  `default_notification_icon` at `@mipmap/ic_launcher` is the usual mistake and
+  produces a grey square in the status bar.
+
+`mipmap-anydpi-v26/ic_launcher.xml` binds all three layers. Verify a build
+actually shipped them rather than trusting Gradle:
+
+    aapt2 dump xmltree build/app/outputs/flutter-apk/app-release.apk --file res/<id>.xml
+
 ## Secrets
 
 Same rules as the Snake Classic Flutter app. Gitignored, as **globs** rather
