@@ -1,4 +1,4 @@
-package com.example.pourfect_flutter_app
+package com.pranta.pourfect
 
 import io.flutter.embedding.android.FlutterActivity
 

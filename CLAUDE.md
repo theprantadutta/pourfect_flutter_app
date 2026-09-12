@@ -395,15 +395,15 @@ splits them per device.
 
 ## Known gaps
 
-- **Manrope is not bundled yet.** JetBrains Mono is in and rendering (the
-  slashed zero is the tell on device); the UI face still falls back to the
-  platform default. `kUiFontFamily` in `typography.dart` is the single swap
-  point, and `assets/licenses/` still needs the two OFL texts.
 - **No daily challenge or leaderboard screens.** Both wait on the client work;
   the backend serves them already.
 - **No Sign in with Apple.** Android-only for now, so it costs nothing yet — but
   it blocks the first iOS submission, because Apple requires it alongside any
   other social login.
+- **Email/password sign-in has never run against real Firebase.** Google
+  sign-in IS verified on the dev Samsung (2026-09-12), but the password path
+  has not been, and Email/Password is off by default on a new Firebase project
+  — so it may simply be disabled in the console.
 - **The existing-Google-account path has never run against real Firebase.** The
   logic and its tests are in (`signInToExistingGoogleAccount`), but a returning
   player on a new phone with an already-registered Google account has not been
@@ -412,16 +412,10 @@ splits them per device.
   Play license key are still blank in `generated/ad_config.md`, so Remove Ads
   shows an em dash instead of a price. That is the correct degraded state, not
   a bug — but it means the purchase flow itself is still unexercised.
-- **`kPrivacyPolicyUrl` is a placeholder domain**, invented rather than
-  confirmed. The policy page exists at `generated/privacy_policy.html`; the URL
-  it will live at does not. Play rejects a dead privacy link.
 - **The interstitial has never been seen on a device.** Its rules have 16 tests
   and its display plumbing is shared with rewarded video, which IS verified on
   hardware — but nobody has yet played to level 10 in a release build and
   watched one appear. Do that before the first public track.
-- **The Android activity is still `com.example.pourfect_flutter_app`.** The
-  applicationId is correct (`com.pranta.pourfect`) and Play only reads that, so
-  this is cosmetic — it shows up in `adb` and in stack traces.
 
 ## Ads — live ids, gated on build mode
 
@@ -685,6 +679,32 @@ Remove Ads already survives a reinstall and a new phone with nobody signed in.
 What sign-in protects is PROGRESS, which has no token to replay. Do not justify
 auth work with monetization — the argument is a player on level 96 with a
 40-day streak changing phones.
+
+## The hub — why the game opens on a place
+
+It used to open straight into the level list, and that one fact was most of why
+the app read as a utility: you launched it and got a table of contents. The
+comparison that made it obvious was Snake Classic, which tells you who you are,
+what you own and what there is to do before you have pressed anything.
+
+**The restraint was never the problem and was not traded away.** The palette,
+the hairlines and the near-black ground are untouched; what the hub adds is the
+furniture a calm game still needs and this one lacked — an identity, a streak,
+a number that moves, and one obvious thing to press. The references this design
+has always cited, meditation apps and premium habit trackers, all have those
+and none of them look like a toy.
+
+`PlayerCrest` is **generated, never a photo**, for three reasons in order of
+weight: it works for an anonymous player, which is most players for most of
+their first session; it costs no privacy surface — no image to fetch, cache,
+moderate or delete on request; and it is built from the game's own balls, so
+the hub is furnished with the product rather than a borrowed grey silhouette.
+The arrangement is derived from the account id, so it is stable for a player
+and different between two people sitting together.
+
+Continue goes STRAIGHT to the board, not to the list. The list is one tap away
+and is where somebody goes to replay; the primary action should not make a
+returning player navigate to the thing they opened the app to do.
 
 ## App icon — five masters, everything else derived
 

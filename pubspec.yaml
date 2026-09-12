@@ -139,6 +139,19 @@ flutter:
           weight: 500
         - asset: assets/fonts/JetBrainsMono-Bold.ttf
           weight: 700
+    # Discrete static weights, not the variable font. Flutter's weight matching
+    # is far more predictable with separate files, and a variable axis it
+    # cannot address is dead bytes against the APK budget.
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Manrope-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

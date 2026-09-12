@@ -22,14 +22,18 @@ places on a leaderboard.
 
 ---
 
-## Manrope — DROP THESE IN
+## Manrope — present
 
-Download from <https://fonts.google.com/specimen/Manrope> → **Get font** →
-**Download all**. The zip contains a variable font and a `static/` folder;
-**use the `static/` files**, not the variable one — Flutter's weight matching is
-far more predictable with discrete files.
+Copyright 2018 The Manrope Project Authors.
+SIL Open Font License 1.1 · <https://github.com/sharanda/manrope>
 
-Copy exactly these four into this folder, keeping the filenames:
+The UI face: titles, labels, body copy, buttons. Carries everything that is not
+a numeral. A geometric sans with a tall x-height, which holds up at the 11px
+label size without the tracking having to do all the work.
+
+Static weights, not the variable font. Flutter's weight matching is far more
+predictable with discrete files, and a variable axis it cannot address is dead
+bytes against the APK budget.
 
 | File | Weight | Used for |
 |---|---|---|
@@ -38,56 +42,11 @@ Copy exactly these four into this folder, keeping the filenames:
 | `Manrope-SemiBold.ttf` | 600 | HUD labels, section headers, button text |
 | `Manrope-Bold.ttf` | 700 | screen titles, the primary action |
 
-Roughly 55 KB each, so about **220 KB** total — against a 20.8 MB arm64 build.
-
-### Then make these two changes
-
-**1. `pubspec.yaml`** — add the family alongside the existing one, under the
-same `fonts:` key:
-
-```yaml
-  fonts:
-    - family: JetBrainsMono
-      fonts:
-        - asset: assets/fonts/JetBrainsMono-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/JetBrainsMono-Bold.ttf
-          weight: 700
-    - family: Manrope
-      fonts:
-        - asset: assets/fonts/Manrope-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/Manrope-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Manrope-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Manrope-Bold.ttf
-          weight: 700
-```
-
-**2. `lib/ui/theme/typography.dart`** — one line:
-
-```dart
-const String? kUiFontFamily = 'Manrope';
-```
-
-Everything downstream reads that constant, so nothing else needs touching.
-
 ---
 
-## Licence text — REQUIRED BEFORE RELEASE
+## Licence texts
 
-The OFL-1.1 requires the full licence text to ship with the app. Put both files
-in `assets/licenses/`, named exactly:
-
-- `assets/licenses/OFL-JetBrainsMono.txt` — from
-  <https://github.com/JetBrains/JetBrainsMono/blob/master/OFL.txt>
-- `assets/licenses/OFL-Manrope.txt` — the `OFL.txt` inside the Google Fonts zip
-
-That directory is already declared in `pubspec.yaml` and
-`lib/services/licenses.dart` already registers whatever it finds there, so the
-text appears under **Settings → About → Licences** in the standard Flutter
-licence page. Nothing else is needed: drop the files in and they are picked up.
-
-If a file is missing the app still runs — the registration fails quietly rather
-than crashing — but **do not ship without them.**
+Both OFL-1.1 texts are in `assets/licenses/`, registered at startup by
+`lib/services/licenses.dart` and shown on the app's licence page. The OFL
+obliges us to ship them; shipping the fonts without them is a licence breach,
+not a tidiness issue.

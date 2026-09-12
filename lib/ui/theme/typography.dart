@@ -19,8 +19,13 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-/// Display face. Null means "platform default" — see the note above.
-const String? kUiFontFamily = null;
+/// Display face.
+///
+/// Bundled rather than fetched, so it renders identically on every device and
+/// cannot pop in on first launch. This was null for a long time, which meant
+/// every screen fell back to whatever the OEM ships — and the difference
+/// between a Samsung and a Pixel was the difference between two products.
+const String kUiFontFamily = 'Manrope';
 
 /// Monospace face for numerals. Bundled, so it renders identically on every
 /// device rather than inheriting whatever the OEM ships.

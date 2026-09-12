@@ -21,7 +21,12 @@ val keystoreProperties: Properties? = if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.pourfect_flutter_app"
+    // Matches applicationId. These are separate settings and only applicationId
+    // is what Play identifies the app by — but the namespace is what
+    // ".MainActivity" in the manifest resolves against, and what shows up in
+    // adb and in every stack trace. Leaving it as the Flutter template default
+    // meant crash reports named com.example.
+    namespace = "com.pranta.pourfect"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
