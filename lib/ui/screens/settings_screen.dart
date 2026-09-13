@@ -271,22 +271,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   /// Renames the leaderboard handle.
   Future<void> _renameHandle() async {
     final tokens = PourfectTokens.of(context);
-    final current = ref.read(accountProvider).handle ?? '';
-    final controller = TextEditingController(text: current);
 
-    // Pre-selected, because the field arrives holding a name they already have
-    // and the thing they came to do is replace it. Making somebody clear it by
-    // hand first is a small rudeness repeated every time.
-    controller.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: current.length,
-    );
-
+    // The DIALOG owns its controller, and that is the whole fix.
+    //
+    // Building it here and disposing it after `showDialog` returns looks
+    // correct and is not: the future completes when Navigator.pop is called,
+    // while the dialog and its TextField are still in the tree playing the
+    // exit animation. Disposing at that moment left the field rebuilding
+    // against a dead controller — "A TextEditingController was used after
+    // being disposed", thrown on cancel, every time.
     final chosen = await showDialog<String>(
       context: context,
-      builder: (context) => _RenameDialog(controller: controller),
+      builder: (context) => _RenameDialog(
+        initial: ref.read(accountProvider).handle ?? '',
+      ),
     );
-    controller.dispose();
 
     if (chosen == null || !mounted) return;
 
@@ -922,11 +921,19 @@ class _PlayerHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    account.handle ?? 'Naming you…',
-                    style: titleStyle(tokens).copyWith(fontSize: 18),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  // SHRINKS rather than crops. A handle is the one string on
+                  // this screen that is a name, and half a name with an
+                  // ellipsis on it is worse than a small whole one — the
+                  // longest the server can issue is 24 characters, which fits
+                  // once it is allowed to scale.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      account.handle ?? 'Naming you…',
+                      style: titleStyle(tokens).copyWith(fontSize: 18),
+                      maxLines: 1,
+                    ),
                   ),
                   SizedBox(height: tokens.space1),
                   Text(
@@ -1248,16 +1255,40 @@ class _SymbolPreview extends StatelessWidget {
 /// and been bounced. `displayNameProblem` is the SAME function the server's
 /// validator mirrors, so a name accepted here is not refused there.
 class _RenameDialog extends StatefulWidget {
-  const _RenameDialog({required this.controller});
+  const _RenameDialog({required this.initial});
 
-  final TextEditingController controller;
+  /// The name already in use, which the field opens holding.
+  final String initial;
 
   @override
   State<_RenameDialog> createState() => _RenameDialogState();
 }
 
 class _RenameDialogState extends State<_RenameDialog> {
+  late final TextEditingController _controller;
   String? _problem;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initial);
+
+    // Pre-selected, because the field arrives holding a name they already have
+    // and the thing they came to do is replace it. Making somebody clear it by
+    // hand first is a small rudeness repeated every time.
+    _controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: widget.initial.length,
+    );
+  }
+
+  @override
+  void dispose() {
+    // Runs when the ROUTE is gone, not when the future completed — which is
+    // the difference between this and disposing at the call site.
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1270,7 +1301,12 @@ class _RenameDialogState extends State<_RenameDialog> {
         side: BorderSide(color: tokens.hairline),
       ),
       title: Text('Your name', style: titleStyle(tokens)),
-      content: Column(
+      // Scrollable, because an AlertDialog gives its content the height left
+      // over after the keyboard takes its share, and on a short screen that
+      // can be less than the content needs. The overflow that reported
+      // alongside the disposed-controller crash was this.
+      content: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1280,7 +1316,7 @@ class _RenameDialogState extends State<_RenameDialog> {
           ),
           SizedBox(height: tokens.space3),
           TextField(
-            controller: widget.controller,
+            controller: _controller,
             autofocus: true,
             maxLength: kMaxDisplayName,
             style: bodyStyle(tokens).copyWith(color: tokens.textPrimary),
@@ -1299,6 +1335,7 @@ class _RenameDialogState extends State<_RenameDialog> {
             onSubmitted: (_) => _submit(),
           ),
         ],
+        ),
       ),
       actions: [
         TextButton(
@@ -1326,7 +1363,7 @@ class _RenameDialogState extends State<_RenameDialog> {
   }
 
   void _submit() {
-    final name = widget.controller.text.trim();
+    final name = _controller.text.trim();
     final problem = displayNameProblem(name);
     if (problem != null) {
       setState(() => _problem = problem);
