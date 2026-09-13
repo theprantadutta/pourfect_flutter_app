@@ -75,6 +75,7 @@ dependencies:
   # an account with a null idToken.
   google_sign_in: ^7.1.1
   firebase_messaging: ^16.6.0
+  in_app_review: ^2.0.12
 
 dev_dependencies:
   flutter_test:

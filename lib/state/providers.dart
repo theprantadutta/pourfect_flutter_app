@@ -26,6 +26,8 @@ import '../services/api/identity.dart';
 import '../services/api/api_result.dart';
 import 'account_controller.dart';
 import '../services/api/leaderboard_api.dart';
+import '../services/review/play_review_service.dart';
+import '../services/review/review_service.dart';
 import '../services/api/push_service.dart';
 import '../services/haptics/haptics_service.dart';
 import 'game_controller.dart';
@@ -161,6 +163,16 @@ final audioServiceProvider = Provider<AudioService>((ref) {
 
 /// Ads. Overridden with `NoopAdService` in tests and `FakeAdService` where a
 /// scripted outcome is needed — which is the whole reason the interface exists.
+/// The Play rating card.
+///
+/// Real on mobile, a no-op everywhere else — `isAvailable` answers false off a
+/// Play device, so the prompter's rules never reach a platform call that cannot
+/// work.
+final reviewServiceProvider = Provider<ReviewService>((ref) {
+  if (kIsWeb) return const NoopReviewService();
+  return PlayReviewService();
+});
+
 final adServiceProvider = Provider<AdService>((ref) {
   final service = AdMobAdService();
   ref.onDispose(service.dispose);

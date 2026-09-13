@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'state/legal_acceptance.dart';
 import 'state/monetization_controller.dart';
+import 'state/review_prompter.dart';
 import 'state/providers.dart';
 import 'state/daily_controller.dart';
 import 'state/sync_controller.dart';
@@ -202,7 +203,15 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
           onExit: () => Navigator.of(context).maybePop(),
         ),
       ),
-    );
+    )
+        // Completes when the level route has POPPED, so the hub is back and
+        // the player is between things. That is the only moment in this app
+        // worth asking for a rating in — everywhere else they are mid-puzzle,
+        // mid-animation, or mid-decision.
+        .then((_) {
+      if (!mounted) return;
+      ref.read(reviewPrompterProvider.notifier).maybeAsk();
+    });
   }
 
   void _openDaily() {

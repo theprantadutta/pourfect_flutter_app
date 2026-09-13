@@ -239,6 +239,57 @@ duration), `level_abandon`, `hint_used`, `undo_used`, `power_up_used`,
 The point is a **per-level funnel**: finding the levels that kill retention and
 re-tuning them. Ship this with the UI, not after.
 
+## Asking for a rating
+
+Rating count and average are the only marketing this game has — every install
+comes from Play organic search and Play weights ratings in ranking — and
+nothing ever asked for one, so the rating was whatever the minority who rate
+unprompted chose to leave. That skews negative: annoyance motivates a review,
+contentment does not.
+
+`ReviewPrompter` owns the decision and the rules ARE the feature. Calling the
+API is one line; asking at the wrong moment earns the one-star review it was
+fishing for.
+
+- **Only after a `WinProfile.full` win** — three stars, a personal best, or a
+  band's last level. That test already exists and is not re-derived, because
+  two places deciding "was that a good win" is two places to disagree.
+- **Never mid-anything.** The delight is NOTED at the win and the ask happens
+  when the level route pops, so the player is back on the hub with nothing in
+  front of them. The win sequence is choreographed to the millisecond and is
+  the last thing to interrupt with a dialog.
+- **Not before `kMinSolvedBeforeReview` levels.** Play grants very few chances
+  to show the card; one spent on a player five minutes in buys a rating from
+  somebody who has not decided yet.
+- **`kMaxReviewAsks` for the life of the install, `kReviewCooldown` between.**
+- **One good moment earns at most one ask** — `delighted` is cleared on the
+  attempt, or bouncing in and out of the hub asks on every return.
+
+**Google forbids asking a question first.** No "Enjoying Pourfect?" dialog
+routing happy players to the store and unhappy ones to a feedback form: it is
+against the In-App Review guidelines and it is rating manipulation.
+
+**The ask is recorded BEFORE the request, not after.** Play returns success
+whether or not a card appeared — deliberately, so apps cannot detect and
+retry — so there is no outcome to wait for, and recording afterwards loses the
+record if anything interrupts a system overlay. Losing an ask costs nothing;
+nagging costs a rating.
+
+**`maybeAsk` never throws, and guards that itself** rather than trusting the
+service. It is called fire-and-forget from the route callback, so an escaping
+error is an unhandled async error — landing on top of the best moment the
+player has had all session. A test with a throwing service pins it.
+
+**The same lazy-provider trap as the free hints**, and the same fix: `build()`
+and the first question happen in the same breath, so `_restored` is awaited
+before any decision. Without it the caps are read as zero and somebody asked
+yesterday is asked again — removing that await fails four of the eleven tests.
+
+**The card cannot be verified on a sideloaded build.** Play only shows it for
+an app installed from Play, so `requestReview()` silently no-ops on a debug
+APK. `[review] asking` in logcat is the only signal that the rules let it
+through; see it on the internal testing track.
+
 ## Monetization
 
 - Rewarded video is the primary driver — treat it as a feature players want.

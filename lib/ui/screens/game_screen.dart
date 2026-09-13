@@ -13,6 +13,7 @@ import '../../state/monetization_controller.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
+import '../../state/review_prompter.dart';
 import '../../state/sync_controller.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
@@ -258,6 +259,18 @@ class _GameScreenState extends ConsumerState<GameScreen>
       _result = result;
       _profile = profile;
     });
+
+    // The rating card is asked for after a win worth celebrating, and
+    // `WinProfile.full` already decides which those are — three stars, a
+    // personal best, or the end of a band. Re-deriving that test here would be
+    // a second place to disagree about what a good win is.
+    //
+    // Only NOTED here. The ask happens when the player leaves for the hub,
+    // because the win sequence is choreographed to the millisecond and is the
+    // last thing on earth to interrupt with a dialog.
+    if (profile == WinProfile.full) {
+      ref.read(reviewPrompterProvider.notifier).noteDelight();
+    }
 
     ref.read(audioServiceProvider).win();
     ref.read(hapticsServiceProvider).levelCompleted();
