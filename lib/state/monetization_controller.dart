@@ -50,12 +50,16 @@ class MonetizationState {
   /// Persisted, so closing the app does not quietly pocket it.
   final int hintCredits;
 
+  /// Extra tubes paid for but not yet delivered — see [grantExtraTubeCredit].
+  final int extraTubeCredits;
+
   final InterstitialPolicy interstitials;
 
   const MonetizationState({
     required this.adsRemoved,
     required this.freeHintsUsed,
     required this.hintCredits,
+    this.extraTubeCredits = 0,
     required this.interstitials,
   });
 
@@ -64,6 +68,8 @@ class MonetizationState {
 
   /// True when a paid-for hint is waiting to be delivered.
   bool get hasHintCredit => hintCredits > 0;
+
+  bool get hasExtraTubeCredit => extraTubeCredits > 0;
 
   /// True when the next hint costs a rewarded video.
   ///
@@ -75,11 +81,13 @@ class MonetizationState {
     bool? adsRemoved,
     int? freeHintsUsed,
     int? hintCredits,
+    int? extraTubeCredits,
     InterstitialPolicy? interstitials,
   }) => MonetizationState(
     adsRemoved: adsRemoved ?? this.adsRemoved,
     freeHintsUsed: freeHintsUsed ?? this.freeHintsUsed,
     hintCredits: hintCredits ?? this.hintCredits,
+    extraTubeCredits: extraTubeCredits ?? this.extraTubeCredits,
     interstitials: interstitials ?? this.interstitials,
   );
 }
@@ -87,6 +95,7 @@ class MonetizationState {
 class MonetizationController extends Notifier<MonetizationState> {
   static const _hintsKey = 'pourfect.hints.used';
   static const _creditsKey = 'pourfect.hints.credits';
+  static const _tubeCreditsKey = 'pourfect.tubes.credits';
 
   /// Completes once the persisted hint count has been read.
   ///
@@ -135,6 +144,7 @@ class MonetizationController extends Notifier<MonetizationState> {
       adsRemoved: billing.adsRemoved,
       freeHintsUsed: 0,
       hintCredits: 0,
+      extraTubeCredits: 0,
       interstitials: const InterstitialPolicy(),
     );
   }
@@ -154,6 +164,11 @@ class MonetizationController extends Notifier<MonetizationState> {
         // restore only runs before anything can spend one, and a credit
         // granted meanwhile is additive.
         hintCredits: state.hintCredits + (prefs.getInt(_creditsKey) ?? 0),
+        // MONOTONIC, like the hint credit beside it. A plain assignment walks
+        // the counter backwards when a tube is granted while this is still
+        // loading, handing the spent credit straight back.
+        extraTubeCredits:
+            state.extraTubeCredits + (prefs.getInt(_tubeCreditsKey) ?? 0),
       );
     } catch (_) {}
   }
@@ -247,6 +262,29 @@ class MonetizationController extends Notifier<MonetizationState> {
     final credits = state.hintCredits + 1;
     state = state.copyWith(hintCredits: credits);
     await _persistInt(_creditsKey, credits);
+  }
+
+  /// Banks an extra tube paid for by a video that could not deliver one.
+  ///
+  /// The same shape as the hint credit, and for the same reason: a rewarded ad
+  /// ends by returning from a fullscreen activity, and coming back to a board
+  /// that has been restarted, won or left is ordinary rather than exceptional.
+  /// Banking first means the fifteen seconds are never spent for nothing — the
+  /// next tube they ask for is free.
+  Future<void> grantExtraTubeCredit() async {
+    final credits = state.extraTubeCredits + 1;
+    state = state.copyWith(extraTubeCredits: credits);
+    await _persistInt(_tubeCreditsKey, credits);
+  }
+
+  /// Spends a waiting extra-tube credit, if there is one.
+  Future<bool> consumeExtraTubeCredit() async {
+    await _restored;
+    if (state.extraTubeCredits == 0) return false;
+    final credits = state.extraTubeCredits - 1;
+    state = state.copyWith(extraTubeCredits: credits);
+    await _persistInt(_tubeCreditsKey, credits);
+    return true;
   }
 
   /// Spends a waiting credit, if there is one.

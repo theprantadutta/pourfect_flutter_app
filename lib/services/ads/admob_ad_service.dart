@@ -168,7 +168,12 @@ class AdMobAdService implements AdService {
   void preload() {
     if (!_mayRequestAds) return;
     _loadInterstitial();
+    // Only what the game can actually show. A placement with no feature
+    // behind it costs a load request per session and can never record an
+    // impression, which does not merely waste the request — it makes the
+    // fill-rate figure for the whole account a number nobody can act on.
     for (final placement in RewardedPlacement.values) {
+      if (!placement.isReachable) continue;
       _loadRewarded(placement);
     }
   }

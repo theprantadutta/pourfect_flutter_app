@@ -332,6 +332,97 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   /// Asks for a hint, spending a free one or a rewarded video.
   ///
+  /// Buys one extra empty tube for this attempt.
+  ///
+  /// Same discipline as the hint, and the same reason for it: BANK FIRST, then
+  /// deliver. A rewarded video ends by returning from a fullscreen activity,
+  /// and coming back to a board that has since been restarted, won or left is
+  /// ordinary rather than exceptional — so the credit is granted before
+  /// anything is checked, and the fifteen seconds are never spent for nothing.
+  ///
+  /// Unlike a hint this cannot come back empty-handed: a tube is always
+  /// deliverable, so there is no "resolved" to confirm before granting. What
+  /// there is instead is a board that may have moved on, which is why the
+  /// grant is settled against the SESSION rather than against `mounted`.
+  Future<void> _onExtraTube() async {
+    final money = ref.read(monetizationProvider.notifier);
+    final state = ref.read(gameControllerProvider);
+    if (state == null || !state.canOfferExtraTube) return;
+
+    final levelId = state.level.id;
+    final session = _game.sessionId;
+
+    // A credit is a tube already paid for by a video that had nowhere to put
+    // it. Spent before anything else, so nobody pays twice.
+    if (!await money.consumeExtraTubeCredit()) {
+      if (!mounted) return;
+
+      // The clock stops for the whole negotiation, prompt and video both.
+      // Charging somebody score for the time it takes to watch an ad we asked
+      // them to watch is exactly the sort of thing that shows up in reviews.
+      _game.pauseClock();
+
+      if (!await _confirmWatchAd(
+        title: 'Watch a video for an extra tube?',
+        body: 'One more empty tube for this level. Your stars still depend on '
+            'how many moves you take.',
+      )) {
+        _game.resumeClock();
+        return;
+      }
+
+      final outcome = await money.offerRewarded(
+        RewardedPlacement.extraTube,
+        levelId: levelId,
+      );
+      _game.resumeClock();
+
+      if (outcome != RewardOutcome.earned) {
+        if (mounted) {
+          _toast(switch (outcome) {
+            RewardOutcome.dismissed =>
+              'No tube — the video was not finished.',
+            RewardOutcome.unavailable => 'No video available right now.',
+            _ => 'Something went wrong. Nothing was used.',
+          });
+        }
+        return;
+      }
+
+      // BANKED BEFORE IT IS SPENT, so a crash in between leaves a credit
+      // rather than a debt.
+      await money.grantExtraTubeCredit();
+
+      if (!_game.isCurrentSession(session)) {
+        // The board that asked for this is gone. The credit stays banked and
+        // the next tube is free, which is what "your video is saved for the
+        // next one" already promises elsewhere.
+        if (mounted) _toast('Saved — your next tube is free.');
+        return;
+      }
+
+      await money.consumeExtraTubeCredit();
+    }
+
+    if (!_game.isCurrentSession(session) || !_game.grantExtraTube()) {
+      // Could not be delivered after all — hand the credit straight back
+      // rather than keeping a payment for nothing.
+      await money.grantExtraTubeCredit();
+      if (mounted) _toast('Saved — your next tube is free.');
+      return;
+    }
+
+    // Always rewarded: unlike hints there is no free allowance, so every tube
+    // is funded by a video — this one, or one banked earlier.
+    ref.read(analyticsServiceProvider).log(
+      PowerUpUsed(
+        levelId: levelId,
+        kind: PowerUpKind.extraTube,
+        wasRewarded: true,
+      ),
+    );
+  }
+
   /// THE ORDER HERE IS THE WHOLE POINT. The video plays, the reward is
   /// confirmed EARNED, and only then is the solver asked. If the solver cannot
   /// answer, the player is told plainly — and because a rewarded video costs
@@ -499,7 +590,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
   }
 
   /// Asks before taking the player into a video. Never auto-play an ad.
-  Future<bool> _confirmWatchAd() async {
+  /// Asks before a rewarded video plays.
+  ///
+  /// Defaults to the hint wording, because that was the only caller for a long
+  /// time. A placement that reads differently passes its own — "you have 2
+  /// free hints left" is nonsense next to an offer of an extra tube, which has
+  /// no free allowance at all.
+  Future<bool> _confirmWatchAd({String? title, String? body}) async {
     final tokens = PourfectTokens.of(context);
     final remaining = ref.read(monetizationProvider).freeHintsRemaining;
 
@@ -511,9 +608,16 @@ class _GameScreenState extends ConsumerState<GameScreen>
               borderRadius: BorderRadius.circular(tokens.panelRadius),
               side: BorderSide(color: tokens.hairline),
             ),
-            title: Text('Watch a video for a hint?', style: titleStyle(tokens)),
+            title: Text(
+              title ?? 'Watch a video for a hint?',
+              style: titleStyle(tokens),
+            ),
             content: Text(
-              remaining > 0 ? 'You have $remaining free hints left.' : 'Your free hints are used up. A short video earns one more.',
+              body ??
+                  (remaining > 0
+                      ? 'You have $remaining free hints left.'
+                      : 'Your free hints are used up. A short video earns one '
+                          'more.'),
               style: bodyStyle(tokens),
             ),
             actions: [
@@ -679,6 +783,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
                               ref.read(gameControllerProvider.notifier).undo(),
                         ),
                       BoardControls(
+                        // Hidden until par is spent — see
+                        // GameState.canOfferExtraTube for why that particular
+                        // moment, which is about what the server will accept
+                        // rather than about difficulty.
+                        onExtraTube:
+                            state.canOfferExtraTube ? _onExtraTube : null,
                         onUndo: state.canUndo
                             ? () {
                                 ref

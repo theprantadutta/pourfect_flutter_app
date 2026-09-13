@@ -527,17 +527,60 @@ The funnel would NOT have caught this: `hint_used` fires either way, so the
 analytics looked healthy while the paywall never appeared. Any provider that
 persists a spendable balance has the same shape — check it the same way.
 
-## Ad placements without a feature behind them
+## The extra tube, and the placement with nothing behind it
 
-`PowerUpUsed` is defined in the analytics events and has **zero call sites**.
-`RewardedPlacement.extraTube` and `RewardedPlacement.levelSkip` exist, have
-live AdMob units, and are preloaded on every launch — but nothing can ever
-show them, because neither power-up is implemented as gameplay.
+`RewardedPlacement.extraTube` is real gameplay now. `levelSkip` is not, and
+`RewardedPlacement.isReachable` is what stops it being preloaded — a placement
+nothing can show costs a load request per session, can never record an
+impression, and makes the fill-rate figure for the whole account a number
+nobody can act on. Flip that getter if the feature is ever built.
 
-So two of the four ad units burn a load request per session and can never
-record an impression. Either build the features or stop preloading those
-placements; leaving it as-is makes AdMob's fill-rate reporting meaningless for
-half the inventory.
+**Skip was dropped deliberately**, not forgotten. This game has unlimited free
+undo, hints and no star gate, so nobody is ever truly stuck, and a skip mostly
+lets players buy past the difficulty curve the level generator exists to
+produce. It also cannot sync honestly: the server rejects any result below the
+proven optimum, and a skip has no move count at all — so it would need a new
+field on the progress contract to survive to a second device.
+
+### The tube is offered only once par is spent
+
+`GameState.canOfferExtraTube` requires `movesUsed >= level.minMoves`, and that
+is **not** a difficulty judgement. `Scoring.IsPlausible` rejects any submission
+below the proven optimum as impossible, and an extra tube genuinely can make a
+board solvable in fewer moves than the original optimum — so a tube handed over
+on move two can produce a clear the server refuses, and the win never reaches
+the account. Spending par first means the final count cannot land under it.
+
+That is what makes this work with no backend change, no relaxed floor and no
+fabricated number, and stars need no special case either: past par is at most
+two stars by `starsFor`, so an assisted clear scores like the imperfect solve
+it is.
+
+### Granting rewrites the undo stack
+
+The stack holds whole `Board`s, so without adding the empty tube to every board
+in the history, ONE undo restores the old tube count and silently destroys what
+somebody watched fifteen seconds of advertising for. The obvious alternative —
+disabling undo after a grant — breaks a rule this game does not bend: undo is
+free, unlimited, and never a monetization lever. Rewriting the history keeps
+both promises.
+
+The tube is APPENDED, never inserted, because the selection, a pending hint and
+the pour animation all address tubes by index.
+
+One per attempt, and a restart hands back both the board and the offer.
+
+### Verified on device, 2026-09-13
+
+Level 4, par 6. The TUBE button was absent at move 0 and appeared at exactly
+6/6; the dialog carried the tube wording rather than the hint's; a real Test Ad
+rewarded video played and reported `Reward granted`; the board went from five
+tubes to six with the existing tubes untouched; the button then disappeared,
+because it is once per attempt. Undoing all the way back to 0/6 left the sixth
+tube in place.
+
+The analytics chain that had never fired before: `ad_shown` → `ad_completed
+{reward_granted: 1}` → `power_up_used {power_up: extraTube}`.
 
 ## Monetization — verified on device
 

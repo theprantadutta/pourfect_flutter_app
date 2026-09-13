@@ -206,12 +206,16 @@ class BoardControls extends StatelessWidget {
   final VoidCallback onHint;
   final bool hintBusy;
 
+  /// Offered only while an extra tube is available. Null hides it entirely.
+  final VoidCallback? onExtraTube;
+
   const BoardControls({
     super.key,
     required this.onUndo,
     required this.onRestart,
     required this.onHint,
     required this.hintBusy,
+    this.onExtraTube,
   });
 
   @override
@@ -234,6 +238,21 @@ class BoardControls extends StatelessWidget {
             onPressed: onHint,
             busy: hintBusy,
           ),
+          // APPEARS ONLY WHEN IT IS AVAILABLE, rather than sitting there
+          // greyed out from move one.
+          //
+          // A disabled button is a promise with a condition nobody can read,
+          // and this one's condition — par already spent — would be baffling
+          // as a tooltip. Arriving exactly when somebody has gone past par
+          // reads as the game noticing, which is what it is.
+          if (onExtraTube != null) ...[
+            SizedBox(width: tokens.space5),
+            HudAction(
+              icon: Icons.add_circle_outline_rounded,
+              label: 'Tube',
+              onPressed: onExtraTube,
+            ),
+          ],
           SizedBox(width: tokens.space5),
           HudAction(
             icon: Icons.refresh_rounded,

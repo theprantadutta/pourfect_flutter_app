@@ -111,6 +111,17 @@ class GameState {
   /// True if the player has opened this level before in this session.
   final bool isRetry;
 
+  /// An extra empty tube has been granted for this attempt.
+  ///
+  /// **At most one, and the limit is the feature.** A second tube makes almost
+  /// any board in this campaign fall apart on its own, and a player who can buy
+  /// their way past the difficulty curve is a player the curve was tuned for
+  /// nothing.
+  ///
+  /// Per ATTEMPT, not per level: restarting gives the board back as it was
+  /// generated, so it gives the offer back too.
+  final bool extraTubeUsed;
+
   const GameState({
     required this.level,
     required this.levelSetVersion,
@@ -128,6 +139,7 @@ class GameState {
     required this.runningSince,
     required this.bankedSeconds,
     required this.isRetry,
+    required this.extraTubeUsed,
   });
 
   /// A fresh attempt at [level].
@@ -153,9 +165,29 @@ class GameState {
     runningSince: now,
     bankedSeconds: 0,
     isRetry: isRetry,
+    extraTubeUsed: false,
   );
 
   bool get isWon => board.isWon;
+
+  /// Whether an extra tube may be offered right now.
+  ///
+  /// **`movesUsed >= level.minMoves` is not a difficulty judgement — it is what
+  /// keeps an assisted solve submittable.** The server rejects any result below
+  /// the proven optimum as impossible (`Scoring.IsPlausible`), and an extra
+  /// tube genuinely can make a board solvable in fewer moves than the original
+  /// optimum. Offering the tube only once par is already spent means the final
+  /// count cannot land under it, so the floor never has to be relaxed, no
+  /// number is ever fabricated to get past it, and the client and server go on
+  /// agreeing about what a legal result looks like.
+  ///
+  /// It also happens to be the right moment on its own terms: help belongs
+  /// with somebody who is struggling, not with somebody on move two.
+  ///
+  /// Stars need no special case either. Past par is at most two stars by
+  /// `starsFor`, so an assisted clear scores like the imperfect solve it is.
+  bool get canOfferExtraTube =>
+      !extraTubeUsed && !isWon && movesUsed >= level.minMoves;
 
   /// True while the clock is counting.
   bool get isClockRunning => runningSince != null;
@@ -224,6 +256,7 @@ class GameState {
     Duration? elapsedBefore,
     DateTime? Function()? runningSince,
     int? bankedSeconds,
+    bool? extraTubeUsed,
   }) => GameState(
     level: level,
     levelSetVersion: levelSetVersion,
@@ -241,5 +274,6 @@ class GameState {
     runningSince: runningSince == null ? this.runningSince : runningSince(),
     bankedSeconds: bankedSeconds ?? this.bankedSeconds,
     isRetry: isRetry,
+    extraTubeUsed: extraTubeUsed ?? this.extraTubeUsed,
   );
 }

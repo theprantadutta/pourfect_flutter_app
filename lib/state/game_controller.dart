@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../engine/board.dart';
 import '../engine/level.dart';
 import '../engine/move.dart';
 import '../engine/rules.dart';
@@ -191,6 +192,45 @@ class GameController extends Notifier<GameState?> {
     return result.completedDestination
         ? TapOutcome.pouredAndCompleted
         : TapOutcome.poured;
+  }
+
+  /// Adds one empty tube to this attempt.
+  ///
+  /// Returns false when the board has moved on since the offer was made — the
+  /// level was won, restarted, or already given a tube while a video played.
+  /// The caller is expected to have banked whatever was spent BEFORE asking,
+  /// because a false here must not cost anybody their video.
+  ///
+  /// **The undo stack is rewritten, and that is the whole subtlety.** Every
+  /// board in the history gets the empty tube too. Without it, one undo hands
+  /// back a board with the old tube count and quietly destroys the thing the
+  /// player just watched fifteen seconds of advertising for — and the natural
+  /// fix, disabling undo after a grant, breaks a rule this game does not bend:
+  /// undo is free, unlimited, and never a monetization lever. Rewriting the
+  /// history keeps both promises at once.
+  ///
+  /// The tube is appended, never inserted, so every existing index — the
+  /// selection, the pending hint, the pour animation — still points where it
+  /// did.
+  bool grantExtraTube() {
+    final current = state;
+    if (current == null || current.extraTubeUsed || current.isWon) return false;
+
+    Board withSpare(Board board) =>
+        Board([...board.tubes, Tube(const [], board.capacity)]);
+
+    state = current.copyWith(
+      board: withSpare(current.board),
+      undoStack: [for (final board in current.undoStack) withSpare(board)],
+      extraTubeUsed: true,
+      // The hint pointed at a board that no longer exists, and its move may
+      // now be the wrong one entirely.
+      hintMove: () => null,
+      selectedTube: () => null,
+    );
+
+    _haptics.selection();
+    return true;
   }
 
   /// Takes back the last move. Free, unlimited, and never gated behind an ad.

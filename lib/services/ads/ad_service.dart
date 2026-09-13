@@ -14,6 +14,22 @@ enum RewardedPlacement {
   extraTube,
   levelSkip;
 
+  /// Whether a placement has gameplay behind it that can actually show it.
+  ///
+  /// **`levelSkip` has none.** Its AdMob unit exists and the enum value is
+  /// kept, but nothing in the game can reach it — skipping a level was
+  /// deliberately not built: this game has unlimited free undo, hints, and no
+  /// star gate, so nobody is ever truly stuck, and a skip mostly lets players
+  /// buy past the difficulty curve the whole level generator exists to
+  /// produce. There is also no honest way to sync one: the server rejects any
+  /// result below the proven optimum, and a skip has no move count at all.
+  ///
+  /// Preloading it anyway burned a load request per session against a
+  /// placement that could never record an impression, which made AdMob's
+  /// fill-rate reporting meaningless for half the inventory. Flipping this to
+  /// true is all that is needed if the feature is ever built.
+  bool get isReachable => this != RewardedPlacement.levelSkip;
+
   /// snake_case name for analytics.
   String get eventName => switch (this) {
     RewardedPlacement.hint => 'hint',
