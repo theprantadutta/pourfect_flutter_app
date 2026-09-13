@@ -395,19 +395,9 @@ splits them per device.
 
 ## Known gaps
 
-- **No daily challenge or leaderboard screens.** Both wait on the client work;
-  the backend serves them already.
 - **No Sign in with Apple.** Android-only for now, so it costs nothing yet — but
   it blocks the first iOS submission, because Apple requires it alongside any
   other social login.
-- **Email/password sign-in has never run against real Firebase.** Google
-  sign-in IS verified on the dev Samsung (2026-09-12), but the password path
-  has not been, and Email/Password is off by default on a new Firebase project
-  — so it may simply be disabled in the console.
-- **The existing-Google-account path has never run against real Firebase.** The
-  logic and its tests are in (`signInToExistingGoogleAccount`), but a returning
-  player on a new phone with an already-registered Google account has not been
-  exercised on hardware.
 - **No IAP product exists yet.** The Play and App Store product ids and the
   Play license key are still blank in `generated/ad_config.md`, so Remove Ads
   shows an em dash instead of a price. That is the correct degraded state, not
@@ -695,6 +685,54 @@ re-exchanged since the sign-in still says `is_anonymous: true`, and believing it
 puts the screen back to guest for the length of a round trip. Signing out and
 deletion clear the whole state explicitly, and the identity stream is what
 reports a genuine drop.
+
+## The whole account flow, on hardware
+
+Run end to end on the dev Samsung against real Firebase and the live backend,
+2026-09-13. Every step below was read off the device's own stored session
+rather than inferred from the UI.
+
+| Step | What the session became |
+|---|---|
+| signed out of Google | new anonymous uid, `auth_provider: anonymous` |
+| created an email account | SAME `user_id`, `is_anonymous: false`, `auth_provider: email` |
+| cold start | signed in on the first painted frame |
+| signed out, signed back in by email | back to the same `user_id` |
+| deleted the account | session key gone, campaign and streak erased |
+| Continue with Google | refused — the credential belongs to another account |
+| Sign in to that account | original `user_id` and uid restored, stars pulled back |
+
+**The link kept the uid.** Creating the email account logged `Linking email
+account` and left `user_id` untouched, so the server row was upgraded in place
+— the anonymous-first promise, demonstrated rather than asserted.
+
+**`auth_provider: email` came back from OUR backend**, which is the
+`AuthProvider.Email` mapping doing its job. Firebase calls it `"password"`, and
+without that mapping a real account records as anonymous.
+
+**`credential-already-in-use` is reachable and survivable.** Signing into
+Google from a fresh anonymous account correctly refused, said so in words, and
+offered `Sign in to that account`; that asks a second time ("This phone will
+load the stars already saved to that account") and then re-runs the Google
+chooser, because a one-time OAuth credential cannot be replayed. Both
+confirmations are load-bearing — the path abandons local progress.
+
+**The server deletes the Firebase user too.** `DeleteAccountCommandHandler`
+calls `DeleteUserAsync` after removing the row, so the client's own delete then
+finds nothing and Firebase answers `user-not-found`. That is the ORDINARY
+outcome of a deletion that worked, and it now reads as one.
+
+**Two things the run found, both fixed.** `operation-not-allowed` — what
+Firebase returns when a sign-in method is switched off in the console — fell
+through to "Could not reach the server", blaming the network for a console
+setting and pointing anyone debugging a fresh environment at the wrong layer.
+And the `user-not-found` above was handled correctly only by accident, landing
+in a fallback branch while logging like a failure.
+
+**Driving this app from `adb` needs `input swipe x y x y 120`, not `input
+tap`.** A synthesised tap is too short for `Pressable` to register, and the
+first event after a screen change is frequently swallowed. Nothing is wrong
+with the app — but half an hour goes into "the button does not work" otherwise.
 
 **Purchases do NOT depend on any of this.** A Play entitlement belongs to the
 Google Play account, not to the Firebase identity: `restorePurchases()` runs on

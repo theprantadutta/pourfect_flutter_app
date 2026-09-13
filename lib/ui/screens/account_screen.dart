@@ -77,6 +77,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     IdentityOutcome.tooManyAttempts =>
       'Too many tries. Wait a few minutes and try again.',
     IdentityOutcome.needsRecentLogin => 'Please sign in again first.',
+    // Points at the way in that IS switched on rather than at a retry, which
+    // cannot work. A player never sees this in a correctly configured build.
+    IdentityOutcome.methodNotEnabled =>
+      'Email sign-in is not available right now. Try Continue with Google.',
     // Firebase took the sign-in; our own server did not answer. The account
     // is real and the next sync will pick it up, so this is not a failure to
     // undo — just one worth being honest about.

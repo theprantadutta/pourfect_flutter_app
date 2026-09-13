@@ -382,5 +382,28 @@ void main() {
       expect(outcome, AccountDeletion.deleted);
       expect(built.identity.signedOut, isTrue);
     });
+
+    test('an identity the server already removed counts as deleted', () async {
+      // THE ORDINARY CASE, despite reading like a failure.
+      //
+      // `DeleteAccountCommandHandler` deletes the Firebase user itself once
+      // the row is gone, so the client's own delete almost always finds
+      // nothing left and Firebase answers `user-not-found`. Observed on a real
+      // device against real Firebase on a deletion that worked perfectly. The
+      // client asks anyway, because the server's call is best-effort — but the
+      // answer means the job is done, not that it failed.
+      final built = harness();
+      built.identity.next = const IdentityResult(IdentityOutcome.noSuchAccount);
+
+      final outcome =
+          await built.container.read(accountProvider.notifier).deleteAccount();
+
+      expect(outcome, AccountDeletion.deleted);
+      expect(
+        built.identity.signedOut,
+        isTrue,
+        reason: 'a leftover login was kept after the account was destroyed',
+      );
+    });
   });
 }

@@ -325,6 +325,20 @@ class AccountController extends Notifier<AccountState> {
       ref.read(syncControllerProvider.notifier).invalidateInFlight();
 
       final removed = await ref.read(identityProvider).deleteAccount();
+
+      // EXPECTED, not a failure. `DeleteAccountCommandHandler` removes the
+      // Firebase user itself once the row is gone, so by the time this runs
+      // there is usually nothing left to delete and Firebase says so. The
+      // client asks anyway — belt and braces, because the server's call is
+      // best-effort and logs a warning when it fails — but the outcome is a
+      // deletion that already happened, not one that went wrong. Confirmed on
+      // device: `[identity] user-not-found -> IdentityOutcome.noSuchAccount`
+      // on a delete that completed perfectly.
+      if (removed.outcome == IdentityOutcome.noSuchAccount) {
+        await _wipeLocally();
+        return AccountDeletion.deleted;
+      }
+
       if (removed.outcome == IdentityOutcome.needsRecentLogin) {
         // The row is already gone, so this is not a failure of the deletion —
         // it is a leftover login. Signing out detaches it; it can never reach

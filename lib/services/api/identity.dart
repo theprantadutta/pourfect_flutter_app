@@ -51,6 +51,15 @@ enum IdentityOutcome {
   /// Firebase wants a fresh sign-in before it will do something destructive.
   needsRecentLogin,
 
+  /// The sign-in method is switched OFF in the Firebase console.
+  ///
+  /// Nothing the player can do, and nothing a retry will fix — but it used to
+  /// fall through to [unavailable] and say "could not reach the server", which
+  /// is a lie that sends whoever is debugging it at the network instead of at
+  /// the console. Email/Password is off by default on a new Firebase project,
+  /// so this is the first thing a fresh environment hits.
+  methodNotEnabled,
+
   /// Firebase accepted the sign-in but our own backend would not issue a
   /// session for it. The identity stands; the sync does not.
   sessionUnavailable,
@@ -412,6 +421,7 @@ class FirebaseIdentity implements Identity {
       'user-not-found' => IdentityOutcome.noSuchAccount,
       'too-many-requests' => IdentityOutcome.tooManyAttempts,
       'requires-recent-login' => IdentityOutcome.needsRecentLogin,
+      'operation-not-allowed' => IdentityOutcome.methodNotEnabled,
       _ => IdentityOutcome.unavailable,
     };
 

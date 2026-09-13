@@ -156,6 +156,34 @@ void main() {
     expect(stub.calls, contains('signIn:a@b.com'));
   });
 
+  testWidgets('a switched-off sign-in method is not reported as a network fault',
+      (tester) async {
+    // Email/Password is OFF by default on a new Firebase project, and Firebase
+    // says `operation-not-allowed`. That used to fall through to the catch-all
+    // and read "could not reach the server" — which is wrong twice over: the
+    // network is fine, and retrying can never help. It also sends whoever is
+    // debugging a fresh environment at the wrong layer entirely.
+    final stub = StubIdentity(
+      result: const IdentityResult(
+        IdentityOutcome.methodNotEnabled,
+        message: 'This operation is not allowed.',
+      ),
+    );
+    await pump(tester, identity: stub);
+
+    await tester.enterText(find.byType(TextFormField).first, 'a@b.com');
+    await tester.enterText(find.byType(TextFormField).last, 'longenoughpw');
+    await tester.tap(find.text('Create account'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Could not reach the server'),
+      findsNothing,
+      reason: 'blamed the network for a console setting',
+    );
+    expect(find.textContaining('not available right now'), findsOneWidget);
+  });
+
   testWidgets('a wrong password is explained in the app\'s own words',
       (tester) async {
     final stub = StubIdentity(
