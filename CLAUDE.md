@@ -504,6 +504,41 @@ settings screen simply was not there. The cheap defence is a test that merely
 CONSTRUCTS every Notifier a screen can reach; it catches this class of bug in
 milliseconds instead of a build-install-screenshot round trip.
 
+## Everybody has a leaderboard name
+
+The server names every account at creation — `Amber_Cascade_1284`, from this
+game's colors and pouring words — so a player is on the board from their first
+sync without ever finding a text field. Before this, `DisplayName` was null
+until somebody typed one, nobody ever did, and every board was empty while the
+home screen drew an em dash where a rank goes.
+
+**Settings owns both controls.** `Your name` opens a rename box, callable as
+often as they like; `Show me on leaderboards` takes them off entirely. Hiding
+keeps every star and the streak — it only stops the row being published.
+
+**The visibility switch moves only after the server agrees.** Drawing it
+optimistically means telling somebody they are hidden while their name is still
+on a public board, and it looks exactly like success. `setLeaderboardVisibility`
+returns false and the switch stays put; Settings says so rather than silently
+doing nothing. Pinned by `a request that never landed leaves the player LISTED`.
+
+**The handle and the flag live in `AccountState`, not on `AuthService`.** Same
+reason the crest does: a plain `Provider` hands out the same service instance
+forever and cannot tell a widget the session changed, so anything read straight
+off `authServiceProvider.current` during build is a sample that never updates.
+
+**`campaignRankProvider` is what makes RANK real.** The figure was a hardcoded
+em dash — it showed nothing even to a player who had a position, because
+nothing ever fetched one. It asks for `limit: 1` and reads only `you`, since
+the server returns the caller's own row regardless of the window. Null renders
+as an em dash, which is the honest answer to all four reasons there is no
+number: offline, no backend, no stars yet, or hidden by choice.
+
+**The leaderboard screen explains an absence rather than leaving one.** Its
+"pick a name" prompt is gone — a name is never missing now — and a
+`_HiddenNotice` takes its place for the one remaining reason to be absent:
+having chosen to be. A list somebody is silently missing from reads as broken.
+
 ## Auth — anonymous by default, sign-in as an upgrade
 
 Players still start **anonymous, with no sign-in wall**, and that is not

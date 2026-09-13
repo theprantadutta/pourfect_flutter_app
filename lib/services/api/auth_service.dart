@@ -309,12 +309,17 @@ class AuthService {
 
   /// Records a change the server has confirmed, so the cached session does not
   /// contradict what the player can see.
-  Future<void> update({String? displayName, bool? adsRemoved}) async {
+  Future<void> update({
+    String? displayName,
+    bool? adsRemoved,
+    bool? showOnLeaderboards,
+  }) async {
     final session = _session;
     if (session == null) return;
     _session = session.copyWith(
       displayName: displayName,
       adsRemoved: adsRemoved,
+      showOnLeaderboards: showOnLeaderboards,
     );
     await _store.save(_session!);
   }

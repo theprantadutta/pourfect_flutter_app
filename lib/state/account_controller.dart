@@ -27,6 +27,7 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../services/api/api_result.dart';
 import '../services/api/identity.dart';
 import 'play_history.dart';
 import 'progress_repository.dart';
@@ -41,6 +42,8 @@ class AccountState {
     this.email,
     this.available = false,
     this.userId,
+    this.handle,
+    this.showOnLeaderboards = true,
   });
 
   /// An identity operation is in flight. The UI disables its buttons on this
@@ -56,6 +59,18 @@ class AccountState {
   /// rather than shown broken.
   final bool available;
 
+  /// The leaderboard handle, or null before the session has loaded.
+  ///
+  /// Every account has one from the moment the server creates it, so a null
+  /// here means "not known yet", never "has no name".
+  final String? handle;
+
+  /// Whether this player is published on leaderboards.
+  ///
+  /// Defaults TRUE to match the server's column, so the switch does not flick
+  /// from off to on as the session lands.
+  final bool showOnLeaderboards;
+
   /// The account the session belongs to, or null before one is known.
   ///
   /// Here rather than read off `AuthService.current` at the point of use: the
@@ -70,12 +85,16 @@ class AccountState {
     String? email,
     bool? available,
     String? userId,
+    String? handle,
+    bool? showOnLeaderboards,
   }) => AccountState(
     busy: busy ?? this.busy,
     signedIn: signedIn ?? this.signedIn,
     email: email ?? this.email,
     available: available ?? this.available,
     userId: userId ?? this.userId,
+    handle: handle ?? this.handle,
+    showOnLeaderboards: showOnLeaderboards ?? this.showOnLeaderboards,
   );
 }
 
@@ -118,6 +137,8 @@ class AccountController extends Notifier<AccountState> {
 
       state = state.copyWith(
         userId: session.userId,
+        handle: session.displayName,
+        showOnLeaderboards: session.showOnLeaderboards,
         // PROMOTES ONLY. The server's `is_anonymous` is authoritative about
         // being signed IN, but a session can lag behind a sign-in it has not
         // been re-exchanged for yet, and demoting on that would flicker the
@@ -142,7 +163,48 @@ class AccountController extends Notifier<AccountState> {
       signedIn: snapshot != null && !snapshot.isAnonymous,
       email: snapshot?.email,
       userId: auth.current?.userId,
+      handle: auth.current?.displayName,
+      showOnLeaderboards: auth.current?.showOnLeaderboards ?? true,
     );
+  }
+
+  /// Renames the leaderboard handle.
+  ///
+  /// The session is updated from the SERVER's answer rather than from what was
+  /// typed, because the server trims and could in principle refuse — and the
+  /// name on screen afterwards should be the name on the board.
+  Future<String?> renameHandle(String name) async {
+    final result = await ref.read(usersApiProvider).setDisplayName(name);
+
+    return switch (result) {
+      ApiOk(:final value) => await () async {
+        await ref.read(authServiceProvider).update(displayName: value);
+        state = state.copyWith(handle: value);
+        return null;
+      }(),
+      ApiFailure(:final kind, :final detail) => kind == ApiFailureKind.refused
+          ? (detail ?? 'That name was not accepted.')
+          : 'Could not reach the server. Try again in a moment.',
+    };
+  }
+
+  /// Puts the player on the public boards, or takes them off.
+  ///
+  /// **Nothing is assumed.** The switch moves only once the server has
+  /// confirmed, and a failure leaves it exactly where it was. Drawing it in
+  /// the new position on a request that never landed tells somebody they are
+  /// hidden while they are still listed, which is the single worst thing a
+  /// control like this can do.
+  Future<bool> setLeaderboardVisibility(bool visible) async {
+    final result =
+        await ref.read(usersApiProvider).setLeaderboardVisibility(visible);
+
+    if (result case ApiOk(:final value)) {
+      await ref.read(authServiceProvider).update(showOnLeaderboards: value);
+      state = state.copyWith(showOnLeaderboards: value);
+      return true;
+    }
+    return false;
   }
 
   Future<IdentityResult> continueWithGoogle() =>

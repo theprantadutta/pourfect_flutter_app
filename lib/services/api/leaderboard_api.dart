@@ -138,7 +138,11 @@ class UsersApi {
 
   const UsersApi(this._client);
 
-  /// Sets the leaderboard name. THIS IS THE OPT-IN.
+  /// Renames the player's leaderboard handle. Callable as often as they like.
+  ///
+  /// No longer the opt-in — every account is created with a handle already in
+  /// place, and [setLeaderboardVisibility] is what decides whether anybody is
+  /// listed at all.
   Future<ApiResult<String>> setDisplayName(String name) async {
     final response = await _client.put('/api/v1/users/display-name', {
       'display_name': name.trim(),
@@ -146,6 +150,28 @@ class UsersApi {
 
     return switch (response) {
       ApiOk(:final value) => ApiOk(value['display_name'] as String? ?? name),
+      ApiFailure(:final kind, :final detail, :final statusCode) => ApiFailure(
+        kind,
+        detail: detail,
+        statusCode: statusCode,
+      ),
+    };
+  }
+
+  /// Puts the player on the public boards, or takes them off.
+  ///
+  /// Returns what the SERVER now holds rather than echoing the request, so the
+  /// switch settles on the truth. A privacy toggle that reports success while
+  /// the server kept the old value is worse than not having one.
+  Future<ApiResult<bool>> setLeaderboardVisibility(bool visible) async {
+    final response = await _client.put('/api/v1/users/leaderboard-visibility', {
+      'visible': visible,
+    });
+
+    return switch (response) {
+      ApiOk(:final value) => ApiOk(
+        value['show_on_leaderboards'] as bool? ?? visible,
+      ),
       ApiFailure(:final kind, :final detail, :final statusCode) => ApiFailure(
         kind,
         detail: detail,

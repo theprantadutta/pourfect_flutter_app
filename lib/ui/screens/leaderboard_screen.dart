@@ -9,11 +9,11 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/api/api_result.dart';
 import '../../services/api/leaderboard_api.dart';
+import '../../state/account_controller.dart';
 import '../../state/providers.dart';
 import '../format.dart';
 import '../theme/tokens.dart';
@@ -80,7 +80,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   @override
   Widget build(BuildContext context) {
     final tokens = PourfectTokens.of(context);
-    final name = ref.watch(authServiceProvider).current?.displayName;
+    final account = ref.watch(accountProvider);
 
     return Scaffold(
       backgroundColor: tokens.surface,
@@ -95,11 +95,15 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             ),
             SizedBox(height: tokens.space3),
 
-            // The opt-in sits ABOVE the board, not under it. Somebody looking
-            // at a list they are not on should be told why before they scroll
-            // fifty rows looking for themselves.
-            if (name == null)
-              _JoinPrompt(onJoined: (chosen) => setState(_load)),
+            // The explanation sits ABOVE the board, not under it. Somebody
+            // looking at a list they are not on should be told why before they
+            // scroll fifty rows looking for themselves.
+            //
+            // This used to be a "pick a name" prompt, shown when the account
+            // had none — that was the only way to be absent. Every account now
+            // has a handle from sign-up, so the one remaining reason to be
+            // missing is having chosen to be, and that is what it says.
+            if (!account.showOnLeaderboards) const _HiddenNotice(),
 
             Expanded(child: _body(tokens)),
           ],
@@ -323,139 +327,6 @@ class _Row extends StatelessWidget {
 }
 
 /// The opt-in.
-class _JoinPrompt extends ConsumerStatefulWidget {
-  final void Function(String name) onJoined;
-
-  const _JoinPrompt({required this.onJoined});
-
-  @override
-  ConsumerState<_JoinPrompt> createState() => _JoinPromptState();
-}
-
-class _JoinPromptState extends ConsumerState<_JoinPrompt> {
-  final _controller = TextEditingController();
-  String? _problem;
-  bool _saving = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final name = _controller.text.trim();
-    final problem = displayNameProblem(name);
-    if (problem != null) {
-      setState(() => _problem = problem);
-      return;
-    }
-
-    setState(() {
-      _saving = true;
-      _problem = null;
-    });
-
-    final result = await UsersApi(ref.read(apiClientProvider))
-        .setDisplayName(name);
-
-    if (!mounted) return;
-
-    switch (result) {
-      case ApiOk(:final value):
-        await ref.read(authServiceProvider).update(displayName: value);
-        if (!mounted) return;
-        widget.onJoined(value);
-      case ApiFailure(:final kind, :final detail):
-        setState(() {
-          _saving = false;
-          _problem = kind == ApiFailureKind.refused
-              ? (detail ?? 'That name was not accepted.')
-              : 'Could not reach the server. Try again later.';
-        });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: tokens.space4),
-      padding: EdgeInsets.all(tokens.space4),
-      decoration: BoxDecoration(
-        color: tokens.surfaceRaised,
-        borderRadius: BorderRadius.circular(tokens.panelRadius),
-        border: Border.all(color: tokens.hairline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Pick a name to appear here',
-            style: titleStyle(tokens).copyWith(fontSize: 15),
-          ),
-          SizedBox(height: tokens.space2),
-          Text(
-            'You are not on the board until you choose one, and it is the only '
-            'thing about you anybody else can see. You can play without it.',
-            style: bodyStyle(tokens).copyWith(fontSize: 13),
-          ),
-          SizedBox(height: tokens.space3),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  enabled: !_saving,
-                  maxLength: kMaxDisplayName,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _save(),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(kDisplayNamePattern),
-                  ],
-                  style: bodyStyle(tokens).copyWith(fontSize: 14),
-                  decoration: InputDecoration(
-                    counterText: '',
-                    isDense: true,
-                    hintText: 'Your name on the board',
-                    hintStyle: bodyStyle(tokens)
-                        .copyWith(fontSize: 14, color: tokens.dimText),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: tokens.hairline),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: tokens.accent),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: tokens.space3),
-              Pressable(
-                onPressed: _saving ? null : _save,
-                child: Text(
-                  _saving ? 'Saving' : 'Join',
-                  style: actionStyle(
-                    tokens,
-                    color: _saving ? tokens.dimText : tokens.accent,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (_problem != null) ...[
-            SizedBox(height: tokens.space2),
-            Text(
-              _problem!,
-              style: bodyStyle(tokens)
-                  .copyWith(fontSize: 12, color: tokens.accentWarm),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
 class _Unavailable extends StatelessWidget {
   final ApiFailureKind? kind;
@@ -517,6 +388,45 @@ class _Message extends StatelessWidget {
           Text(
             detail,
             textAlign: TextAlign.center,
+            style: bodyStyle(tokens).copyWith(fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// Shown to a player who has taken themselves off the boards.
+///
+/// Without it the leaderboard is a list they are silently absent from, and the
+/// most natural reading of that is that the feature is broken.
+class _HiddenNotice extends StatelessWidget {
+  const _HiddenNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: tokens.space4),
+      padding: EdgeInsets.all(tokens.space4),
+      decoration: BoxDecoration(
+        color: tokens.surfaceRaised,
+        borderRadius: BorderRadius.circular(tokens.panelRadius),
+        border: Border.all(color: tokens.hairline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'You are hidden',
+            style: titleStyle(tokens).copyWith(fontSize: 15),
+          ),
+          SizedBox(height: tokens.space2),
+          Text(
+            'Your stars and streak still count — you just do not appear here. '
+            'Settings has the switch.',
             style: bodyStyle(tokens).copyWith(fontSize: 13),
           ),
         ],

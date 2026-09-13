@@ -23,6 +23,8 @@ import '../services/audio/soloud_audio_service.dart';
 import '../services/api/api_client.dart';
 import '../services/api/auth_service.dart';
 import '../services/api/identity.dart';
+import '../services/api/api_result.dart';
+import 'account_controller.dart';
 import '../services/api/leaderboard_api.dart';
 import '../services/api/push_service.dart';
 import '../services/haptics/haptics_service.dart';
@@ -243,3 +245,34 @@ final campaignProvider = FutureProvider<LevelSet>(
 final gameControllerProvider = NotifierProvider<GameController, GameState?>(
   GameController.new,
 );
+
+/// The player's own position on the campaign board, or null when they have
+/// none.
+///
+/// **A rank nobody can see is not a rank.** The home screen's RANK figure was
+/// a hardcoded em dash — it never displayed a position even for a player who
+/// had one, because nothing ever fetched it. The leaderboard existed, the
+/// server served it, and the one place a player looks said nothing.
+///
+/// Null covers every reason there is no number to show, and they are all the
+/// same to the screen: offline, no backend configured, no stars yet, or the
+/// player has taken themselves off the boards. An em dash is the honest
+/// rendering of all four.
+///
+/// A `limit` of 1 because only `you` is read — the server returns the caller's
+/// own row regardless of whether they are in the requested window, so asking
+/// for fifty rows to discard forty-nine is a page of JSON for nothing.
+final campaignRankProvider = FutureProvider<int?>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  if (!client.isConfigured) return null;
+
+  // Rebuilds when the account changes, so a rename, a sign-in or switching
+  // the leaderboard off is reflected without the player restarting the app.
+  ref.watch(accountProvider);
+
+  final result = await LeaderboardApi(client).campaign(limit: 1);
+  return switch (result) {
+    ApiOk(:final value) => value.you?.rank,
+    ApiFailure() => null,
+  };
+});

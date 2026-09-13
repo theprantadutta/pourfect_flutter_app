@@ -11,6 +11,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/analytics/analytics_service.dart';
+import '../../services/api/leaderboard_api.dart';
 import '../../services/iap/billing_service.dart';
 import '../../state/monetization_controller.dart';
 import '../../state/play_history.dart';
@@ -266,6 +267,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  /// Renames the leaderboard handle.
+  Future<void> _renameHandle() async {
+    final tokens = PourfectTokens.of(context);
+    final current = ref.read(accountProvider).handle ?? '';
+    final controller = TextEditingController(text: current);
+
+    // Pre-selected, because the field arrives holding a name they already have
+    // and the thing they came to do is replace it. Making somebody clear it by
+    // hand first is a small rudeness repeated every time.
+    controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: current.length,
+    );
+
+    final chosen = await showDialog<String>(
+      context: context,
+      builder: (context) => _RenameDialog(controller: controller),
+    );
+    controller.dispose();
+
+    if (chosen == null || !mounted) return;
+
+    final problem = await ref.read(accountProvider.notifier).renameHandle(chosen);
+    if (!mounted) return;
+
+    if (problem != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(problem, style: bodyStyle(tokens)),
+          backgroundColor: tokens.surfaceRaised,
+        ),
+      );
+    }
+  }
+
+  /// Puts the player on the boards, or takes them off.
+  Future<void> _setLeaderboardVisibility(bool visible) async {
+    final tokens = PourfectTokens.of(context);
+    final ok = await ref.read(accountProvider.notifier)
+        .setLeaderboardVisibility(visible);
+
+    if (ok || !mounted) return;
+
+    // The switch has NOT moved, because the server never agreed. Saying so is
+    // the whole point: a control that looks like it worked, on a request that
+    // did not, tells somebody they are hidden while they are still listed.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Could not reach the server, so nothing changed.',
+          style: bodyStyle(tokens),
+        ),
+        backgroundColor: tokens.surfaceRaised,
+      ),
+    );
+  }
+
   Future<void> _confirmDeleteAccount() async {
     final tokens = PourfectTokens.of(context);
 
@@ -340,6 +398,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final tokens = PourfectTokens.of(context);
     final settings = ref.watch(settingsProvider);
+    final account = ref.watch(accountProvider);
     final controller = ref.read(settingsProvider.notifier);
     final money = ref.watch(monetizationProvider);
 
@@ -410,6 +469,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             SizedBox(height: tokens.space3),
             _SymbolPreview(bold: settings.boldSymbols),
+
+            SizedBox(height: tokens.space5),
+            _SectionLabel('Leaderboard'),
+            // The name comes FIRST, because it is the thing a player came
+            // looking for. The switch under it is the thing they did not know
+            // they had.
+            _ActionRow(
+              title: 'Your name',
+              detail: account.handle ?? 'Naming you…',
+              onTap: _renameHandle,
+            ),
+            _ToggleRow(
+              title: 'Show me on leaderboards',
+              detail:
+                  'Off means nobody sees your name or your position. Your '
+                  'stars and streak keep counting either way, and turning it '
+                  'back on puts you straight back where you were.',
+              value: account.showOnLeaderboards,
+              onChanged: _setLeaderboardVisibility,
+            ),
 
             SizedBox(height: tokens.space5),
             _SectionLabel('Support'),
@@ -802,5 +881,100 @@ class _SymbolPreview extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// The rename box.
+///
+/// Validates as you type rather than on submit, so the rule is visible while
+/// somebody is still deciding rather than after they have committed to a name
+/// and been bounced. `displayNameProblem` is the SAME function the server's
+/// validator mirrors, so a name accepted here is not refused there.
+class _RenameDialog extends StatefulWidget {
+  const _RenameDialog({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  State<_RenameDialog> createState() => _RenameDialogState();
+}
+
+class _RenameDialogState extends State<_RenameDialog> {
+  String? _problem;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+
+    return AlertDialog(
+      backgroundColor: tokens.surfaceRaised,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(tokens.panelRadius),
+        side: BorderSide(color: tokens.hairline),
+      ),
+      title: Text('Your name', style: titleStyle(tokens)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'This is what other players see on the leaderboards.',
+            style: bodyStyle(tokens),
+          ),
+          SizedBox(height: tokens.space3),
+          TextField(
+            controller: widget.controller,
+            autofocus: true,
+            maxLength: kMaxDisplayName,
+            style: bodyStyle(tokens).copyWith(color: tokens.textPrimary),
+            decoration: InputDecoration(
+              errorText: _problem,
+              counterStyle: labelStyle(tokens),
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: tokens.hairline),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: tokens.accent),
+              ),
+            ),
+            onChanged: (value) =>
+                setState(() => _problem = displayNameProblem(value)),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            'Cancel',
+            style: actionStyle(tokens, color: tokens.textMuted),
+          ),
+        ),
+        TextButton(
+          onPressed: _problem == null ? _submit : null,
+          // The color is set explicitly, which overrides the disabled tint
+          // Flutter would otherwise apply — so a Save that cannot be pressed
+          // looked exactly like one that could. Seen on device.
+          child: Text(
+            'Save',
+            style: actionStyle(
+              tokens,
+              color: _problem == null ? null : tokens.dimText,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _submit() {
+    final name = widget.controller.text.trim();
+    final problem = displayNameProblem(name);
+    if (problem != null) {
+      setState(() => _problem = problem);
+      return;
+    }
+    Navigator.of(context).pop(name);
   }
 }

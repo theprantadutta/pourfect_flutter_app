@@ -21,8 +21,18 @@ class Session {
   final DateTime expiresAt;
   final String userId;
 
-  /// The leaderboard name, or null when the player has not opted in.
+  /// The leaderboard handle. Generated at sign-up, so it is only null for a
+  /// session issued before handles existed.
   final String? displayName;
+
+  /// Whether this player is published on leaderboards.
+  ///
+  /// Sent on every auth so Settings can draw the switch correctly on a cold
+  /// start rather than guessing. Guessing means telling somebody who opted out
+  /// that they are listed, which is the one mistake a privacy control cannot
+  /// make. Defaults TRUE to match the server's column default — a session
+  /// stored before this existed describes an account that is listed.
+  final bool showOnLeaderboards;
 
   /// The entitlement as the SERVER sees it.
   ///
@@ -56,6 +66,7 @@ class Session {
     required this.expiresAt,
     required this.userId,
     required this.displayName,
+    this.showOnLeaderboards = true,
     required this.adsRemoved,
     required this.isAnonymous,
     required this.authProvider,
@@ -72,6 +83,7 @@ class Session {
 
   Session copyWith({
     String? displayName,
+    bool? showOnLeaderboards,
     bool? adsRemoved,
     bool? adsRevoked,
   }) => Session(
@@ -79,6 +91,7 @@ class Session {
     expiresAt: expiresAt,
     userId: userId,
     displayName: displayName ?? this.displayName,
+    showOnLeaderboards: showOnLeaderboards ?? this.showOnLeaderboards,
     adsRemoved: adsRemoved ?? this.adsRemoved,
     isAnonymous: isAnonymous,
     authProvider: authProvider,
@@ -90,6 +103,7 @@ class Session {
     'expires_at': expiresAt.toIso8601String(),
     'user_id': userId,
     'display_name': displayName,
+    'show_on_leaderboards': showOnLeaderboards,
     'ads_removed': adsRemoved,
     'is_anonymous': isAnonymous,
     'auth_provider': authProvider,
@@ -108,6 +122,7 @@ class Session {
       expiresAt: expires,
       userId: userId,
       displayName: json['display_name'] as String?,
+      showOnLeaderboards: json['show_on_leaderboards'] as bool? ?? true,
       adsRemoved: json['ads_removed'] as bool? ?? false,
       isAnonymous: json['is_anonymous'] as bool? ?? true,
       authProvider: json['auth_provider'] as String? ?? 'unknown',
@@ -131,6 +146,7 @@ class Session {
       expiresAt: now.add(Duration(seconds: seconds ?? 3600)),
       userId: userId,
       displayName: body['display_name'] as String?,
+      showOnLeaderboards: body['show_on_leaderboards'] as bool? ?? true,
       adsRemoved: body['ads_removed'] as bool? ?? false,
       isAnonymous: body['is_anonymous'] as bool? ?? true,
       authProvider: body['auth_provider'] as String? ?? 'unknown',

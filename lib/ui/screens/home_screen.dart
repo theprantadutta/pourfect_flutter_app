@@ -325,7 +325,14 @@ class _LiveRow extends ConsumerWidget {
             semanticLabel: 'Leaderboard',
             child: Figure(
               label: 'RANK',
-              value: '—',
+              // An em dash until there is a real position, and an em dash is
+              // the honest answer to every reason there is not: offline, no
+              // stars yet, or taken themselves off the boards. It used to be
+              // hardcoded, so it said nothing even to a player who WAS ranked.
+              value: switch (ref.watch(campaignRankProvider)) {
+                AsyncData(:final value?) => '#$value',
+                _ => '—',
+              },
               color: tokens.accent,
               stacked: true,
             ),
