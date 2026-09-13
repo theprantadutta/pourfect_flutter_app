@@ -317,13 +317,19 @@ is a one-star nothing else buys back.
   own AVAudioSession category too. **Before any iOS build ships, flip the
   hardware mute switch and confirm silence.**
 
-## Level select
+## Browsing levels
 
-Every level is a TUBE holding pips for its stars — the game's own object, not a
-numbered square. Bands are sections with name, board shape and progress track,
-so the stage-6 curve becomes something a player can see. Headers are sticky and
-the list opens scrolled to where the player actually is; 150 tiles is too many
-to ask someone on level 96 to hunt through.
+`JourneyScreen` is the level browser — a winding path, one `CustomPainter`, the
+geometry in `journey_path.dart` shared with the slice on the home screen so the
+two cannot disagree. See the home screen section for how it is drawn.
+
+**There was a `LevelSelectScreen` and it is gone.** A grid where every level was
+a TUBE holding pips for its stars, with sticky band headers and the list opened
+scrolled to where the player was. It was good, and it was replaced on purpose —
+the journey path was chosen over it, and keeping both would have meant two
+browsers disagreeing about what a level looks like. It sat unreachable for a
+while before anybody noticed, which is the argument for deleting a screen the
+moment it stops being reachable rather than leaving it to rot.
 
 **Breathers are not marked.** Labelling one would be condescending and a
 confession that the curve is engineered. They work because they are felt.
