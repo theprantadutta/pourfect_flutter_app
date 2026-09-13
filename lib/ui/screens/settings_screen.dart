@@ -25,6 +25,7 @@ import 'account_screen.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/ball.dart';
+import '../widgets/player_crest.dart';
 import '../widgets/pressable.dart';
 
 /// The hosted legal documents. Confirmed live, and the same host Snake
@@ -433,130 +434,209 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
             ),
-            SizedBox(height: tokens.space5),
+            SizedBox(height: tokens.space4),
 
-            _SectionLabel('Feel'),
-            _ToggleRow(
-              title: 'Sound',
-              detail:
-                  'Pours, chimes and taps. Mixes with your music — it will '
-                  'never pause what you are listening to.',
-              value: settings.soundEnabled,
-              onChanged: controller.setSound,
-            ),
-            _ToggleRow(
-              title: 'Haptics',
-              detail: 'A tick as each ball lands, stronger when a tube fills.',
-              value: settings.hapticsEnabled,
-              onChanged: controller.setHaptics,
+            // WHOSE settings these are, before what they contain.
+            //
+            // The screen used to open on "Sound". Snake Classic's equivalent
+            // opens on the player, and that is the difference between a
+            // preferences list and somewhere you recognise — it also puts the
+            // handle in front of somebody who has never seen it.
+            _PlayerHeader(
+              account: account,
+              solved: ref.watch(progressProvider).length,
+              stars: ref.read(progressProvider.notifier).totalStars,
+              onRename: _renameHandle,
             ),
 
             SizedBox(height: tokens.space5),
-            _SectionLabel('Visibility'),
-            _ToggleRow(
-              title: 'Bold symbols',
-              // Names the condition explicitly. "Bold symbols" is the honest
-              // label — the shapes are always there and this only changes
-              // emphasis — but somebody who needs it will scan a settings list
-              // for the words they already know, not for our framing.
-              detail:
-                  'Larger, higher-contrast shapes on each ball. Helpful for '
-                  'color vision deficiency. Every ball always carries a shape '
-                  'as well as a color, so this only changes how strongly it '
-                  'is drawn.',
-              value: settings.boldSymbols,
-              onChanged: controller.setBoldSymbols,
-            ),
-            SizedBox(height: tokens.space3),
-            _SymbolPreview(bold: settings.boldSymbols),
+            _SectionHeader(icon: Icons.graphic_eq_rounded, label: 'Feel'),
+            _Group(children: [
+              _ToggleRow(
+                icon: Icons.volume_up_rounded,
+                title: 'Sound',
+                detail: 'Never pauses your music.',
+                value: settings.soundEnabled,
+                onChanged: controller.setSound,
+              ),
+              _ToggleRow(
+                icon: Icons.vibration_rounded,
+                title: 'Haptics',
+                detail: 'A tick as each ball lands.',
+                value: settings.hapticsEnabled,
+                onChanged: controller.setHaptics,
+                last: true,
+              ),
+            ]),
 
             SizedBox(height: tokens.space5),
-            _SectionLabel('Leaderboard'),
-            // The name comes FIRST, because it is the thing a player came
-            // looking for. The switch under it is the thing they did not know
-            // they had.
-            _ActionRow(
-              title: 'Your name',
-              detail: account.handle ?? 'Naming you…',
-              onTap: _renameHandle,
+            _SectionHeader(
+              icon: Icons.visibility_rounded,
+              label: 'Visibility',
             ),
-            _ToggleRow(
-              title: 'Show me on leaderboards',
-              detail:
-                  'Off means nobody sees your name or your position. Your '
-                  'stars and streak keep counting either way, and turning it '
-                  'back on puts you straight back where you were.',
-              value: account.showOnLeaderboards,
-              onChanged: _setLeaderboardVisibility,
-            ),
+            _Group(children: [
+              _ToggleRow(
+                icon: Icons.category_rounded,
+                title: 'Bold symbols',
+                // Names the condition explicitly. "Bold symbols" is the honest
+                // label — the shapes are always there and this only changes
+                // emphasis — but somebody who needs it will scan a settings
+                // list for the words they already know, not for our framing.
+                detail: 'Stronger shapes on each ball. For color vision '
+                    'deficiency.',
+                value: settings.boldSymbols,
+                onChanged: controller.setBoldSymbols,
+              ),
+              // INSIDE the group, directly under the switch that changes it.
+              // A preview separated from its control is a picture; touching
+              // the two makes it a demonstration.
+              _GroupInset(child: _SymbolPreview(bold: settings.boldSymbols)),
+            ]),
 
             SizedBox(height: tokens.space5),
-            _SectionLabel('Support'),
-            _RemoveAdsRow(
-              adsRemoved: money.adsRemoved,
-              price: ref.watch(billingServiceProvider).removeAdsProduct?.price,
-              onBuy: _buyRemoveAds,
+            _SectionHeader(
+              icon: Icons.leaderboard_rounded,
+              label: 'Leaderboard',
             ),
-            // Play requires a user-visible way to restore a purchase, and a
-            // player who reinstalls needs it to be findable.
-            _ActionRow(
-              title: 'Restore purchases',
-              detail: 'If you bought Remove Ads on this account before.',
-              onTap: _restore,
-            ),
+            _Group(children: [
+              // The name comes FIRST, because it is the thing a player came
+              // looking for. The switch under it is the thing they did not
+              // know they had.
+              // Says what tapping DOES. The handle itself is already the
+              // largest thing on the screen, at the top, so repeating it here
+              // was the same value printed twice and neither one reading as a
+              // control.
+              _ActionRow(
+                icon: Icons.badge_rounded,
+                title: 'Change your name',
+                detail: 'How you appear on the boards.',
+                onTap: _renameHandle,
+              ),
+              _ToggleRow(
+                icon: Icons.public_rounded,
+                title: 'Show me on leaderboards',
+                detail: 'Off hides your name and rank. Stars still count.',
+                value: account.showOnLeaderboards,
+                onChanged: _setLeaderboardVisibility,
+                last: true,
+              ),
+            ]),
 
             SizedBox(height: tokens.space5),
-            _SectionLabel('Progress'),
-            // Hidden entirely in a build with no Firebase, rather than shown
-            // as a control that cannot work.
-            if (ref.watch(accountProvider).available) ...[
-              if (ref.watch(accountProvider).signedIn)
+            _SectionHeader(
+              icon: Icons.favorite_rounded,
+              label: 'Support',
+            ),
+            _Group(children: [
+              _RemoveAdsRow(
+                adsRemoved: money.adsRemoved,
+                price: ref.watch(billingServiceProvider).removeAdsProduct?.price,
+                onBuy: _buyRemoveAds,
+              ),
+              // Play requires a user-visible way to restore a purchase, and a
+              // player who reinstalls needs it to be findable.
+              _ActionRow(
+                icon: Icons.restore_rounded,
+                title: 'Restore purchases',
+                detail: 'If you bought Remove Ads before.',
+                onTap: _restore,
+                last: true,
+              ),
+            ]),
+
+            SizedBox(height: tokens.space5),
+            _SectionHeader(
+              icon: Icons.cloud_done_rounded,
+              label: 'Account',
+            ),
+            _Group(children: [
+              // Hidden entirely in a build with no Firebase, rather than shown
+              // as a control that cannot work.
+              if (account.available)
+                if (account.signedIn)
+                  _ActionRow(
+                    icon: Icons.check_circle_rounded,
+                    title: 'Signed in',
+                    detail: account.email ?? 'Your progress moves with you.',
+                    onTap: _confirmSignOut,
+                    last: true,
+                  )
+                else
+                  _ActionRow(
+                    icon: Icons.cloud_upload_rounded,
+                    title: 'Save your progress',
+                    // The honest claim, and the whole of it. Not "your
+                    // progress is safe" — an anonymous account already
+                    // survives a crash; what it does NOT survive is a new
+                    // phone.
+                    detail: 'Keep your stars if you change phones.',
+                    onTap: _openAccount,
+                    last: true,
+                  ),
+            ]),
+
+            SizedBox(height: tokens.space5),
+            _SectionHeader(
+              icon: Icons.info_outline_rounded,
+              label: 'About',
+            ),
+            _Group(children: [
+              _ActionRow(
+                icon: Icons.shield_rounded,
+                title: 'Privacy policy',
+                detail: kPrivacyPolicyUrl.replaceFirst('https://', ''),
+                onTap: _openPrivacy,
+                last: !ref.watch(adServiceProvider).privacyOptionsRequired,
+              ),
+              if (ref.watch(adServiceProvider).privacyOptionsRequired)
                 _ActionRow(
-                  title: 'Signed in',
-                  detail:
-                      ref.watch(accountProvider).email ??
-                      'Your progress moves with your account.',
-                  onTap: _confirmSignOut,
-                )
-              else
-                _ActionRow(
-                  title: 'Save your progress',
-                  // The honest claim, and the whole of it. Not "your progress
-                  // is safe" — an anonymous account already survives a crash;
-                  // what it does NOT survive is a new phone.
-                  detail: 'Keep your stars if you change phones.',
-                  onTap: _openAccount,
+                  icon: Icons.campaign_rounded,
+                  title: 'Ad privacy options',
+                  detail: 'Change what you agreed to for advertising.',
+                  onTap: _openAdPrivacyOptions,
+                  last: true,
                 ),
-            ],
-            _ActionRow(
-              title: 'Reset progress',
-              detail: 'Erase every star and start from level 1.',
-              onTap: _confirmReset,
-              destructive: true,
-            ),
-            // Required by Play for any app that lets people create accounts,
-            // and it must be reachable IN the app rather than only on the web.
-            if (ref.watch(accountProvider).available)
-              _ActionRow(
-                title: 'Delete account',
-                detail: 'Remove your account and everything stored with it.',
-                onTap: _confirmDeleteAccount,
-                destructive: true,
-              ),
+            ]),
 
+            // LAST, and in its own frame.
+            //
+            // These two used to sit in the middle of the list at the same
+            // weight as Haptics, separated only by being red. Putting them at
+            // the bottom behind their own border is the difference between a
+            // control you can reach and one you have to decide to reach.
             SizedBox(height: tokens.space5),
-            _SectionLabel('About'),
-            _ActionRow(
-              title: 'Privacy policy',
-              detail: kPrivacyPolicyUrl.replaceFirst('https://', ''),
-              onTap: _openPrivacy,
+            _SectionHeader(
+              icon: Icons.warning_rounded,
+              label: 'Danger zone',
+              danger: true,
             ),
-            if (ref.watch(adServiceProvider).privacyOptionsRequired)
-              _ActionRow(
-                title: 'Ad privacy options',
-                detail: 'Change what you agreed to for advertising.',
-                onTap: _openAdPrivacyOptions,
-              ),
+            _Group(
+              danger: true,
+              children: [
+                _ActionRow(
+                  icon: Icons.restart_alt_rounded,
+                  title: 'Reset progress',
+                  detail: 'Erase every star and start from level 1.',
+                  onTap: _confirmReset,
+                  destructive: true,
+                  last: !account.available,
+                ),
+                // Required by Play for any app that lets people create
+                // accounts, and it must be reachable IN the app rather than
+                // only on the web.
+                if (account.available)
+                  _ActionRow(
+                    icon: Icons.person_remove_rounded,
+                    title: 'Delete account',
+                    detail: 'Remove your account and everything with it.',
+                    onTap: _confirmDeleteAccount,
+                    destructive: true,
+                    last: true,
+                  ),
+              ],
+            ),
+
+            SizedBox(height: tokens.space4),
             Padding(
               padding: EdgeInsets.symmetric(vertical: tokens.space3),
               child: Row(
@@ -604,14 +684,17 @@ class _RemoveAdsRow extends StatelessWidget {
 
     if (adsRemoved) {
       return Container(
-        padding: EdgeInsets.symmetric(vertical: tokens.space3),
+        padding: EdgeInsets.symmetric(
+          horizontal: tokens.space3,
+          vertical: tokens.space3,
+        ),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: tokens.hairline)),
         ),
         child: Row(
           children: [
-            Icon(Icons.check_rounded, size: 18, color: tokens.accentWarm),
-            SizedBox(width: tokens.space2),
+            _RowIcon(icon: Icons.check_circle_rounded, active: true),
+            SizedBox(width: tokens.space3),
             Expanded(
               child: Text(
                 'Ads removed — thank you',
@@ -631,13 +714,17 @@ class _RemoveAdsRow extends StatelessWidget {
       semanticLabel: 'Remove ads',
       scale: 0.99,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: tokens.space3),
+        padding: EdgeInsets.symmetric(
+          horizontal: tokens.space3,
+          vertical: tokens.space3,
+        ),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: tokens.hairline)),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _RowIcon(icon: Icons.block_rounded),
+            SizedBox(width: tokens.space3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -646,12 +733,13 @@ class _RemoveAdsRow extends StatelessWidget {
                     'Remove ads',
                     style: actionStyle(tokens).copyWith(fontSize: 15),
                   ),
-                  SizedBox(height: tokens.space1),
+                  SizedBox(height: 2),
                   Text(
-                    'Stops the ads between levels, for good. Hint videos stay '
-                    'available if you ever want one.',
+                    // Says what it does NOT do as well, so nobody buys it
+                    // expecting hints to become free.
+                    'No ads between levels. Hint videos stay.',
                     style: bodyStyle(tokens)
-                        .copyWith(fontSize: 13, height: 1.45),
+                        .copyWith(fontSize: 12, height: 1.4),
                   ),
                 ],
               ),
@@ -679,17 +767,220 @@ class _RemoveAdsRow extends StatelessWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  final String text;
+/// A section's name, with a glyph and a rule out to the edge.
+///
+/// **This screen is app furniture, and may look like it.** The no-cards rule
+/// in CLAUDE.md is about the HOME screen, where every bordered box reads as a
+/// piece of an app rather than a game. Settings IS an app surface — the
+/// reference this was rebuilt against groups every setting into a framed panel
+/// and is better for it. What does carry over is the palette: quiet glyphs and
+/// hairlines, never the reference's neon.
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool danger;
 
-  const _SectionLabel(this.text);
+  const _SectionHeader({
+    required this.icon,
+    required this.label,
+    this.danger = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+    final color = danger ? kDestructive : tokens.textMuted;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: tokens.space3),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 15, color: color),
+          ),
+          SizedBox(width: tokens.space2),
+          Text(
+            label.toUpperCase(),
+            style: labelStyle(tokens).copyWith(
+              color: color,
+              letterSpacing: 1.8,
+            ),
+          ),
+          SizedBox(width: tokens.space3),
+          // Carries the eye along the row and gives the label somewhere to
+          // end. One hairline; the reference draws four corner brackets, which
+          // is its language rather than ours.
+          Expanded(
+            child: Container(height: 1, color: tokens.hairline),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The destructive red, in one place.
+const Color kDestructive = Color(0xFFC85F72);
+
+/// The panel a section's rows sit in.
+///
+/// Rows used to be loose on the ground with a hairline under each, so six
+/// sections and thirteen rows read as one undifferentiated column and the only
+/// thing separating "Haptics" from "Delete account" was the color of the text.
+class _Group extends StatelessWidget {
+  final List<Widget> children;
+  final bool danger;
+
+  const _Group({required this.children, this.danger = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: tokens.surfaceRaised,
+        borderRadius: BorderRadius.circular(tokens.panelRadius),
+        border: Border.all(
+          color: danger
+              ? kDestructive.withValues(alpha: 0.35)
+              : tokens.hairline,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: children),
+    );
+  }
+}
+
+/// Something that is not a row, sitting inside a group.
+class _GroupInset extends StatelessWidget {
+  final Widget child;
+
+  const _GroupInset({required this.child});
 
   @override
   Widget build(BuildContext context) {
     final tokens = PourfectTokens.of(context);
     return Padding(
-      padding: EdgeInsets.only(bottom: tokens.space2),
-      child: Text(text.toUpperCase(), style: labelStyle(tokens)),
+      padding: EdgeInsets.fromLTRB(
+        tokens.space3,
+        0,
+        tokens.space3,
+        tokens.space3,
+      ),
+      child: child,
+    );
+  }
+}
+
+/// The player, at the top of their own settings.
+class _PlayerHeader extends StatelessWidget {
+  final AccountState account;
+  final int solved;
+  final int stars;
+  final VoidCallback onRename;
+
+  const _PlayerHeader({
+    required this.account,
+    required this.solved,
+    required this.stars,
+    required this.onRename,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+
+    return Pressable(
+      onPressed: onRename,
+      semanticLabel: 'Your name',
+      scale: 0.99,
+      child: Container(
+        padding: EdgeInsets.all(tokens.space4),
+        decoration: BoxDecoration(
+          color: tokens.surfaceRaised,
+          borderRadius: BorderRadius.circular(tokens.panelRadius),
+          border: Border.all(color: tokens.hairline),
+        ),
+        child: Row(
+          children: [
+            PlayerCrest(
+              seed: account.userId,
+              signedIn: account.signedIn,
+              size: 46,
+            ),
+            SizedBox(width: tokens.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    account.handle ?? 'Naming you…',
+                    style: titleStyle(tokens).copyWith(fontSize: 18),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: tokens.space1),
+                  Text(
+                    // States what the account actually buys, and nothing
+                    // more. An anonymous account survives a crash; what it
+                    // does not survive is a new phone.
+                    account.signedIn
+                        ? (account.email ?? 'Signed in')
+                        : 'Playing as a guest',
+                    style: bodyStyle(tokens).copyWith(fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: tokens.space3),
+            _HeaderStat(value: solved, label: 'SOLVED'),
+            SizedBox(width: tokens.space3),
+            _HeaderStat(
+              value: stars,
+              label: 'STARS',
+              color: tokens.accentWarm,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderStat extends StatelessWidget {
+  final int value;
+  final String label;
+  final Color? color;
+
+  const _HeaderStat({required this.value, required this.label, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          value.toString().padLeft(2, '0'),
+          style: numericStyle(tokens, size: 16).copyWith(
+            color: color ?? tokens.textPrimary,
+          ),
+        ),
+        Text(label, style: labelStyle(tokens).copyWith(fontSize: 9)),
+      ],
     );
   }
 }
@@ -697,16 +988,23 @@ class _SectionLabel extends StatelessWidget {
 /// A row with no box around it — a hairline underneath is enough separation,
 /// and boxing every setting is what makes a settings screen look like a form.
 class _ToggleRow extends StatelessWidget {
+  final IconData icon;
   final String title;
   final String detail;
   final bool value;
   final ValueChanged<bool> onChanged;
 
+  /// Drops the divider, so the last row does not draw a line onto the panel's
+  /// own bottom edge.
+  final bool last;
+
   const _ToggleRow({
+    required this.icon,
     required this.title,
     required this.detail,
     required this.value,
     required this.onChanged,
+    this.last = false,
   });
 
   @override
@@ -718,13 +1016,22 @@ class _ToggleRow extends StatelessWidget {
       semanticLabel: '$title, ${value ? "on" : "off"}',
       scale: 0.99,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: tokens.space3),
+        padding: EdgeInsets.symmetric(
+          horizontal: tokens.space3,
+          vertical: tokens.space3,
+        ),
         decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: tokens.hairline)),
+          border: last
+              ? null
+              : Border(bottom: BorderSide(color: tokens.hairline)),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // The glyph is what makes a list of thirteen rows scannable.
+            // Muted, and it brightens with the switch — so the state is
+            // legible from the left edge as well as the right.
+            _RowIcon(icon: icon, active: value),
+            SizedBox(width: tokens.space3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -733,11 +1040,11 @@ class _ToggleRow extends StatelessWidget {
                     title,
                     style: actionStyle(tokens).copyWith(fontSize: 15),
                   ),
-                  SizedBox(height: tokens.space1),
+                  SizedBox(height: 2),
                   Text(
                     detail,
                     style: bodyStyle(tokens)
-                        .copyWith(fontSize: 13, height: 1.45),
+                        .copyWith(fontSize: 12, height: 1.4),
                   ),
                 ],
               ),
@@ -747,6 +1054,41 @@ class _ToggleRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A settings row's glyph, in its own tile.
+class _RowIcon extends StatelessWidget {
+  final IconData icon;
+  final bool active;
+  final bool destructive;
+
+  const _RowIcon({
+    required this.icon,
+    this.active = false,
+    this.destructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+    final color = destructive
+        ? kDestructive
+        : active
+            ? tokens.accent
+            : tokens.textMuted;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: active || destructive ? 0.14 : 0.07),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, size: 18, color: color),
     );
   }
 }
@@ -798,16 +1140,20 @@ class _Switch extends StatelessWidget {
 }
 
 class _ActionRow extends StatelessWidget {
+  final IconData icon;
   final String title;
   final String detail;
   final VoidCallback onTap;
   final bool destructive;
+  final bool last;
 
   const _ActionRow({
+    required this.icon,
     required this.title,
     required this.detail,
     required this.onTap,
     this.destructive = false,
+    this.last = false,
   });
 
   @override
@@ -819,13 +1165,19 @@ class _ActionRow extends StatelessWidget {
       semanticLabel: title,
       scale: 0.99,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: tokens.space3),
+        padding: EdgeInsets.symmetric(
+          horizontal: tokens.space3,
+          vertical: tokens.space3,
+        ),
         decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: tokens.hairline)),
+          border: last
+              ? null
+              : Border(bottom: BorderSide(color: tokens.hairline)),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _RowIcon(icon: icon, destructive: destructive),
+            SizedBox(width: tokens.space3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -834,13 +1186,16 @@ class _ActionRow extends StatelessWidget {
                     title,
                     style: actionStyle(
                       tokens,
-                      color: destructive
-                          ? const Color(0xFFC85F72)
-                          : tokens.textPrimary,
+                      color: destructive ? kDestructive : tokens.textPrimary,
                     ).copyWith(fontSize: 15),
                   ),
-                  SizedBox(height: tokens.space1),
-                  Text(detail, style: bodyStyle(tokens).copyWith(fontSize: 13)),
+                  SizedBox(height: 2),
+                  Text(
+                    detail,
+                    style: bodyStyle(tokens).copyWith(fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -868,10 +1223,12 @@ class _SymbolPreview extends StatelessWidget {
         horizontal: tokens.space3,
         vertical: tokens.space3,
       ),
+      // No border of its own. It sits INSIDE the group now, and a bordered
+      // box within a bordered box is two frames arguing about which one is
+      // the container. The ground tint alone separates it.
       decoration: BoxDecoration(
-        color: tokens.surfaceRaised,
+        color: tokens.surface.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: tokens.hairline),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,

@@ -504,6 +504,39 @@ settings screen simply was not there. The cheap defence is a test that merely
 CONSTRUCTS every Notifier a screen can reach; it catches this class of bug in
 milliseconds instead of a build-install-screenshot round trip.
 
+## Settings is app furniture, and may look like it
+
+The no-cards rule below is about the HOME screen, where every bordered box
+reads as a piece of an app rather than a game. Settings is the opposite case: a
+preferences list IS app furniture, and Snake Classic's — the reference this was
+rebuilt against — groups every setting into a framed panel and is far better
+for it.
+
+What was wrong here was not the absence of decoration. It was thirteen rows at
+identical weight, each carrying a two-to-four-line grey paragraph, separated
+only by hairlines, opening on "Sound". Nothing to scan by, nothing grouped, and
+the only thing distinguishing Haptics from Delete account was the color of the
+text.
+
+Four changes, in order of how much they did:
+
+- **A player header.** Crest, handle, solved and stars. The screen now opens on
+  who you are rather than on a volume switch, and it is where a player first
+  meets the handle the server gave them.
+- **Sections carry a glyph and a rule**, and their rows sit in one panel. A
+  glyph per row is what makes thirteen rows scannable; it brightens with its
+  switch, so state is legible from the left edge as well as the right.
+- **The prose is gone.** One line each. The long explanation survives only
+  where the rule is genuinely surprising — bold symbols, and what hiding does
+  to your stars.
+- **A danger zone**, last, behind its own red-tinted border. Reset and Delete
+  used to sit mid-list at the weight of Haptics.
+
+What did NOT carry over from the reference is its neon: the accent glow, the
+corner brackets, the filled category tabs. Tabs were skipped deliberately —
+they earn their place across Snake Classic's many screens of controls, and for
+six sections they would only add a tap and hide things.
+
 ## Everybody has a leaderboard name
 
 The server names every account at creation — `Amber_Cascade_1284`, from this
