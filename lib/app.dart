@@ -1,12 +1,15 @@
 /// App root: theme wiring and navigation.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'state/legal_acceptance.dart';
 import 'state/monetization_controller.dart';
+import 'services/notifications/notification_service.dart';
 import 'state/review_prompter.dart';
 import 'state/providers.dart';
 import 'state/daily_controller.dart';
@@ -105,6 +108,9 @@ class _Shell extends ConsumerStatefulWidget {
 }
 
 class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
+  /// Notification taps, cancelled with the shell.
+  StreamSubscription<PourfectNotification>? _taps;
+
   /// Null until the launch count and stored acceptance have been read.
   bool? _showLegalGate;
 
@@ -152,6 +158,25 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // and whenever the OS decides.
       ref.read(pushServiceProvider).registerIfPermitted();
     });
+
+    // WHERE A TAP GOES. A reminder about today's challenge that opens the hub
+    // has spent the one interruption the player agreed to and delivered them
+    // somewhere they could already get to.
+    //
+    // Subscribed here rather than in the service, because the service has no
+    // business knowing what a route is — it reports which notification was
+    // opened and this decides where that lands.
+    _taps = NotificationService.shared.taps.listen((notification) {
+      if (!mounted) return;
+      switch (notification) {
+        case PourfectNotification.dailyChallenge:
+          _openDaily();
+        case PourfectNotification.unknown:
+          // Deliberately nothing. They are already on the hub, which is the
+          // honest destination for a message this build does not recognise.
+          break;
+      }
+    });
   }
 
   /// Syncs again when the app comes back.
@@ -171,6 +196,7 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _taps?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

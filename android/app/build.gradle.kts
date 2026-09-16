@@ -31,6 +31,14 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // REQUIRED BY flutter_local_notifications, not a general nicety.
+        //
+        // It calls java.time APIs that did not exist before API 26, and this
+        // app ships to minSdk 24. Without desugaring the build fails outright
+        // with a message naming the plugin's classes rather than the cause,
+        // which is a confusing half-hour for whoever meets it first.
+        isCoreLibraryDesugaringEnabled = true
+
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -48,6 +56,12 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Also for flutter_local_notifications: its receivers and the desugar
+        // library push the method count past the 65k dex limit. Harmless on
+        // its own — every device this ships to loads multiple dex files
+        // natively — but the build fails without it.
+        multiDexEnabled = true
     }
 
     signingConfigs {
@@ -109,4 +123,11 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // The desugar runtime that `isCoreLibraryDesugaringEnabled` above needs.
+    // Version is coupled to AGP: too old and the build fails against AGP 9,
+    // too new and it demands a newer AGP than this project pins.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

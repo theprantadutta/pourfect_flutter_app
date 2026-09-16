@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- MUST match NotificationService._channelId. Two names for one channel
+         is how an app ends up with two rows in the player's notification
+         settings, only one of which does anything. -->
+    <string name="default_notification_channel_id">pourfect.reminders</string>
+
+    <!-- tokens.accent (0xFF8FC9E8) verbatim — the same sky blue the app uses
+         for "this one is current". Android tints the white silhouette with it.
+         Copied from lib/ui/theme/tokens.dart; if that moves, move this. -->
+    <color name="notification_accent">#FF8FC9E8</color>
+</resources>

@@ -1,4 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Android 13+ will not deliver a single notification without this, and
+         it fails SILENTLY: no exception, nothing in the log, the player simply
+         never hears from us. firebase_messaging declares it too and the merge
+         would pull it in, but relying on a dependency's manifest for a
+         permission this app genuinely needs means a plugin swap can remove it
+         without anybody noticing. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
         android:label="Pourfect"
         android:name="${applicationName}"
@@ -19,14 +27,33 @@
 
         <!-- The status-bar icon for the evening daily reminder.
 
-             Android IGNORES the colour in a notification icon: it keeps the
+             Android IGNORES the color in a notification icon: it keeps the
              alpha and tints the rest. Pointing this at the launcher icon is
              the usual mistake and renders a featureless grey square, because
-             every opaque pixel becomes the tint colour. ic_notification is a
+             every opaque pixel becomes the tint color. ic_notification is a
              white-on-transparent silhouette of one tube for that reason. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_notification" />
+
+        <!-- The channel FCM posts to when a message arrives with the app dead
+             or backgrounded, which is most of them.
+
+             Without this, Android invents a fallback channel: default
+             importance, a name the player has never seen, and no relationship
+             to the one NotificationService creates. They would then see TWO
+             Pourfect channels in system settings and turning off the wrong one
+             would appear to do nothing. The value must match
+             NotificationService._channelId exactly. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/default_notification_channel_id" />
+
+        <!-- The tint applied to that white silhouette. Our accent, so the icon
+             reads as ours in a crowded shade rather than as system grey. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent" />
 
         <activity
             android:name=".MainActivity"

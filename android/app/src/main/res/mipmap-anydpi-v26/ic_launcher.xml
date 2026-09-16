@@ -10,9 +10,9 @@
   frame than the Play Store icon does.
 
   <monochrome> drives themed icons on Android 13+. The system throws away its
-  colour entirely and tints the alpha with one wallpaper colour, so that asset
+  color entirely and tints the alpha with one wallpaper color, so that asset
   is a flat white silhouette with the balls knocked out as holes. A greyscale
-  copy of the colour icon would look right in a preview and render as a solid
+  copy of the color icon would look right in a preview and render as a solid
   block on a themed launcher.
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">

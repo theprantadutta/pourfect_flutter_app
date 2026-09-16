@@ -5,9 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'dart:async';
+
 import 'app.dart';
 import 'firebase_options.dart';
 import 'services/api/app_env.dart';
+import 'services/notifications/notification_service.dart';
 import 'services/analytics/analytics_service.dart';
 import 'services/licenses.dart';
 import 'services/perf/frame_watch.dart';
@@ -58,6 +61,11 @@ Future<void> main() async {
   } catch (error) {
     developer.log('version unavailable', name: 'startup', error: error);
   }
+
+  // Channel first, listeners second. A message can arrive before the first
+  // frame — a player who tapped a reminder to get here has one waiting — and
+  // `getInitialMessage` is the only place that one is ever delivered.
+  unawaited(NotificationService.shared.start());
 
   runApp(
     ProviderScope(

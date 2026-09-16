@@ -18,6 +18,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 import '../analytics/analytics_service.dart';
+import '../notifications/notification_service.dart';
 import 'api_client.dart';
 import 'api_result.dart';
 
@@ -116,8 +117,31 @@ class PushService {
     }
   }
 
+  /// Asks for permission, by the route that actually raises the dialog.
+  ///
+  /// **On Android this does NOT go through FirebaseMessaging.** Its
+  /// `requestPermission` does not reliably raise the Android 13+ system
+  /// prompt: on a fresh install targeting API 33+ it can return without ever
+  /// asking, leaving the player silently denied while every notification is
+  /// dropped and nothing appears in the log to say why. The
+  /// flutter_local_notifications request is the documented Android path.
+  ///
+  /// It stays on the Firebase path everywhere else, where that call is the
+  /// correct one and raises the iOS prompt properly.
   static Future<PushPermission> _firebaseRequest() async {
     if (!firebaseReady) return PushPermission.denied;
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final granted = await NotificationService.shared
+          .requestAndroidPermission();
+
+      // Null means the plugin could not answer — fall through to Firebase
+      // rather than reporting a denial nobody actually made.
+      if (granted != null) {
+        return granted ? PushPermission.granted : PushPermission.denied;
+      }
+    }
+
     try {
       final settings = await FirebaseMessaging.instance.requestPermission();
       return _translate(settings.authorizationStatus);

@@ -35,7 +35,13 @@ spelling, and organic search is our only acquisition channel.
 The codebase was swept once (319 occurrences) and it must stay swept. Before
 committing:
 
-    grep -ri "colour" --include="*.dart" --include="*.md" lib test tool
+    grep -ri "colour" --include="*.dart" --include="*.md" --include="*.xml"       lib test tool android/app/src/main
+
+**The `.xml` include and the android path were added after the gate missed
+four.** It only ever scanned Dart and Markdown under `lib test tool`, so the
+comments in `AndroidManifest.xml` and the adaptive-icon resources — which
+discuss notification tint colors constantly, and are therefore the likeliest
+files in the repo to drift — were never checked once.
 
 It also happens to match Flutter's own `Color`, so the engine no longer mixes
 `ColorId` with `maxColour` the way it did.
@@ -289,6 +295,50 @@ yesterday is asked again — removing that await fails four of the eleven tests.
 an app installed from Play, so `requestReview()` silently no-ops on a debug
 APK. `[review] asking` in logcat is the only signal that the rules let it
 through; see it on the internal testing track.
+
+## Notifications
+
+`PushService` owns permission and the FCM token — who we may notify and where
+to send it. `NotificationService` owns everything after a message reaches the
+device, and every piece of it exists because the platform does not do it:
+
+- **The channel is created by us.** On Android 8+ the channel, not the
+  notification, owns importance and sound. Without one, FCM invents a fallback
+  with a name the player has never agreed to — and they would see TWO Pourfect
+  rows in system settings, only one of which does anything. The manifest's
+  `default_notification_channel_id` and `NotificationService._channelId` must
+  stay identical for that reason.
+- **Foreground display is done by hand.** FCM shows NOTHING on Android while
+  the app is open; `onMessage` fires and the rest is ours. A reminder that
+  silently does nothing while somebody has the game open is the case most
+  likely to be reported as broken.
+- **`getInitialMessage` is its own path.** A notification that LAUNCHED the app
+  never arrives through `onMessageOpenedApp`, so an app listening only to the
+  stream drops exactly the taps that mattered most.
+
+**The payload key is `kind`, and the value is `daily_reminder`.** Those are the
+SERVER's words — `NotificationJobService` sends
+`["kind"] = "daily_reminder"` — and the first draft of the client invented
+`type` / `daily_challenge` instead. Every reminder tap would have fallen
+through to `unknown` and opened the hub: no error, no log, the whole point of
+the interruption lost. Pinned by a test that asserts the exact string and by
+one asserting the wrong key is NOT recognised.
+
+**Android permission does NOT go through FirebaseMessaging.** Its
+`requestPermission` does not reliably raise the Android 13+ dialog — on a fresh
+install targeting API 33+ it can return without prompting, leaving the player
+silently denied while every notification is dropped and nothing appears in the
+log. `flutter_local_notifications`' own request is the documented path.
+Learned from Snake Classic, which had already paid for it.
+
+**`isCoreLibraryDesugaringEnabled` and `multiDexEnabled` are required by
+`flutter_local_notifications`**, not general hygiene — it calls `java.time`
+APIs that predate our minSdk 24, and its receivers plus the desugar library
+push past the 65k dex limit. This is why the other two projects carry them.
+
+Verified on device: exactly one channel registered for the package,
+`mName=Reminders`, `mImportance=4`, with a description. The delivery path
+itself needs the backend job to fire and has not been seen end to end.
 
 ## Monetization
 
