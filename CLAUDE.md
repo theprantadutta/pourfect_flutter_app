@@ -415,10 +415,19 @@ host VM service and fails here with a connection refused.
 
 What actually works: `FrameWatch` (`services/perf/frame_watch.dart`) uses
 Flutter's own `addTimingsCallback`, so the app measures itself and prints to
-logcat. Profile/debug only.
+logcat.
 
-    flutter build apk --profile --target-platform android-arm64
+**OFF unless asked for.** It used to run in every debug build, reporting a line
+of percentiles every four seconds into a log somebody was almost always reading
+for something else — and burying the `[analytics]`, `[review]` and `[identity]`
+lines that are how the rest of this app gets verified on device. A diagnostic
+that is always on is a diagnostic nobody reads.
+
+    flutter build apk --profile --target-platform android-arm64       --dart-define=FRAME_WATCH=true
     adb logcat | grep '\[frames\]'
+
+`kFrameWatchEnabled` is a `bool.fromEnvironment` compile-time constant, so a
+build without the define carries no branch and never registers the callback.
 
 **Measured on a Samsung A24 (mid-range), driving real pours and undos:**
 

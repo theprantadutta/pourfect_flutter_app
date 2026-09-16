@@ -41,9 +41,11 @@ Future<void> main() async {
     );
   }
 
-  // Profile/debug only — reports build and raster percentiles to logcat every
-  // few seconds of play. `dumpsys gfxinfo` cannot see a Flutter app's frames,
-  // so the app measures itself.
+  // OFF unless asked for: --dart-define=FRAME_WATCH=true. Reports build and
+  // raster percentiles to logcat every few seconds of play, which is the only
+  // way to measure frames here — `dumpsys gfxinfo` cannot see an Impeller
+  // app's frames — but is pure noise when the log is being read for anything
+  // else.
   FrameWatch().start();
 
   // The version rides on the auth handshake, so the server can tell which

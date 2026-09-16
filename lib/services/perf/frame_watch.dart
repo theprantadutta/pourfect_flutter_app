@@ -27,6 +27,21 @@ import 'package:flutter/scheduler.dart';
 /// a dropped frame as far as the player's eye is concerned.
 const Duration kFrameBudget = Duration(microseconds: 16667);
 
+/// Whether to report at all. OFF unless asked for:
+///
+///     flutter run --dart-define=FRAME_WATCH=true
+///     flutter build apk --profile --dart-define=FRAME_WATCH=true
+///
+/// It used to run in every debug build, which meant a line of percentiles
+/// every four seconds in a log somebody was reading for something else. A
+/// diagnostic that is always on is a diagnostic nobody reads — and worse, it
+/// buries the `[analytics]` and `[review]` lines that are how the rest of this
+/// app is verified on device.
+///
+/// A compile-time constant rather than a runtime flag, so a release build has
+/// no branch and no callback at all.
+const bool kFrameWatchEnabled = bool.fromEnvironment('FRAME_WATCH');
+
 class FrameWatch {
   final List<int> _build = [];
   final List<int> _raster = [];
@@ -37,10 +52,14 @@ class FrameWatch {
 
   FrameWatch({this.window = 240});
 
-  /// Starts watching. No-op in release: the callback costs a little per frame
-  /// and players should never pay for our instrumentation.
+  /// Starts watching, if it was asked for.
+  ///
+  /// No-op in release — the callback costs a little per frame and players
+  /// should never pay for our instrumentation — and no-op in debug too unless
+  /// [kFrameWatchEnabled] was set, because the report is noise to anybody who
+  /// is not measuring frames right now.
   void start() {
-    if (kReleaseMode || _callback != null) return;
+    if (!kFrameWatchEnabled || kReleaseMode || _callback != null) return;
 
     _callback = (List<FrameTiming> timings) {
       for (final t in timings) {
