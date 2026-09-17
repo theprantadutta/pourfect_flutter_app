@@ -1,4 +1,10 @@
-# Pourfect
+<p align="center">
+  <img src="generated/store/play_store_icon_512.png" width="128" alt="Pourfect" />
+</p>
+
+<h1 align="center">Pourfect</h1>
+
+<p align="center"><i>Pour, sort, relax.</i></p>
 
 A calm ball-sort puzzle for Android. Pour the balls between tubes until each
 one holds a single color — no timers, no lives, no waiting to play again.
