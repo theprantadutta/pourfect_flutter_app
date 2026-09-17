@@ -805,6 +805,7 @@ class _PlayerHeader extends StatelessWidget {
           children: [
             PlayerCrest(
               seed: account.userId,
+              photoUrl: account.photoUrl,
               signedIn: account.signedIn,
               size: 46,
             ),

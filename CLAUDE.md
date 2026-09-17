@@ -733,6 +733,48 @@ rather than as restraint.
 **The handle is NOT repeated in the row that changes it.** It is already the
 largest thing on the screen; the detail says what tapping does instead.
 
+## The crest wears a photo only for the person in it
+
+The provider's profile picture rides on the session and reaches exactly one
+place: this player's own crest, on this device. It is NOT on a leaderboard row,
+and the entry DTOs still carry a name and nothing else.
+
+That line is the same one the server already drew for `ProfileName`, and for
+the same reason it was drawn: seeding `DisplayName` from a Google account once
+published somebody's real name to a public board without anybody asking. A
+picture shown back to its owner is a courtesy. The same picture on a board is a
+disclosure, and the two are one careless join apart.
+
+**`PhotoUrl` was stored for weeks and read by nothing.** Written on every
+authentication, never returned, never displayed — collected-but-unused personal
+data, which is the worst kind to hold, because it still has to be declared on
+the store listing while buying nobody anything. It is used now, which is the
+other honest way to resolve that.
+
+**Null is the ORDINARY case, not a failure.** Anonymous and email accounts have
+no picture at all, and they are most accounts. The generated ball is the design
+and the photo is the exception, so `PlayerCrest` draws the ball while the image
+loads, if it fails, if the URL is empty, and if there is no URL — there is no
+state in which it draws a hole, a spinner or a broken-image glyph. A crest
+appears on the first frame of the home screen, so a spinner was never the right
+answer.
+
+**`copyWith` cannot write a null, and that is the whole risk here.** Adopting a
+session with no picture leaves whatever was already in state, so the only thing
+standing between that and account B wearing account A's face is that `signOut`
+and `_wipeLocally` replace the ENTIRE state rather than patching it. Pinned by
+a test that switches accounts and fails if either becomes a `copyWith`.
+
+**A stored session predating the field must still load.** Every install that
+already has one wrote it without `photo_url`; reading one back has to produce a
+working session with no picture rather than a null session, which would
+silently sign somebody out on upgrade.
+
+**Not yet seen on hardware.** The fallback is verified on device — the crest
+draws the generated ball against the live backend, which does not return the
+field until it is deployed. The picture itself has only been tested against a
+stubbed server.
+
 ## Everybody has a leaderboard name
 
 The server names every account at creation — `Amber_Cascade_1284`, from this

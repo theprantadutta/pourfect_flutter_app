@@ -245,7 +245,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           children: [
             Row(
               children: [
-                PlayerCrest(seed: account.userId, signedIn: true, size: 56),
+                PlayerCrest(
+                  seed: account.userId,
+                  signedIn: true,
+                  size: 56,
+                  photoUrl: account.photoUrl,
+                ),
                 SizedBox(width: tokens.space3),
                 Expanded(
                   child: Column(

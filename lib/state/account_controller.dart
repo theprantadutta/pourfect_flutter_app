@@ -44,6 +44,7 @@ class AccountState {
     this.userId,
     this.handle,
     this.showOnLeaderboards = true,
+    this.photoUrl,
   });
 
   /// An identity operation is in flight. The UI disables its buttons on this
@@ -71,6 +72,13 @@ class AccountState {
   /// from off to on as the session lands.
   final bool showOnLeaderboards;
 
+  /// The provider's profile picture, for this player's own avatar.
+  ///
+  /// Null for anonymous and email accounts, which is the ORDINARY case — the
+  /// generated crest is the design, not a placeholder waiting to be replaced.
+  /// Only Google accounts ever carry one, and only on their own device.
+  final String? photoUrl;
+
   /// The account the session belongs to, or null before one is known.
   ///
   /// Here rather than read off `AuthService.current` at the point of use: the
@@ -87,6 +95,7 @@ class AccountState {
     String? userId,
     String? handle,
     bool? showOnLeaderboards,
+    String? photoUrl,
   }) => AccountState(
     busy: busy ?? this.busy,
     signedIn: signedIn ?? this.signedIn,
@@ -95,6 +104,7 @@ class AccountState {
     userId: userId ?? this.userId,
     handle: handle ?? this.handle,
     showOnLeaderboards: showOnLeaderboards ?? this.showOnLeaderboards,
+    photoUrl: photoUrl ?? this.photoUrl,
   );
 }
 
@@ -139,6 +149,7 @@ class AccountController extends Notifier<AccountState> {
         userId: session.userId,
         handle: session.displayName,
         showOnLeaderboards: session.showOnLeaderboards,
+        photoUrl: session.photoUrl,
         // PROMOTES ONLY. The server's `is_anonymous` is authoritative about
         // being signed IN, but a session can lag behind a sign-in it has not
         // been re-exchanged for yet, and demoting on that would flicker the

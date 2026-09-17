@@ -236,6 +236,7 @@ class _TopRow extends ConsumerWidget {
                 account.signedIn ? 'Your account' : 'Save your progress',
             child: PlayerCrest(
               seed: account.userId,
+              photoUrl: account.photoUrl,
               signedIn: account.signedIn,
               size: 38,
             ),

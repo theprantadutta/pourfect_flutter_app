@@ -61,6 +61,18 @@ class Session {
   /// money went back.
   final bool adsRevoked;
 
+  /// The provider's profile picture, for THIS player's own avatar.
+  ///
+  /// Scoped exactly as the server scopes it: a picture shown back to the
+  /// person it belongs to is not a disclosure, and the same picture on a
+  /// public leaderboard is. It never leaves this device's own UI — the
+  /// leaderboard rows carry a name and nothing else.
+  ///
+  /// Null for anonymous and email accounts, which is the ORDINARY case and
+  /// not a failure. The generated crest is what the app is built around; this
+  /// is the exception that replaces it when there happens to be one.
+  final String? photoUrl;
+
   const Session({
     required this.accessToken,
     required this.expiresAt,
@@ -71,6 +83,7 @@ class Session {
     required this.isAnonymous,
     required this.authProvider,
     this.adsRevoked = false,
+    this.photoUrl,
   });
 
   /// Whether this can still be used, with room to spare.
@@ -86,6 +99,7 @@ class Session {
     bool? showOnLeaderboards,
     bool? adsRemoved,
     bool? adsRevoked,
+    String? photoUrl,
   }) => Session(
     accessToken: accessToken,
     expiresAt: expiresAt,
@@ -96,6 +110,7 @@ class Session {
     isAnonymous: isAnonymous,
     authProvider: authProvider,
     adsRevoked: adsRevoked ?? this.adsRevoked,
+    photoUrl: photoUrl ?? this.photoUrl,
   );
 
   Map<String, Object?> toJson() => {
@@ -108,6 +123,7 @@ class Session {
     'is_anonymous': isAnonymous,
     'auth_provider': authProvider,
     'ads_revoked': adsRevoked,
+    'photo_url': photoUrl,
   };
 
   static Session? fromJson(Map<String, Object?> json) {
@@ -127,6 +143,7 @@ class Session {
       isAnonymous: json['is_anonymous'] as bool? ?? true,
       authProvider: json['auth_provider'] as String? ?? 'unknown',
       adsRevoked: json['ads_revoked'] as bool? ?? false,
+      photoUrl: json['photo_url'] as String?,
     );
   }
 
@@ -151,6 +168,7 @@ class Session {
       isAnonymous: body['is_anonymous'] as bool? ?? true,
       authProvider: body['auth_provider'] as String? ?? 'unknown',
       adsRevoked: body['ads_revoked'] as bool? ?? false,
+      photoUrl: body['photo_url'] as String?,
     );
   }
 }
