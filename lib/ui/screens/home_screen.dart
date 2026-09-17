@@ -131,6 +131,21 @@ class HomeScreen extends ConsumerWidget {
                       label: 'STREAK',
                       color: tokens.accent,
                     ),
+                  // THE ONLY THING SAYING THIS ROW IS A CONTROL.
+                  //
+                  // It opens Statistics — a whole screen of content — and was
+                  // drawn as three plain figures, which reads as a caption.
+                  // Reported as "how can I go to the statistics screen,
+                  // there's no button for that": the button was there, it just
+                  // did not look like one.
+                  Padding(
+                    padding: EdgeInsets.only(top: tokens.space1),
+                    child: Icon(
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: tokens.dimText,
+                    ),
+                  ),
                 ],
               ),
             ),

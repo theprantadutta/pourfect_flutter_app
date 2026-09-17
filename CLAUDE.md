@@ -696,6 +696,43 @@ corner brackets, the filled category tabs. Tabs were skipped deliberately —
 they earn their place across Snake Classic's many screens of controls, and for
 six sections they would only add a tap and hide things.
 
+## The account screen, and where Statistics is reached from
+
+The crest on the home screen opens `AccountScreen`, and for a signed-in player
+it used to open three sentences: a name, an email, and a line saying the
+controls were in Settings. Built that way ON PURPOSE, to avoid a second copy of
+Settings — and it avoided content instead. A profile screen that tells you
+nothing about yourself is worse than a duplicated row.
+
+It now leads with **what is attached to the account**: solved, stars, streak and
+rank, above one sentence saying those are what move to a new phone. That is the
+question tapping your own avatar asks. Under it sit the identity controls only —
+rename, leaderboard visibility — then Statistics, then sign-out in its own
+red-bordered group, with deletion pointed at Settings rather than repeated here.
+
+**`Statistics` is linked from here because it had no entry point.** It was
+reachable only by tapping the stat row on the home screen, which is drawn as
+plain text at caption weight and reads as a label rather than a control — so a
+whole screen of content went unfound by the person who built it. Two fixes, both
+needed: the row got a chevron so it looks like what it is, and a profile now
+carries the link, because a profile is where somebody looks for their numbers.
+
+**`settings_rows.dart` and `rename_dialog.dart` are shared, not copied.**
+`SectionHeader`, `Group`, `ToggleRow` and `ActionRow` were private to Settings;
+two screens of preference rows that diverge is how one of them ends up looking
+older than the other. The rename box moved for a harder reason — it owns its own
+`TextEditingController` now, because the call site disposing one while the exit
+animation still ran threw `A TextEditingController was used after being
+disposed` on every cancel.
+
+**A detail line gets ONE line and is ellipsised.** That is the Settings rule and
+it holds here, so the copy is written to fit the row rather than the row growing
+for it. A 47-character detail clipped to "and your a…", which reads as a bug
+rather than as restraint.
+
+**The handle is NOT repeated in the row that changes it.** It is already the
+largest thing on the screen; the detail says what tapping does instead.
+
 ## Everybody has a leaderboard name
 
 The server names every account at creation — `Amber_Cascade_1284`, from this

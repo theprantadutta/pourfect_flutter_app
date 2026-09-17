@@ -18,13 +18,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/api/identity.dart';
 import '../../state/account_controller.dart';
 import '../../state/progress_repository.dart';
+import '../../state/providers.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
+import '../../state/play_history.dart';
+import '../widgets/rename_dialog.dart';
+import '../widgets/settings_rows.dart';
 import '../widgets/player_crest.dart';
 import '../widgets/pressable.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
-  const AccountScreen({super.key});
+  const AccountScreen({super.key, this.onOpenStatistics});
+
+  /// Where the Statistics row goes. Null in the signed-out case and in tests,
+  /// where the row is not drawn at all.
+  final VoidCallback? onOpenStatistics;
 
   @override
   ConsumerState<AccountScreen> createState() => _AccountScreenState();
@@ -200,14 +208,29 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
   /// What the crest opens once there is an account behind it.
   ///
-  /// Deliberately NOT a second copy of Settings. It answers the one question
-  /// tapping your own avatar asks — who am I signed in as, and what can I do
-  /// about it — and sends everything else to the screen that owns it.
+  /// **The first version of this was three sentences and nothing else**, and
+  /// the honest verdict on it was "what even is this". It was built to avoid
+  /// duplicating Settings and ended up avoiding content instead — a profile
+  /// screen that told you nothing about yourself.
+  ///
+  /// The thing a player actually wants here is the answer to "what is attached
+  /// to this account", so that is what it leads with: the four figures that
+  /// say what would travel to a new phone. The controls under them are the
+  /// identity ones only; the deep numbers live in Statistics and the settings
+  /// live in Settings, and this links to both rather than reprinting them.
   Widget _signedIn(
     BuildContext context,
     PourfectTokens tokens,
     AccountState account,
   ) {
+    final progress = ref.watch(progressProvider);
+    final stars = ref.read(progressProvider.notifier).totalStars;
+    final streak = ref.read(playHistoryProvider.notifier).currentStreak();
+    final rank = switch (ref.watch(campaignRankProvider)) {
+      AsyncData(:final value?) => '#$value',
+      _ => '—',
+    };
+
     return Scaffold(
       backgroundColor: tokens.surface,
       appBar: AppBar(
@@ -222,26 +245,22 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           children: [
             Row(
               children: [
-                PlayerCrest(
-                  seed: account.userId,
-                  signedIn: true,
-                  size: 52,
-                ),
+                PlayerCrest(seed: account.userId, signedIn: true, size: 56),
                 SizedBox(width: tokens.space3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Shrinks rather than crops, same as the Settings
-                      // header: half a name with an ellipsis on it is worse
-                      // than a small whole one.
+                      // Shrinks rather than crops, like the Settings header:
+                      // half a name with an ellipsis on it is worse than a
+                      // small whole one.
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
                           account.handle ?? 'Naming you…',
-                          style: titleStyle(tokens).copyWith(fontSize: 20),
+                          style: titleStyle(tokens).copyWith(fontSize: 22),
                           maxLines: 1,
                         ),
                       ),
@@ -259,25 +278,192 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             ),
 
             SizedBox(height: tokens.space5),
+            SectionHeader(
+              icon: Icons.inventory_2_rounded,
+              label: 'What travels with you',
+            ),
+            Group(children: [
+              GroupInset(
+                child: Padding(
+                  padding: EdgeInsets.only(top: tokens.space3),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _Stat(value: '${progress.length}', label: 'SOLVED'),
+                      _Stat(
+                        value: '$stars',
+                        label: 'STARS',
+                        color: tokens.accentWarm,
+                      ),
+                      _Stat(
+                        value: streak > 0 ? '${streak}d' : '—',
+                        label: 'STREAK',
+                        color: tokens.accent,
+                      ),
+                      _Stat(value: rank, label: 'RANK', color: tokens.accent),
+                    ],
+                  ),
+                ),
+              ),
+            ]),
+            SizedBox(height: tokens.space2),
             Text(
-              // The honest claim and the whole of it — the same sentence the
-              // signed-out half of this screen makes, now in the past tense.
-              'Your stars, streak and leaderboard name move with this account, '
-              'so a new phone starts where you left off.',
-              style: bodyStyle(tokens),
+              // The honest claim and the whole of it — an account moves this
+              // to a new phone, and that is all it promises.
+              'These move with your account, so a new phone starts where you '
+              'left off.',
+              style: bodyStyle(tokens).copyWith(fontSize: 12),
             ),
 
             SizedBox(height: tokens.space5),
-            // Renaming and leaving the boards both live in Settings, and they
-            // stay there. Two places to change one name is two places for the
-            // answer to differ.
+            SectionHeader(
+              icon: Icons.badge_rounded,
+              label: 'Your name',
+            ),
+            Group(children: [
+              // Says what tapping DOES, not the handle again — that is
+              // already the largest thing on the screen, six rows up. Same
+              // reasoning as the Settings row, and the same words.
+              ActionRow(
+                icon: Icons.edit_rounded,
+                title: 'Change your name',
+                detail: 'How you appear on the boards.',
+                onTap: _rename,
+              ),
+              ToggleRow(
+                icon: Icons.public_rounded,
+                title: 'Show me on leaderboards',
+                detail: 'Off hides your name and rank. Stars still count.',
+                value: account.showOnLeaderboards,
+                onChanged: _setVisibility,
+                last: true,
+              ),
+            ]),
+
+            if (widget.onOpenStatistics != null) ...[
+            SizedBox(height: tokens.space5),
+            SectionHeader(
+              icon: Icons.insights_rounded,
+              label: 'Your play',
+            ),
+            Group(children: [
+              // WHERE THE STATISTICS SCREEN IS REACHED FROM.
+              //
+              // It was only ever reachable by tapping the stat row on the home
+              // screen, which is drawn as plain text and reads as a caption
+              // rather than a control — so a whole screen of content went
+              // unfound. A profile is where somebody looks for their numbers.
+              ActionRow(
+                icon: Icons.bar_chart_rounded,
+                title: 'Statistics',
+                // ActionRow gives a detail ONE line and ellipsises the rest —
+                // that is the Settings rule, so the copy fits the row rather
+                // than the row growing for it. The first draft ran to 47
+                // characters and clipped at "and your a…", which reads as a
+                // bug rather than as restraint.
+                detail: 'Your times, activity and every level.',
+                onTap: widget.onOpenStatistics!,
+                last: true,
+              ),
+            ]),
+            ],
+
+            SizedBox(height: tokens.space5),
+            SectionHeader(
+              icon: Icons.logout_rounded,
+              label: 'Session',
+              danger: true,
+            ),
+            Group(
+              danger: true,
+              children: [
+                ActionRow(
+                  icon: Icons.logout_rounded,
+                  title: 'Sign out',
+                  // States what it does NOT do, because that is the fear.
+                  detail: 'Your progress stays on this phone.',
+                  onTap: _confirmSignOut,
+                  destructive: true,
+                  last: true,
+                ),
+              ],
+            ),
+            SizedBox(height: tokens.space3),
             Text(
-              'Your name, and whether you appear on the leaderboards, are in '
-              'Settings.',
-              style: bodyStyle(tokens).copyWith(fontSize: 13),
+              'Deleting your account is in Settings, with the other '
+              'irreversible things.',
+              style: bodyStyle(tokens).copyWith(fontSize: 12),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Renames through the SAME dialog Settings uses.
+  Future<void> _rename() async {
+    final chosen = await showRenameDialog(
+      context,
+      ref.read(accountProvider).handle ?? '',
+    );
+    if (chosen == null || !mounted) return;
+
+    final problem = await ref.read(accountProvider.notifier).renameHandle(chosen);
+    if (problem != null && mounted) _toast(problem);
+  }
+
+  Future<void> _setVisibility(bool visible) async {
+    final ok = await ref
+        .read(accountProvider.notifier)
+        .setLeaderboardVisibility(visible);
+    // The switch has NOT moved, because the server never agreed. Saying so is
+    // the point: a control that looks like it worked on a request that did not
+    // tells somebody they are hidden while they are still listed.
+    if (!ok && mounted) _toast('Could not reach the server, so nothing changed.');
+  }
+
+  Future<void> _confirmSignOut() async {
+    final tokens = PourfectTokens.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: tokens.surfaceRaised,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.panelRadius),
+          side: BorderSide(color: tokens.hairline),
+        ),
+        title: Text('Sign out?', style: titleStyle(tokens)),
+        content: Text(
+          'Your progress stays on this phone. You can sign back in any time '
+          'to pick it up somewhere else.',
+          style: bodyStyle(tokens),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Stay signed in',
+              style: actionStyle(tokens, color: tokens.textMuted),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Sign out', style: actionStyle(tokens)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+    await ref.read(accountProvider.notifier).signOut();
+  }
+
+  void _toast(String message) {
+    final tokens = PourfectTokens.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: bodyStyle(tokens)),
+        backgroundColor: tokens.surfaceRaised,
       ),
     );
   }
@@ -573,6 +759,33 @@ class _GoogleButton extends StatelessWidget {
           style: actionStyle(tokens, color: tokens.textPrimary),
         ),
       ),
+    );
+  }
+}
+
+/// One number and its unit, for the row at the top of the account screen.
+class _Stat extends StatelessWidget {
+  const _Stat({required this.value, required this.label, this.color});
+
+  final String value;
+  final String label;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = PourfectTokens.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: numericStyle(tokens, size: 20).copyWith(
+            color: color ?? tokens.textPrimary,
+          ),
+        ),
+        SizedBox(height: 2),
+        Text(label, style: labelStyle(tokens).copyWith(fontSize: 9)),
+      ],
     );
   }
 }

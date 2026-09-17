@@ -302,7 +302,8 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     Navigator.of(context).push(
       PourfectPageRoute<void>(
         settings: const RouteSettings(name: '/account'),
-        builder: (context) => const AccountScreen(),
+        builder: (context) =>
+            AccountScreen(onOpenStatistics: _openStatistics),
       ),
     );
   }

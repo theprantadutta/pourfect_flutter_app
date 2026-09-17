@@ -11,7 +11,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/analytics/analytics_service.dart';
-import '../../services/api/leaderboard_api.dart';
 import '../../services/iap/billing_service.dart';
 import '../../state/monetization_controller.dart';
 import '../../state/play_history.dart';
@@ -26,6 +25,8 @@ import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/ball.dart';
 import '../widgets/player_crest.dart';
+import '../widgets/rename_dialog.dart';
+import '../widgets/settings_rows.dart';
 import '../widgets/pressable.dart';
 
 /// The hosted legal documents. Confirmed live, and the same host Snake
@@ -280,11 +281,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // exit animation. Disposing at that moment left the field rebuilding
     // against a dead controller — "A TextEditingController was used after
     // being disposed", thrown on cancel, every time.
-    final chosen = await showDialog<String>(
-      context: context,
-      builder: (context) => _RenameDialog(
-        initial: ref.read(accountProvider).handle ?? '',
-      ),
+    final chosen = await showRenameDialog(
+      context,
+      ref.read(accountProvider).handle ?? '',
     );
 
     if (chosen == null || !mounted) return;
@@ -449,16 +448,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
 
             SizedBox(height: tokens.space5),
-            _SectionHeader(icon: Icons.graphic_eq_rounded, label: 'Feel'),
-            _Group(children: [
-              _ToggleRow(
+            SectionHeader(icon: Icons.graphic_eq_rounded, label: 'Feel'),
+            Group(children: [
+              ToggleRow(
                 icon: Icons.volume_up_rounded,
                 title: 'Sound',
                 detail: 'Never pauses your music.',
                 value: settings.soundEnabled,
                 onChanged: controller.setSound,
               ),
-              _ToggleRow(
+              ToggleRow(
                 icon: Icons.vibration_rounded,
                 title: 'Haptics',
                 detail: 'A tick as each ball lands.',
@@ -469,12 +468,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ]),
 
             SizedBox(height: tokens.space5),
-            _SectionHeader(
+            SectionHeader(
               icon: Icons.visibility_rounded,
               label: 'Visibility',
             ),
-            _Group(children: [
-              _ToggleRow(
+            Group(children: [
+              ToggleRow(
                 icon: Icons.category_rounded,
                 title: 'Bold symbols',
                 // Names the condition explicitly. "Bold symbols" is the honest
@@ -489,15 +488,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // INSIDE the group, directly under the switch that changes it.
               // A preview separated from its control is a picture; touching
               // the two makes it a demonstration.
-              _GroupInset(child: _SymbolPreview(bold: settings.boldSymbols)),
+              GroupInset(child: _SymbolPreview(bold: settings.boldSymbols)),
             ]),
 
             SizedBox(height: tokens.space5),
-            _SectionHeader(
+            SectionHeader(
               icon: Icons.leaderboard_rounded,
               label: 'Leaderboard',
             ),
-            _Group(children: [
+            Group(children: [
               // The name comes FIRST, because it is the thing a player came
               // looking for. The switch under it is the thing they did not
               // know they had.
@@ -505,13 +504,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // largest thing on the screen, at the top, so repeating it here
               // was the same value printed twice and neither one reading as a
               // control.
-              _ActionRow(
+              ActionRow(
                 icon: Icons.badge_rounded,
                 title: 'Change your name',
                 detail: 'How you appear on the boards.',
                 onTap: _renameHandle,
               ),
-              _ToggleRow(
+              ToggleRow(
                 icon: Icons.public_rounded,
                 title: 'Show me on leaderboards',
                 detail: 'Off hides your name and rank. Stars still count.',
@@ -522,11 +521,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ]),
 
             SizedBox(height: tokens.space5),
-            _SectionHeader(
+            SectionHeader(
               icon: Icons.favorite_rounded,
               label: 'Support',
             ),
-            _Group(children: [
+            Group(children: [
               _RemoveAdsRow(
                 adsRemoved: money.adsRemoved,
                 price: ref.watch(billingServiceProvider).removeAdsProduct?.price,
@@ -534,7 +533,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               // Play requires a user-visible way to restore a purchase, and a
               // player who reinstalls needs it to be findable.
-              _ActionRow(
+              ActionRow(
                 icon: Icons.restore_rounded,
                 title: 'Restore purchases',
                 detail: 'If you bought Remove Ads before.',
@@ -544,16 +543,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ]),
 
             SizedBox(height: tokens.space5),
-            _SectionHeader(
+            SectionHeader(
               icon: Icons.cloud_done_rounded,
               label: 'Account',
             ),
-            _Group(children: [
+            Group(children: [
               // Hidden entirely in a build with no Firebase, rather than shown
               // as a control that cannot work.
               if (account.available)
                 if (account.signedIn)
-                  _ActionRow(
+                  ActionRow(
                     icon: Icons.check_circle_rounded,
                     title: 'Signed in',
                     detail: account.email ?? 'Your progress moves with you.',
@@ -561,7 +560,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     last: true,
                   )
                 else
-                  _ActionRow(
+                  ActionRow(
                     icon: Icons.cloud_upload_rounded,
                     title: 'Save your progress',
                     // The honest claim, and the whole of it. Not "your
@@ -575,12 +574,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ]),
 
             SizedBox(height: tokens.space5),
-            _SectionHeader(
+            SectionHeader(
               icon: Icons.info_outline_rounded,
               label: 'About',
             ),
-            _Group(children: [
-              _ActionRow(
+            Group(children: [
+              ActionRow(
                 icon: Icons.shield_rounded,
                 title: 'Privacy policy',
                 detail: kPrivacyPolicyUrl.replaceFirst('https://', ''),
@@ -588,7 +587,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 last: !ref.watch(adServiceProvider).privacyOptionsRequired,
               ),
               if (ref.watch(adServiceProvider).privacyOptionsRequired)
-                _ActionRow(
+                ActionRow(
                   icon: Icons.campaign_rounded,
                   title: 'Ad privacy options',
                   detail: 'Change what you agreed to for advertising.',
@@ -604,15 +603,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             // the bottom behind their own border is the difference between a
             // control you can reach and one you have to decide to reach.
             SizedBox(height: tokens.space5),
-            _SectionHeader(
+            SectionHeader(
               icon: Icons.warning_rounded,
               label: 'Danger zone',
               danger: true,
             ),
-            _Group(
+            Group(
               danger: true,
               children: [
-                _ActionRow(
+                ActionRow(
                   icon: Icons.restart_alt_rounded,
                   title: 'Reset progress',
                   detail: 'Erase every star and start from level 1.',
@@ -624,7 +623,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 // accounts, and it must be reachable IN the app rather than
                 // only on the web.
                 if (account.available)
-                  _ActionRow(
+                  ActionRow(
                     icon: Icons.person_remove_rounded,
                     title: 'Delete account',
                     detail: 'Remove your account and everything with it.',
@@ -692,7 +691,7 @@ class _RemoveAdsRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _RowIcon(icon: Icons.check_circle_rounded, active: true),
+            RowIcon(icon: Icons.check_circle_rounded, active: true),
             SizedBox(width: tokens.space3),
             Expanded(
               child: Text(
@@ -722,7 +721,7 @@ class _RemoveAdsRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _RowIcon(icon: Icons.block_rounded),
+            RowIcon(icon: Icons.block_rounded),
             SizedBox(width: tokens.space3),
             Expanded(
               child: Column(
@@ -774,112 +773,6 @@ class _RemoveAdsRow extends StatelessWidget {
 /// reference this was rebuilt against groups every setting into a framed panel
 /// and is better for it. What does carry over is the palette: quiet glyphs and
 /// hairlines, never the reference's neon.
-class _SectionHeader extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool danger;
-
-  const _SectionHeader({
-    required this.icon,
-    required this.label,
-    this.danger = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-    final color = danger ? kDestructive : tokens.textMuted;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: tokens.space3),
-      child: Row(
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 15, color: color),
-          ),
-          SizedBox(width: tokens.space2),
-          Text(
-            label.toUpperCase(),
-            style: labelStyle(tokens).copyWith(
-              color: color,
-              letterSpacing: 1.8,
-            ),
-          ),
-          SizedBox(width: tokens.space3),
-          // Carries the eye along the row and gives the label somewhere to
-          // end. One hairline; the reference draws four corner brackets, which
-          // is its language rather than ours.
-          Expanded(
-            child: Container(height: 1, color: tokens.hairline),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The destructive red, in one place.
-const Color kDestructive = Color(0xFFC85F72);
-
-/// The panel a section's rows sit in.
-///
-/// Rows used to be loose on the ground with a hairline under each, so six
-/// sections and thirteen rows read as one undifferentiated column and the only
-/// thing separating "Haptics" from "Delete account" was the color of the text.
-class _Group extends StatelessWidget {
-  final List<Widget> children;
-  final bool danger;
-
-  const _Group({required this.children, this.danger = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: tokens.surfaceRaised,
-        borderRadius: BorderRadius.circular(tokens.panelRadius),
-        border: Border.all(
-          color: danger
-              ? kDestructive.withValues(alpha: 0.35)
-              : tokens.hairline,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: children),
-    );
-  }
-}
-
-/// Something that is not a row, sitting inside a group.
-class _GroupInset extends StatelessWidget {
-  final Widget child;
-
-  const _GroupInset({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        tokens.space3,
-        0,
-        tokens.space3,
-        tokens.space3,
-      ),
-      child: child,
-    );
-  }
-}
-
-/// The player, at the top of their own settings.
 class _PlayerHeader extends StatelessWidget {
   final AccountState account;
   final int solved;
@@ -994,228 +887,6 @@ class _HeaderStat extends StatelessWidget {
 
 /// A row with no box around it — a hairline underneath is enough separation,
 /// and boxing every setting is what makes a settings screen look like a form.
-class _ToggleRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String detail;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  /// Drops the divider, so the last row does not draw a line onto the panel's
-  /// own bottom edge.
-  final bool last;
-
-  const _ToggleRow({
-    required this.icon,
-    required this.title,
-    required this.detail,
-    required this.value,
-    required this.onChanged,
-    this.last = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
-    return Pressable(
-      onPressed: () => onChanged(!value),
-      semanticLabel: '$title, ${value ? "on" : "off"}',
-      scale: 0.99,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: tokens.space3,
-          vertical: tokens.space3,
-        ),
-        decoration: BoxDecoration(
-          border: last
-              ? null
-              : Border(bottom: BorderSide(color: tokens.hairline)),
-        ),
-        child: Row(
-          children: [
-            // The glyph is what makes a list of thirteen rows scannable.
-            // Muted, and it brightens with the switch — so the state is
-            // legible from the left edge as well as the right.
-            _RowIcon(icon: icon, active: value),
-            SizedBox(width: tokens.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: actionStyle(tokens).copyWith(fontSize: 15),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    detail,
-                    style: bodyStyle(tokens)
-                        .copyWith(fontSize: 12, height: 1.4),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: tokens.space3),
-            _Switch(value: value),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// A settings row's glyph, in its own tile.
-class _RowIcon extends StatelessWidget {
-  final IconData icon;
-  final bool active;
-  final bool destructive;
-
-  const _RowIcon({
-    required this.icon,
-    this.active = false,
-    this.destructive = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-    final color = destructive
-        ? kDestructive
-        : active
-            ? tokens.accent
-            : tokens.textMuted;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: active || destructive ? 0.14 : 0.07),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Icon(icon, size: 18, color: color),
-    );
-  }
-}
-
-/// A hairline switch, not Material's. The stock one arrives with its own
-/// color language and ripple; this one is made of the same tokens as
-/// everything else on screen.
-class _Switch extends StatelessWidget {
-  final bool value;
-
-  const _Switch({required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
-      width: 46,
-      height: 27,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: value
-            ? tokens.accent.withValues(alpha: 0.20)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: value
-              ? tokens.accent.withValues(alpha: 0.55)
-              : tokens.hairlineStrong,
-        ),
-      ),
-      child: AnimatedAlign(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          width: 19,
-          height: 19,
-          decoration: BoxDecoration(
-            color: value ? tokens.accent : tokens.textMuted,
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String detail;
-  final VoidCallback onTap;
-  final bool destructive;
-  final bool last;
-
-  const _ActionRow({
-    required this.icon,
-    required this.title,
-    required this.detail,
-    required this.onTap,
-    this.destructive = false,
-    this.last = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
-    return Pressable(
-      onPressed: onTap,
-      semanticLabel: title,
-      scale: 0.99,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: tokens.space3,
-          vertical: tokens.space3,
-        ),
-        decoration: BoxDecoration(
-          border: last
-              ? null
-              : Border(bottom: BorderSide(color: tokens.hairline)),
-        ),
-        child: Row(
-          children: [
-            _RowIcon(icon: icon, destructive: destructive),
-            SizedBox(width: tokens.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: actionStyle(
-                      tokens,
-                      color: destructive ? kDestructive : tokens.textPrimary,
-                    ).copyWith(fontSize: 15),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    detail,
-                    style: bodyStyle(tokens).copyWith(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, size: 20, color: tokens.dimText),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Shows the first few balls at board size so the symbols toggle can be judged
-/// against the thing it changes, rather than by reading a sentence about it.
 class _SymbolPreview extends StatelessWidget {
   final bool bold;
 
@@ -1254,121 +925,3 @@ class _SymbolPreview extends StatelessWidget {
 /// somebody is still deciding rather than after they have committed to a name
 /// and been bounced. `displayNameProblem` is the SAME function the server's
 /// validator mirrors, so a name accepted here is not refused there.
-class _RenameDialog extends StatefulWidget {
-  const _RenameDialog({required this.initial});
-
-  /// The name already in use, which the field opens holding.
-  final String initial;
-
-  @override
-  State<_RenameDialog> createState() => _RenameDialogState();
-}
-
-class _RenameDialogState extends State<_RenameDialog> {
-  late final TextEditingController _controller;
-  String? _problem;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initial);
-
-    // Pre-selected, because the field arrives holding a name they already have
-    // and the thing they came to do is replace it. Making somebody clear it by
-    // hand first is a small rudeness repeated every time.
-    _controller.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: widget.initial.length,
-    );
-  }
-
-  @override
-  void dispose() {
-    // Runs when the ROUTE is gone, not when the future completed — which is
-    // the difference between this and disposing at the call site.
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
-    return AlertDialog(
-      backgroundColor: tokens.surfaceRaised,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(tokens.panelRadius),
-        side: BorderSide(color: tokens.hairline),
-      ),
-      title: Text('Your name', style: titleStyle(tokens)),
-      // Scrollable, because an AlertDialog gives its content the height left
-      // over after the keyboard takes its share, and on a short screen that
-      // can be less than the content needs. The overflow that reported
-      // alongside the disposed-controller crash was this.
-      content: SingleChildScrollView(
-        child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'This is what other players see on the leaderboards.',
-            style: bodyStyle(tokens),
-          ),
-          SizedBox(height: tokens.space3),
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            maxLength: kMaxDisplayName,
-            style: bodyStyle(tokens).copyWith(color: tokens.textPrimary),
-            decoration: InputDecoration(
-              errorText: _problem,
-              counterStyle: labelStyle(tokens),
-              enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: tokens.hairline),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: tokens.accent),
-              ),
-            ),
-            onChanged: (value) =>
-                setState(() => _problem = displayNameProblem(value)),
-            onSubmitted: (_) => _submit(),
-          ),
-        ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            'Cancel',
-            style: actionStyle(tokens, color: tokens.textMuted),
-          ),
-        ),
-        TextButton(
-          onPressed: _problem == null ? _submit : null,
-          // The color is set explicitly, which overrides the disabled tint
-          // Flutter would otherwise apply — so a Save that cannot be pressed
-          // looked exactly like one that could. Seen on device.
-          child: Text(
-            'Save',
-            style: actionStyle(
-              tokens,
-              color: _problem == null ? null : tokens.dimText,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _submit() {
-    final name = _controller.text.trim();
-    final problem = displayNameProblem(name);
-    if (problem != null) {
-      setState(() => _problem = problem);
-      return;
-    }
-    Navigator.of(context).pop(name);
-  }
-}
