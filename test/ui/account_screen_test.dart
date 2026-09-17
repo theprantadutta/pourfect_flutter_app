@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pourfect_flutter_app/services/api/identity.dart';
+import 'package:pourfect_flutter_app/state/account_controller.dart';
 import 'package:pourfect_flutter_app/state/providers.dart';
 import 'package:pourfect_flutter_app/ui/screens/account_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -98,6 +99,35 @@ void main() {
     await tester.pump();
     return stub;
   }
+
+  testWidgets('a signed-in player is NOT asked to sign in again',
+      (tester) async {
+    // Reported from a device: Settings showed the email correctly, but tapping
+    // the crest on the home screen opened this screen still offering "Continue
+    // with Google". Settings only ever got it right because ITS entry point is
+    // conditional — the row is hidden once signed in — while the crest opens
+    // this screen unconditionally. So the screen itself has to know.
+    final stub = StubIdentity();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          identityProvider.overrideWithValue(stub),
+          accountProvider.overrideWith(() => _SignedInAccount()),
+        ],
+        child: const MaterialApp(home: AccountScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Your account'), findsOneWidget);
+    expect(
+      find.text('Continue with Google'),
+      findsNothing,
+      reason: 'offered a sign-in to somebody already signed in',
+    );
+    expect(find.text('player@example.com'), findsOneWidget);
+    expect(find.text('Amber_Cascade_1284'), findsOneWidget);
+  });
 
   testWidgets('it builds, rather than vanishing', (tester) async {
     await pump(tester);
@@ -240,4 +270,16 @@ void main() {
     expect(find.textContaining('If that email has an account'), findsOneWidget);
     expect(find.textContaining('do not match'), findsNothing);
   });
+}
+
+/// An account that is already signed in.
+class _SignedInAccount extends AccountController {
+  @override
+  AccountState build() => const AccountState(
+    available: true,
+    signedIn: true,
+    email: 'player@example.com',
+    handle: 'Amber_Cascade_1284',
+    userId: 'uid-1',
+  );
 }

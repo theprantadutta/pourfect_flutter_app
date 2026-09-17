@@ -20,6 +20,7 @@ import '../../state/account_controller.dart';
 import '../../state/progress_repository.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
+import '../widgets/player_crest.dart';
 import '../widgets/pressable.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
@@ -197,10 +198,105 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
   }
 
+  /// What the crest opens once there is an account behind it.
+  ///
+  /// Deliberately NOT a second copy of Settings. It answers the one question
+  /// tapping your own avatar asks — who am I signed in as, and what can I do
+  /// about it — and sends everything else to the screen that owns it.
+  Widget _signedIn(
+    BuildContext context,
+    PourfectTokens tokens,
+    AccountState account,
+  ) {
+    return Scaffold(
+      backgroundColor: tokens.surface,
+      appBar: AppBar(
+        backgroundColor: tokens.surface,
+        elevation: 0,
+        title: Text('Your account', style: titleStyle(tokens)),
+        iconTheme: IconThemeData(color: tokens.textPrimary),
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.all(tokens.space4),
+          children: [
+            Row(
+              children: [
+                PlayerCrest(
+                  seed: account.userId,
+                  signedIn: true,
+                  size: 52,
+                ),
+                SizedBox(width: tokens.space3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Shrinks rather than crops, same as the Settings
+                      // header: half a name with an ellipsis on it is worse
+                      // than a small whole one.
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          account.handle ?? 'Naming you…',
+                          style: titleStyle(tokens).copyWith(fontSize: 20),
+                          maxLines: 1,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        account.email ?? 'Signed in',
+                        style: bodyStyle(tokens).copyWith(fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: tokens.space5),
+            Text(
+              // The honest claim and the whole of it — the same sentence the
+              // signed-out half of this screen makes, now in the past tense.
+              'Your stars, streak and leaderboard name move with this account, '
+              'so a new phone starts where you left off.',
+              style: bodyStyle(tokens),
+            ),
+
+            SizedBox(height: tokens.space5),
+            // Renaming and leaving the boards both live in Settings, and they
+            // stay there. Two places to change one name is two places for the
+            // answer to differ.
+            Text(
+              'Your name, and whether you appear on the leaderboards, are in '
+              'Settings.',
+              style: bodyStyle(tokens).copyWith(fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = PourfectTokens.of(context);
     final account = ref.watch(accountProvider);
+
+    // ALREADY SIGNED IN IS A STATE THIS SCREEN HAS TO HAVE.
+    //
+    // It did not, and the crest on the home screen opens this screen
+    // unconditionally — so a signed-in player tapped their own avatar and was
+    // asked to sign in again, while Settings two taps away correctly showed
+    // their email. Settings only ever got it right because ITS entry point is
+    // conditional: the "Save your progress" row is hidden once you are signed
+    // in. The crest had no such guard, so the bug was in the routing as much
+    // as in this file.
+    if (account.signedIn) return _signedIn(context, tokens, account);
 
     return Scaffold(
       backgroundColor: tokens.surface,
