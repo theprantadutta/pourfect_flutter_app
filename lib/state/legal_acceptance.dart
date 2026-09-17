@@ -14,7 +14,7 @@ class LegalAcceptance {
   LegalAcceptance._();
 
   /// Bump on every material change to ANY of the three legal documents.
-  static const String currentLegalVersion = '1.0';
+  static const String currentLegalVersion = '1.1';
 
   static const String _versionKey = 'pourfect.legal.accepted_version';
   static const String _launchCountKey = 'pourfect.launch_count';

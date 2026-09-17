@@ -1,9 +1,9 @@
 # Privacy Policy for Pourfect
 
-**Legal Version: 1.0** *(shared acceptance version for our Privacy Policy, Terms of Use and Refund Policy — when any of them changes materially, this is bumped and you'll be asked to review and accept again)*
-**Policy Version: 1.0**
-**Effective Date: September 8, 2026**
-**Last Updated: September 8, 2026**
+**Legal Version: 1.1** *(shared acceptance version for our Privacy Policy, Terms of Use and Refund Policy — when any of them changes materially, this is bumped and you'll be asked to review and accept again)*
+**Policy Version: 1.1**
+**Effective Date: September 17, 2026**
+**Last Updated: September 17, 2026**
 
 ## Introduction
 
@@ -41,6 +41,11 @@ If you later sign in with Google or Apple, we additionally receive the email
 address, display name, and profile picture associated with that account, as
 provided by the sign-in provider.
 
+**Your profile picture is shown back to you, as your own avatar inside the
+App.** It is never published on a leaderboard and never shown to other players.
+The name on your sign-in account is recorded privately and is only ever offered
+to you as a suggestion if you edit your leaderboard name — see section 3.
+
 ### 2. Game progress
 
 Only when online features are used:
@@ -51,23 +56,38 @@ Only when online features are used:
 - Daily challenge results: moves used, stars, and how long the attempt took
 - Daily challenge streak
 
-### 3. Display name (optional, and the leaderboard opt-in)
+### 3. Your leaderboard name
 
-Leaderboards show only players who have **chosen a display name**. Until you set
-one, you do not appear on any leaderboard and no name of yours is shown to
-anyone. We never generate a public name for you.
+**This changed in version 1.1, and it changed in the direction of showing more,
+so it is spelled out rather than summarized.**
 
-Once set, your display name and your score are visible to other players on the
-leaderboards you appear on.
+Every account is given a name when it is created — something like
+`Amber_Cascade_1284`, assembled from the game's own colors and pouring words.
+You do not choose it, and it is not derived from your email, your sign-in
+account, or anything else about you. It exists so the leaderboards work from
+your first sync without anybody having to find a text field.
+
+**That name is public by default.** It appears, next to your score, on the
+leaderboards you qualify for. Previously no name of yours was shown until you
+typed one; now a generated one is shown unless you turn it off.
+
+Two controls, both in Settings, both available at any time:
+
+- **Change your name** — set it to anything you like, as often as you like.
+- **Show me on leaderboards** — turn it off and you disappear from every
+  leaderboard. Your stars, your streak and your progress are all unaffected;
+  only the public row stops being published.
 
 ### 4. Device and technical information
 
 - Platform (Android or iOS) and app version
-- Country or region, derived on our servers from your connection — **not** GPS
-  and not a precise location
 - Your device's UTC time offset, used only so a reminder notification arrives in
   the evening where you are rather than in the middle of your night
 - A push notification token, if you allow notifications
+
+Our own servers do not derive or store your country. Firebase Analytics reports
+coarse, country-level geography to us in aggregate, inferred by Google from
+your connection — never GPS, and never a precise location.
 
 ### 5. Purchase information
 
@@ -110,7 +130,9 @@ https://policies.google.com/technologies/ads
 We want this list to be as useful as the one above:
 
 - No precise location or GPS coordinates
-- No contacts, photos, microphone, or camera access
+- No access to your contacts, your photo library, your microphone, or your
+  camera. (If you sign in with Google, the profile picture we receive comes
+  from Google, not from your device, and is only ever shown back to you.)
 - No payment card details
 - No friends lists, messaging, or social graph — the App has no social features
 - No advertising profile built by us; we do not sell or share your data with
@@ -181,7 +203,8 @@ open the App, email us and we will process the same deletion.
 
 **Play without an account.** The campaign works offline with no account at all.
 
-**Stay off the leaderboards.** Simply do not set a display name.
+**Stay off the leaderboards.** Turn off **Show me on leaderboards** in
+Settings. Your stars and your streak keep counting; only the public row stops.
 
 **Turn off notifications** in your device settings, or decline them when asked.
 
@@ -228,4 +251,10 @@ Privacy Policy.**
 
 ### Version History
 
+- **1.1 — September 17, 2026:** Every account is now given a generated
+  leaderboard name and is published by default, with a switch to opt out —
+  replacing the previous behavior, where no name was shown until you typed
+  one. Clarified that a Google profile picture is displayed to you and never
+  on a leaderboard. Removed the claim that we derive your country on our
+  servers, which we do not do.
 - **1.0 — September 8, 2026:** Initial privacy policy.

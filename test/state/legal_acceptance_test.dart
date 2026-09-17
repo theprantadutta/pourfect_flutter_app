@@ -7,6 +7,8 @@
 // channel) weights retention heavily. Somebody who has just installed the app
 // gets a puzzle; the documents wait until they have decided they like it.
 
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pourfect_flutter_app/state/legal_acceptance.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -95,11 +97,54 @@ void main() {
   });
 
   group('the version is kept in lockstep with the documents', () {
-    test('there is exactly one shared version constant', () {
-      // All three documents carry `**Legal Version: X**` in their header and
-      // must match this. A mismatch means somebody bumped a document without
-      // bumping the code, and nobody would ever be asked to re-accept.
-      expect(LegalAcceptance.currentLegalVersion, '1.0');
+    // THIS USED TO ASSERT `currentLegalVersion == '1.0'` AND NOTHING ELSE.
+    //
+    // Its comment claimed it enforced lockstep with the three documents; it
+    // never opened one. All it actually did was fail the moment anybody bumped
+    // the constant — which is the one action it should have been permitting —
+    // while a document bumped WITHOUT the constant, the failure that matters,
+    // sailed through. That is the mismatch nobody would notice: the header
+    // says 1.1, the code still says 1.0, acceptance of 1.0 still counts, and
+    // nobody is ever asked to re-read a policy that materially changed.
+    //
+    // It reads the files now.
+    const documents = ['privacy.md', 'terms.md', 'refund.md'];
+    final header = RegExp(r'\*\*Legal Version:\s*([0-9.]+)\*\*');
+
+    for (final name in documents) {
+      test('$name declares the version the code enforces', () {
+        final text = File('assets/legal/$name').readAsStringSync();
+        final match = header.firstMatch(text);
+
+        expect(
+          match,
+          isNotNull,
+          reason: '$name has no **Legal Version: X** header to check against',
+        );
+        expect(
+          match!.group(1),
+          LegalAcceptance.currentLegalVersion,
+          reason:
+              '$name says ${match.group(1)} but the code enforces '
+              '${LegalAcceptance.currentLegalVersion} — a bump on one side '
+              'only means nobody is re-asked to accept',
+        );
+      });
+    }
+
+    test('all three documents agree with each other', () {
+      final versions = {
+        for (final name in documents)
+          name: header
+              .firstMatch(File('assets/legal/$name').readAsStringSync())
+              ?.group(1),
+      };
+
+      expect(
+        versions.values.toSet().length,
+        1,
+        reason: 'the three documents disagree: $versions',
+      );
     });
   });
 }

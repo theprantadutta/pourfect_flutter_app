@@ -1,9 +1,9 @@
 # Terms of Use (End User License Agreement) for Pourfect
 
-**Legal Version: 1.0** *(shared acceptance version for our Privacy Policy, Terms of Use and Refund Policy — when any of them changes materially, this is bumped and you'll be asked to review and accept again)*
+**Legal Version: 1.1** *(shared acceptance version for our Privacy Policy, Terms of Use and Refund Policy — when any of them changes materially, this is bumped and you'll be asked to review and accept again)*
 **Document Version: 1.0**
 **Effective Date: September 8, 2026**
-**Last Updated: September 8, 2026**
+**Last Updated: September 17, 2026**
 
 These Terms of Use ("Terms") form a legal agreement between you ("you" or
 "user") and Pourfect ("we," "our," or "us") governing your use of the Pourfect
@@ -85,7 +85,7 @@ Refunds are covered by our separate **Refund Policy**, included with the App.
 
 Hints and any other in-game items have **no monetary value**, cannot be
 exchanged for money or goods outside the App, and are non-transferable. We may
-add, modify, or remove in-game items and their behaviour at any time.
+add, modify, or remove in-game items and their behavior at any time.
 
 ## 5. Advertising
 
@@ -107,9 +107,14 @@ submitting results that were not actually played.
 
 ## 7. Display Names
 
-Setting a display name is what places you on public leaderboards. You are
-responsible for the name you choose. We may remove or reset names that are
-offensive, impersonate somebody else, or infringe another party's rights.
+Every account is given a generated name when it is created, and that name is
+published on the leaderboards by default. You can change it at any time from
+Settings, and you can remove yourself from the leaderboards entirely with the
+**Show me on leaderboards** switch.
+
+You are responsible for any name you choose yourself. We may remove or reset
+names that are offensive, impersonate somebody else, or infringe another
+party's rights.
 
 ## 8. Intellectual Property
 

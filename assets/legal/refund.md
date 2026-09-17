@@ -1,9 +1,9 @@
 # Refund Policy for Pourfect
 
-**Legal Version: 1.0** *(shared acceptance version for our Privacy Policy, Terms of Use and Refund Policy — when any of them changes materially, this is bumped and you'll be asked to review and accept again)*
+**Legal Version: 1.1** *(shared acceptance version for our Privacy Policy, Terms of Use and Refund Policy — when any of them changes materially, this is bumped and you'll be asked to review and accept again)*
 **Document Version: 1.0**
 **Effective Date: September 8, 2026**
-**Last Updated: September 8, 2026**
+**Last Updated: September 17, 2026**
 
 ## The short version
 
