@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'state/legal_acceptance.dart';
 import 'state/monetization_controller.dart';
 import 'services/notifications/notification_service.dart';
+import 'services/updates/app_updater.dart';
 import 'state/review_prompter.dart';
 import 'state/providers.dart';
 import 'state/daily_controller.dart';
@@ -114,6 +115,8 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
   /// Null until the launch count and stored acceptance have been read.
   bool? _showLegalGate;
 
+  final _updater = AppUpdater();
+
   @override
   void initState() {
     super.initState();
@@ -143,6 +146,13 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // player on a train opens the game and plays; they do not wait for a
       // handshake with a server they do not know exists.
       ref.read(syncControllerProvider.notifier).syncNow();
+
+      // And Play's update check, last and least urgent of the lot. Flexible by
+      // default, so the download happens while the player plays and the only
+      // interruption is an offer to restart once it has landed — see
+      // `AppUpdater` for why a blocking update screen is the wrong trade for
+      // a game that is fully playable offline.
+      unawaited(_updater.check());
 
       // And today's board, so the home card knows whether it has been played
       // before the player looks at it. Off the first frame like everything

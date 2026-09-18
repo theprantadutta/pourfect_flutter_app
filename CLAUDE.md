@@ -455,6 +455,62 @@ away — that is the bug that produces "the game deleted my progress".
 
 Every row records `levelSetVersion`. This is what that field was added for.
 
+## A release build has to be able to speak
+
+Google sign-in failed in production and worked in development, and there was
+nothing to read. That is the failure this section exists to prevent, and it had
+three causes stacked on top of each other.
+
+**`dart:developer`'s `log` is invisible in release.** It publishes to the VM
+service, and a release build has none attached. `main.dart` used it for the two
+most important startup failures — Firebase init and the version read — so the
+one error that turns off analytics, sign-in and sync for a whole session was
+unreadable on precisely the builds players run. The same trap was already
+recorded for the analytics mirror; this was the second place it bit.
+`debugPrint` is the one that works: despite the name it is NOT stripped in
+release, it calls `print`, and the engine routes that to logcat in every mode.
+
+**The Google cancel branch wrote nothing at all.** A player pressing back and
+Play Services refusing the build arrive identically — an unregistered signing
+certificate closes the chooser immediately and the plugin reports a
+cancellation. The UI still says nothing, because nagging somebody who genuinely
+backed out is worse, but the branch logs now and names the other cause.
+
+**Nothing reported which configuration a build had resolved.** `writeStartupReport`
+prints one block before anything else can speak: build mode, version, package,
+the API URL the app will ACTUALLY call, why a release refused the configured
+one, whether Firebase came up, whether the Google web client id is set, and the
+certificate the build is signed with.
+
+    adb logcat -d | grep "I flutter"
+
+**The signing fingerprint is the line that matters most**, and it needs the
+platform, so `MainActivity.kt` answers a `pourfect/diagnostics` channel. Three
+certificates are in play and each is different: the debug keystore, the upload
+keystore, and **Play's own app signing key, which re-signs everything Play
+distributes**. All three must be registered in Firebase. Adding only the upload
+key fixes a locally-installed release APK and leaves every Play install broken,
+which is the shape this bug took.
+
+**Resolved, never configured.** `AppEnv.apiBaseUrl` returns an empty string
+when a release URL fails `releaseUrlProblem`, so "what is in `.env`" and "what
+the app will call" are different questions. `AppEnv.apiUrlRefusal` carries the
+reason, because an empty URL alone reads as "not configured" and sends somebody
+to the wrong file.
+
+## Staying current — flexible, never blocking
+
+`AppUpdater` uses Play's in-app update API, and **flexible is the default for
+the same reason the backend is optional**: the campaign needs no network, so a
+blocking update screen on launch is exactly the interruption that rule exists
+to prevent. The download happens while the player plays; the only prompt is an
+offer to restart once it has landed. `forceImmediate` exists for the build
+where that trade genuinely flips.
+
+It does nothing unless the app came from Play — `checkForUpdate` throws
+otherwise, which is every debug build — so it is logged and shrugged off. Same
+shape as the review prompter, and unverifiable for the same reason.
+
 ## Frame timing
 
 `adb shell dumpsys gfxinfo` reports ZERO frames for this app — Impeller renders

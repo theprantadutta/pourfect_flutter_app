@@ -210,6 +210,25 @@ class FirebaseIdentity implements Identity {
       );
     } on GoogleSignInException catch (error) {
       if (error.code == GoogleSignInExceptionCode.canceled) {
+        // LOGGED, EVEN THOUGH THE UI STAYS SILENT — and this branch is why
+        // that distinction had to be made explicit.
+        //
+        // A player pressing back and Play Services REFUSING THE BUILD arrive
+        // here identically: when the signing certificate is not registered
+        // against the package's OAuth client, the chooser closes immediately
+        // and the plugin reports a cancellation. Showing a message would nag
+        // whoever genuinely backed out, so the screen still says nothing — but
+        // this used to be the one branch that also wrote nothing, which made a
+        // release-only configuration failure completely undiagnosable.
+        //
+        // Compare the certificate on the startup report's `signing SHA-1` line
+        // against the fingerprints in the Firebase console before assuming a
+        // run of these is players changing their minds.
+        debugPrint(
+          '[identity] Google sign-in cancelled — this is ALSO what an '
+          'unregistered signing certificate looks like; check the startup '
+          "report's signing SHA-1 against Firebase",
+        );
         return const IdentityResult(IdentityOutcome.cancelled);
       }
       debugPrint('[identity] google sign-in failed: ${error.code}');

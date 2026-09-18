@@ -119,6 +119,18 @@ class AppEnv {
     return '';
   }
 
+  /// Why this build discarded its configured API URL, or null if it kept it.
+  ///
+  /// [apiBaseUrl] answers "what will the app call" and returns an empty string
+  /// when a release URL is refused — which is the right answer for callers and
+  /// the useless one for anybody trying to fix it. This is the reason, for the
+  /// startup report. Always null outside release, where nothing is refused.
+  static String? get apiUrlRefusal {
+    if (!kReleaseMode) return null;
+    if (_override.isNotEmpty) return null;
+    return releaseUrlProblem(get('PROD_API_BACKEND_URL'));
+  }
+
   /// Why a URL must not be used by a RELEASE build, or null if it is fine.
   ///
   /// Deliberately a denylist of things that cannot be right rather than an
