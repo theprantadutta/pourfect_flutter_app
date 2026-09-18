@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pourfect_flutter_app/services/api/identity.dart';
 import 'package:pourfect_flutter_app/state/account_controller.dart';
+import 'package:pourfect_flutter_app/state/progress_repository.dart';
 import 'package:pourfect_flutter_app/state/providers.dart';
 import 'package:pourfect_flutter_app/ui/screens/account_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -240,17 +241,33 @@ void main() {
       (tester) async {
     // There is no merge — Firebase cannot combine two uids — so continuing
     // abandons the progress on this device. The player has to be told.
+    //
+    // NOW CONDITIONAL, AND THE PROGRESS HERE IS WHAT MAKES IT FIRE. The
+    // warning used to be unconditional, which meant somebody reinstalling —
+    // with an empty device and everything to gain — was told they were about
+    // to lose something. The cost is still named when there is one; see the
+    // fresh-device case for what happens when there is not.
     final stub = StubIdentity(
       result: const IdentityResult(
         IdentityOutcome.credentialBelongsToAnotherAccount,
       ),
     );
-    await pump(tester, identity: stub);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          identityProvider.overrideWithValue(stub),
+          progressProvider.overrideWith(_ThreeSolved.new),
+        ],
+        child: const MaterialApp(home: AccountScreen()),
+      ),
+    );
+    await tester.pump();
 
     await tester.tap(find.text('Continue with Google'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('cannot be merged'), findsOneWidget);
+    expect(find.textContaining('3 solved levels'), findsOneWidget);
   });
 
   testWidgets('a reset says the same thing for any address', (tester) async {
@@ -270,6 +287,104 @@ void main() {
     expect(find.textContaining('If that email has an account'), findsOneWidget);
     expect(find.textContaining('do not match'), findsNothing);
   });
+
+  group('the account that already exists', () {
+    testWidgets('a fresh device is NOT warned about losing anything',
+        (tester) async {
+      // THE REINSTALL CASE. There is nothing on this phone to lose -- that is
+      // the entire reason they are on this screen -- so a sentence about
+      // leaving progress behind describes a loss that cannot happen, and talks
+      // somebody out of claiming the account the cloud save exists for.
+      final stub = StubIdentity(
+        result: const IdentityResult(
+          IdentityOutcome.credentialBelongsToAnotherAccount,
+        ),
+      );
+      await pump(tester, identity: stub);
+
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('load the stars saved to it'), findsOneWidget);
+      expect(find.textContaining('leave the progress'), findsNothing);
+      expect(find.textContaining('cannot be merged'), findsNothing);
+    });
+
+    testWidgets('the offer to sign in follows the sentence explaining it',
+        (tester) async {
+      // Order is the point. The button used to render ABOVE the reasoning,
+      // leaving two primary buttons with the explanation stranded between.
+      final stub = StubIdentity(
+        result: const IdentityResult(
+          IdentityOutcome.credentialBelongsToAnotherAccount,
+        ),
+      );
+      await pump(tester, identity: stub);
+
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+
+      final explanation = tester.getTopLeft(
+        find.textContaining('already have an account'),
+      );
+      final action = tester.getTopLeft(find.text('Sign in to that account'));
+
+      expect(action.dy, greaterThan(explanation.dy));
+    });
+
+    testWidgets('a stale Google offer does not survive an email attempt',
+        (tester) async {
+      // "Sign in to that account" is wired to the GOOGLE flow. It was raised
+      // by a failed Google attempt and lowered by nothing else, so it sat
+      // under an email form and would have re-opened the Google chooser for
+      // somebody who had just typed a password.
+      // A phone-shaped surface, because the default 800x600 puts the submit
+      // button below the fold once the error and the offer are both on screen
+      // — and this test is about what happens when they are.
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final stub = StubIdentity(
+        result: const IdentityResult(
+          IdentityOutcome.credentialBelongsToAnotherAccount,
+        ),
+      );
+      await pump(tester, identity: stub);
+
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sign in to that account'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextFormField).first, 'a@b.com');
+      await tester.enterText(find.byType(TextFormField).last, 'password123');
+      await tester.tap(find.text('Create account'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sign in to that account'), findsNothing);
+    });
+
+    testWidgets('creating an existing account flips the form to sign in',
+        (tester) async {
+      // One tap instead of a puzzle. They do not want a new account; they want
+      // the one they have, and their email is already typed.
+      final stub = StubIdentity(
+        result: const IdentityResult(
+          IdentityOutcome.credentialBelongsToAnotherAccount,
+        ),
+      );
+      await pump(tester, identity: stub);
+
+      await tester.enterText(find.byType(TextFormField).first, 'a@b.com');
+      await tester.enterText(find.byType(TextFormField).last, 'password123');
+      await tester.tap(find.text('Create account'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Create account'), findsNothing);
+      expect(find.text('a@b.com'), findsOneWidget);
+    });
+  });
+
 }
 
 /// An account that is already signed in.
@@ -282,4 +397,19 @@ class _SignedInAccount extends AccountController {
     handle: 'Amber_Cascade_1284',
     userId: 'uid-1',
   );
+}
+
+/// A device with three cleared levels, so the "you would lose this" branch has
+/// something to be about.
+class _ThreeSolved extends ProgressController {
+  @override
+  Map<int, LevelProgress> build() => {
+    for (var i = 1; i <= 3; i++)
+      i: LevelProgress(
+        levelId: i,
+        levelSetVersion: 1,
+        stars: 3,
+        bestMoves: 5,
+      ),
+  };
 }

@@ -918,6 +918,40 @@ delete their own data again.
 mandatory the moment an iOS build ships with Google on it — App Store review
 rejects any app offering a social login without Sign in with Apple.
 
+## Reclaiming an account must not read as a threat
+
+Cloud progress somebody is discouraged from claiming is not cloud progress.
+Three things on the sign-in screen conspired to discourage exactly that, and
+the reinstall path is where all three met.
+
+**The warning was unconditional.** "Signing into it will leave the progress on
+this device behind" is true when there IS progress on the device. Somebody who
+has just reinstalled has none — that is the entire reason they are on the
+screen — so the sentence described a loss that could not happen and argued
+against the one action that restores their account. The confirmation dialog had
+always branched on `progress.length`; the inline message now agrees with it
+instead of contradicting it a step earlier.
+
+**The offer sat above its own explanation.** `Sign in to that account` rendered
+before the sentence saying what it costs, so the screen showed two primary
+buttons with the reasoning stranded between them. `_google` documented the
+opposite ordering the whole time.
+
+**A stale Google offer survived an email attempt.** `_offerExistingAccount` was
+raised by the Google path and lowered by nothing else, so a failed Google
+attempt left that button on screen through a subsequent email attempt — a
+button wired to `useExistingGoogleAccount`, sitting under an email form, which
+would have re-opened the Google chooser for somebody who had just typed a
+password. `_submit` clears it now.
+
+**Creating an account that already exists flips the form to sign in**, keeping
+the email. They are not asking for a new account; they are asking for the one
+they have, and their address is already typed. The old behavior left them
+hunting for the "Already have an account?" link underneath a red sentence.
+
+Pinned by four tests, including one that seeds three cleared levels so the
+"you would lose this" branch is exercised where it genuinely applies.
+
 ## Everything account-scoped is scoped to an ACCOUNT
 
 The rule that came out of the September 10 recheck, and the one most likely to

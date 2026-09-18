@@ -69,13 +69,31 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   /// developers, occasionally name internal endpoints, and change between SDK
   /// versions — none of which belongs in front of somebody trying to save
   /// their puzzle progress.
-  static String? _explain(IdentityOutcome outcome) => switch (outcome) {
+  /// [solved] is how many levels this device has, because the honest wording
+  /// of one of these outcomes depends entirely on it.
+  static String? _explain(IdentityOutcome outcome, int solved) => switch (outcome) {
     IdentityOutcome.ok => null,
     // Backing out of the Google sheet is a decision, not a failure.
     IdentityOutcome.cancelled => null,
-    IdentityOutcome.credentialBelongsToAnotherAccount =>
-      'That account already exists. Signing into it will leave the progress '
-          'on this device behind — it cannot be merged.',
+
+    // THE REINSTALL CASE IS THE COMMON ONE AND USED TO READ AS A THREAT.
+    //
+    // This said "signing into it will leave the progress on this device
+    // behind" unconditionally. Somebody who has just reinstalled has NO
+    // progress on this device — that is the whole reason they are here — so
+    // the warning described a loss that could not happen and talked them out
+    // of the one action that restores their account. Cloud progress you are
+    // discouraged from claiming is not cloud progress.
+    //
+    // The confirmation dialog has always branched on this. The inline message
+    // now agrees with it rather than contradicting it a step earlier.
+    IdentityOutcome.credentialBelongsToAnotherAccount => solved == 0
+        ? 'You already have an account with that email. Sign in to it and '
+              'this phone will load the stars saved to it.'
+        : 'You already have an account with that email. This phone has '
+              '$solved solved ${solved == 1 ? "level" : "levels"} that are '
+              'not on it, and the two cannot be merged — signing in replaces '
+              'them with whatever that account holds.',
     IdentityOutcome.emailAlreadyInUse =>
       'There is already an account with that email. Try signing in instead.',
     IdentityOutcome.emailMalformed => 'That does not look like an email address.',
@@ -169,12 +187,40 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    setState(() => _problem = null);
+    setState(() {
+      _problem = null;
+      // CLEARED HERE TOO, AND ITS ABSENCE IS WHAT PRODUCED THE CONFUSING
+      // SCREEN.
+      //
+      // `_offerExistingAccount` is raised by the GOOGLE path and was only ever
+      // lowered by the Google path. So a failed Google attempt left "Sign in
+      // to that account" on screen, and it survived straight through an email
+      // attempt underneath it — a button wired to `useExistingGoogleAccount`,
+      // sitting under an email form, which would have re-opened the Google
+      // chooser for somebody who had just typed a password.
+      _offerExistingAccount = false;
+    });
 
     final account = ref.read(accountProvider.notifier);
-    final result = _registering
+    final registering = _registering;
+    final result = registering
         ? await account.createAccount(_email.text, _password.text)
         : await account.signIn(_email.text, _password.text);
+
+    // THE REINSTALL PATH, MADE ONE TAP INSTEAD OF A PUZZLE.
+    //
+    // Somebody reinstalling types their email, presses Create account, and is
+    // told the account already exists. That is the right answer to the wrong
+    // question: they do not want a new account, they want the one they have.
+    // Flipping the form to sign-in keeps their email in place, so the only
+    // thing left to do is the password — rather than hunting for the "Already
+    // have an account?" link while a red sentence implies they are about to
+    // lose something.
+    if (registering &&
+        result.outcome == IdentityOutcome.credentialBelongsToAnotherAccount &&
+        mounted) {
+      setState(() => _registering = false);
+    }
 
     _settle(result);
   }
@@ -186,7 +232,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       Navigator.of(context).maybePop();
       return;
     }
-    setState(() => _problem = _explain(result.outcome));
+    setState(
+      () => _problem = _explain(result.outcome, ref.read(progressProvider).length),
+    );
   }
 
   Future<void> _resetPassword() async {
@@ -572,15 +620,13 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               ),
             ),
 
-            if (_offerExistingAccount) ...[
-              SizedBox(height: tokens.space3),
-              _PrimaryButton(
-                label: 'Sign in to that account',
-                busy: account.busy,
-                onPressed: account.busy ? null : _useExistingAccount,
-              ),
-            ],
-
+            // ORDER MATTERS, AND IT WAS BACKWARDS.
+            //
+            // The explanation comes first and the action that answers it comes
+            // directly underneath, so the two read as one thing. Previously the
+            // button sat ABOVE the sentence explaining what it would cost —
+            // which is the opposite of what `_google` documents, and left two
+            // primary buttons stacked with the reasoning stranded between them.
             if (_problem != null) ...[
               SizedBox(height: tokens.space3),
               Text(
@@ -588,6 +634,15 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 style: bodyStyle(tokens).copyWith(
                   color: const Color(0xFFC85F72),
                 ),
+              ),
+            ],
+
+            if (_offerExistingAccount) ...[
+              SizedBox(height: tokens.space3),
+              _PrimaryButton(
+                label: 'Sign in to that account',
+                busy: account.busy,
+                onPressed: account.busy ? null : _useExistingAccount,
               ),
             ],
 
