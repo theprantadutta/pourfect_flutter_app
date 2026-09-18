@@ -54,7 +54,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   /// Without it the ordinary returning player on a new phone reached a dead
   /// end: an explanation, and a Google button that could only retry the same
   /// link and fail the same way.
-  bool _offerExistingAccount = false;
 
   @override
   void dispose() {
@@ -119,27 +118,43 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   };
 
   Future<void> _google() async {
-    setState(() {
-      _problem = null;
-      _offerExistingAccount = false;
-    });
+    setState(() => _problem = null);
     final result = await ref.read(accountProvider.notifier).continueWithGoogle();
 
     if (result.outcome == IdentityOutcome.credentialBelongsToAnotherAccount) {
-      // Not a retry of the same thing. Signing into the existing account is a
-      // DIFFERENT operation with a cost attached, so it gets its own button
-      // underneath the sentence that explains the cost.
-      if (mounted) setState(() => _offerExistingAccount = true);
+      // ASKED RIGHT HERE, because it is what almost everybody wants.
+      //
+      // This used to raise a button further down the screen and wait to be
+      // found -- and on a phone, with the error text added, that button was
+      // below the fold. So the common case, somebody reclaiming their own
+      // account, was the one that required scrolling to discover.
+      await _offerExistingAccount(
+        confirmLabel: 'Use that account',
+        onConfirmed: () =>
+            ref.read(accountProvider.notifier).useExistingGoogleAccount(),
+      );
+      return;
     }
     _settle(result);
   }
 
-  /// Joins the account the credential already belongs to.
+  /// Offers the account the credential already belongs to, and joins it.
   ///
-  /// Confirmed first, because it abandons whatever this device had. Firebase
-  /// cannot merge two uids, and pretending otherwise would lose somebody's
-  /// progress without telling them.
-  Future<void> _useExistingAccount() async {
+  /// One dialog for both ways in, because the QUESTION is the same -- you
+  /// already have an account, do you want it -- even though the answer runs
+  /// different code for Google and for email.
+  ///
+  /// It is a dialog rather than a button for a reason that only appeared on a
+  /// real phone: with the explanation on screen, the button fell below the
+  /// fold. The action almost every player wants was the one they had to go
+  /// looking for. Asking outright costs one tap and hides nothing.
+  ///
+  /// Declining leaves the explanation on screen, so saying no does not leave
+  /// somebody staring at a form that refused them without saying why.
+  Future<void> _offerExistingAccount({
+    required String confirmLabel,
+    required Future<IdentityResult> Function() onConfirmed,
+  }) async {
     final tokens = PourfectTokens.of(context);
     final cleared = ref.read(progressProvider).length;
 
@@ -151,10 +166,13 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           borderRadius: BorderRadius.circular(tokens.panelRadius),
           side: BorderSide(color: tokens.hairline),
         ),
-        title: Text('Use your existing account?', style: titleStyle(tokens)),
+        title: Text('You already have an account', style: titleStyle(tokens)),
         content: Text(
+          // THE REINSTALL CASE IS THE FIRST BRANCH ON PURPOSE. An empty device
+          // has nothing to lose and everything to gain, and telling somebody
+          // otherwise is how cloud progress goes unclaimed.
           cleared == 0
-              ? 'This phone will load the stars already saved to that account.'
+              ? 'This phone will load the stars already saved to it.'
               : 'This phone has $cleared solved '
                     '${cleared == 1 ? "level" : "levels"} that are not on that '
                     'account. They cannot be combined, so they will be '
@@ -165,24 +183,32 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(
-              'Cancel',
+              'Not now',
               style: actionStyle(tokens, color: tokens.textMuted),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Use that account', style: actionStyle(tokens)),
+            child: Text(confirmLabel, style: actionStyle(tokens)),
           ),
         ],
       ),
     );
 
-    if (confirmed != true || !mounted) return;
+    if (!mounted) return;
+
+    if (confirmed != true) {
+      setState(
+        () => _problem = _explain(
+          IdentityOutcome.credentialBelongsToAnotherAccount,
+          ref.read(progressProvider).length,
+        ),
+      );
+      return;
+    }
 
     setState(() => _problem = null);
-    _settle(
-      await ref.read(accountProvider.notifier).useExistingGoogleAccount(),
-    );
+    _settle(await onConfirmed());
   }
 
   Future<void> _submit() async {
@@ -197,8 +223,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       // to that account" on screen, and it survived straight through an email
       // attempt underneath it — a button wired to `useExistingGoogleAccount`,
       // sitting under an email form, which would have re-opened the Google
-      // chooser for somebody who had just typed a password.
-      _offerExistingAccount = false;
     });
 
     final account = ref.read(accountProvider.notifier);
@@ -219,7 +243,15 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (registering &&
         result.outcome == IdentityOutcome.credentialBelongsToAnotherAccount &&
         mounted) {
+      // They have already typed the password for the account they want, so
+      // offer exactly that and reuse it, rather than flipping the form and
+      // making them enter it a second time.
       setState(() => _registering = false);
+      await _offerExistingAccount(
+        confirmLabel: 'Sign in',
+        onConfirmed: () => account.signIn(_email.text, _password.text),
+      );
+      return;
     }
 
     _settle(result);
@@ -637,14 +669,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               ),
             ],
 
-            if (_offerExistingAccount) ...[
-              SizedBox(height: tokens.space3),
-              _PrimaryButton(
-                label: 'Sign in to that account',
-                busy: account.busy,
-                onPressed: account.busy ? null : _useExistingAccount,
-              ),
-            ],
 
             SizedBox(height: tokens.space4),
             _PrimaryButton(

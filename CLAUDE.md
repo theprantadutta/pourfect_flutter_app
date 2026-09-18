@@ -932,10 +932,15 @@ against the one action that restores their account. The confirmation dialog had
 always branched on `progress.length`; the inline message now agrees with it
 instead of contradicting it a step earlier.
 
-**The offer sat above its own explanation.** `Sign in to that account` rendered
-before the sentence saying what it costs, so the screen showed two primary
-buttons with the reasoning stranded between them. `_google` documented the
-opposite ordering the whole time.
+**The offer is a dialog now, not a button, and that is the fix that mattered
+most.** It first rendered above its own explanation, then below it — but on a
+real phone, with the error text present, it fell below the fold either way. So
+the action almost every player wants was the one they had to scroll to
+discover, while a form that had just refused them filled the screen.
+`_offerExistingAccount` asks outright instead. One dialog serves both ways in,
+because the question is identical even though the answer runs different code:
+Google re-authenticates, and email signs in with the password already typed.
+Declining leaves the explanation on screen, so saying no is not silence.
 
 **A stale Google offer survived an email attempt.** `_offerExistingAccount` was
 raised by the Google path and lowered by nothing else, so a failed Google

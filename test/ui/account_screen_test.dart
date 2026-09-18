@@ -237,16 +237,10 @@ void main() {
     expect(find.textContaining('FIREBASE_INTERNAL'), findsNothing);
   });
 
-  testWidgets('a taken credential names the cost instead of retrying',
-      (tester) async {
-    // There is no merge — Firebase cannot combine two uids — so continuing
-    // abandons the progress on this device. The player has to be told.
-    //
-    // NOW CONDITIONAL, AND THE PROGRESS HERE IS WHAT MAKES IT FIRE. The
-    // warning used to be unconditional, which meant somebody reinstalling —
-    // with an empty device and everything to gain — was told they were about
-    // to lose something. The cost is still named when there is one; see the
-    // fresh-device case for what happens when there is not.
+  testWidgets('a taken credential names the cost in the dialog', (tester) async {
+    // There is no merge -- Firebase cannot combine two uids -- so continuing
+    // abandons the progress on this device. The player has to be told, and the
+    // three cleared levels seeded here are what make the warning apply.
     final stub = StubIdentity(
       result: const IdentityResult(
         IdentityOutcome.credentialBelongsToAnotherAccount,
@@ -266,7 +260,7 @@ void main() {
     await tester.tap(find.text('Continue with Google'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('cannot be merged'), findsOneWidget);
+    expect(find.textContaining('cannot be combined'), findsOneWidget);
     expect(find.textContaining('3 solved levels'), findsOneWidget);
   });
 
@@ -289,12 +283,32 @@ void main() {
   });
 
   group('the account that already exists', () {
+    testWidgets('is offered straight away, without hunting for a button',
+        (tester) async {
+      // It used to raise a button further down the screen. With the error text
+      // present that button fell below the fold on a phone, so the action
+      // almost everybody wants was the one you had to scroll to find.
+      final stub = StubIdentity(
+        result: const IdentityResult(
+          IdentityOutcome.credentialBelongsToAnotherAccount,
+        ),
+      );
+      await pump(tester, identity: stub);
+
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('You already have an account'), findsOneWidget);
+      expect(find.text('Use that account'), findsOneWidget);
+    });
+
     testWidgets('a fresh device is NOT warned about losing anything',
         (tester) async {
-      // THE REINSTALL CASE. There is nothing on this phone to lose -- that is
-      // the entire reason they are on this screen -- so a sentence about
-      // leaving progress behind describes a loss that cannot happen, and talks
-      // somebody out of claiming the account the cloud save exists for.
+      // THE REINSTALL CASE. Nothing on this phone to lose -- that is the whole
+      // reason they are here -- so a sentence about leaving progress behind
+      // describes a loss that cannot happen, and talks somebody out of
+      // claiming the account the cloud save exists for.
       final stub = StubIdentity(
         result: const IdentityResult(
           IdentityOutcome.credentialBelongsToAnotherAccount,
@@ -305,15 +319,30 @@ void main() {
       await tester.tap(find.text('Continue with Google'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('load the stars saved to it'), findsOneWidget);
-      expect(find.textContaining('leave the progress'), findsNothing);
-      expect(find.textContaining('cannot be merged'), findsNothing);
+      expect(find.textContaining('load the stars'), findsOneWidget);
+      expect(find.textContaining('cannot be combined'), findsNothing);
     });
 
-    testWidgets('the offer to sign in follows the sentence explaining it',
-        (tester) async {
-      // Order is the point. The button used to render ABOVE the reasoning,
-      // leaving two primary buttons with the explanation stranded between.
+    testWidgets('confirming joins the Google account', (tester) async {
+      final stub = StubIdentity(
+        result: const IdentityResult(
+          IdentityOutcome.credentialBelongsToAnotherAccount,
+        ),
+      );
+      stub.existingAccountResult = const IdentityResult.ok();
+      await pump(tester, identity: stub);
+
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Use that account'));
+      await tester.pumpAndSettle();
+
+      expect(stub.calls, contains('existingGoogle'));
+    });
+
+    testWidgets('declining leaves the reason on screen', (tester) async {
+      // Saying no must not leave a form that refused somebody without
+      // explaining itself.
       final stub = StubIdentity(
         result: const IdentityResult(
           IdentityOutcome.credentialBelongsToAnotherAccount,
@@ -323,51 +352,19 @@ void main() {
 
       await tester.tap(find.text('Continue with Google'));
       await tester.pumpAndSettle();
-
-      final explanation = tester.getTopLeft(
-        find.textContaining('already have an account'),
-      );
-      final action = tester.getTopLeft(find.text('Sign in to that account'));
-
-      expect(action.dy, greaterThan(explanation.dy));
-    });
-
-    testWidgets('a stale Google offer does not survive an email attempt',
-        (tester) async {
-      // "Sign in to that account" is wired to the GOOGLE flow. It was raised
-      // by a failed Google attempt and lowered by nothing else, so it sat
-      // under an email form and would have re-opened the Google chooser for
-      // somebody who had just typed a password.
-      // A phone-shaped surface, because the default 800x600 puts the submit
-      // button below the fold once the error and the offer are both on screen
-      // — and this test is about what happens when they are.
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
-      final stub = StubIdentity(
-        result: const IdentityResult(
-          IdentityOutcome.credentialBelongsToAnotherAccount,
-        ),
-      );
-      await pump(tester, identity: stub);
-
-      await tester.tap(find.text('Continue with Google'));
-      await tester.pumpAndSettle();
-      expect(find.text('Sign in to that account'), findsOneWidget);
-
-      await tester.enterText(find.byType(TextFormField).first, 'a@b.com');
-      await tester.enterText(find.byType(TextFormField).last, 'password123');
-      await tester.tap(find.text('Create account'));
+      await tester.tap(find.text('Not now'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Sign in to that account'), findsNothing);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.textContaining('already have an account'), findsOneWidget);
+      expect(stub.calls, isNot(contains('existingGoogle')));
     });
 
-    testWidgets('creating an existing account flips the form to sign in',
+    testWidgets('the EMAIL path reuses the password already typed',
         (tester) async {
-      // One tap instead of a puzzle. They do not want a new account; they want
-      // the one they have, and their email is already typed.
+      // They typed the password for the account they want before pressing the
+      // wrong button. Making them type it again would be the whole point of
+      // the dialog, missed.
       final stub = StubIdentity(
         result: const IdentityResult(
           IdentityOutcome.credentialBelongsToAnotherAccount,
@@ -380,11 +377,15 @@ void main() {
       await tester.tap(find.text('Create account'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Create account'), findsNothing);
-      expect(find.text('a@b.com'), findsOneWidget);
+      expect(find.text('Sign in'), findsWidgets);
+      await tester.tap(find.widgetWithText(TextButton, 'Sign in'));
+      await tester.pumpAndSettle();
+
+      // Signed in with what was already in the form, not a Google chooser.
+      expect(stub.calls, contains('signIn:a@b.com'));
+      expect(stub.calls, isNot(contains('existingGoogle')));
     });
   });
-
 }
 
 /// An account that is already signed in.
