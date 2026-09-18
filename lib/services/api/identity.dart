@@ -210,25 +210,25 @@ class FirebaseIdentity implements Identity {
       );
     } on GoogleSignInException catch (error) {
       if (error.code == GoogleSignInExceptionCode.canceled) {
-        // LOGGED, EVEN THOUGH THE UI STAYS SILENT — and this branch is why
-        // that distinction had to be made explicit.
+        // LOGGED IN FULL, because `canceled` alone cannot tell two very
+        // different things apart.
         //
-        // A player pressing back and Play Services REFUSING THE BUILD arrive
-        // here identically: when the signing certificate is not registered
-        // against the package's OAuth client, the chooser closes immediately
-        // and the plugin reports a cancellation. Showing a message would nag
-        // whoever genuinely backed out, so the screen still says nothing — but
-        // this used to be the one branch that also wrote nothing, which made a
-        // release-only configuration failure completely undiagnosable.
+        // A player pressing back and Play Services REFUSING THE BUILD both
+        // land here: an unregistered signing certificate makes the platform
+        // return RESULT_CANCELED, so the plugin reports a cancellation either
+        // way. The first version of this line said so in prose and was read as
+        // a diagnosis, which it is not -- it fires on every genuine cancel too.
         //
-        // Compare the certificate on the startup report's `signing SHA-1` line
-        // against the fingerprints in the Firebase console before assuming a
-        // run of these is players changing their minds.
+        // `description` and `details` are what actually separate them. A real
+        // cancel carries little or nothing; a configuration rejection carries
+        // the underlying status, usually DEVELOPER_ERROR or a bare 10. Print
+        // both and stop guessing. ASCII only: an em dash here arrives as
+        // mojibake through a Windows console.
         debugPrint(
-          '[identity] Google sign-in cancelled — this is ALSO what an '
-          'unregistered signing certificate looks like; check the startup '
-          "report's signing SHA-1 against Firebase",
+          '[identity] Google sign-in ended in cancel. '
+          'description=${error.description} details=${error.details}',
         );
+        debugPrint('[identity] raw: $error');
         return const IdentityResult(IdentityOutcome.cancelled);
       }
       debugPrint('[identity] google sign-in failed: ${error.code}');
