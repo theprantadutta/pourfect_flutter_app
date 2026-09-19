@@ -148,10 +148,14 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       ref.read(syncControllerProvider.notifier).syncNow();
 
       // And Play's update check, last and least urgent of the lot. Flexible by
-      // default, so the download happens while the player plays and the only
-      // interruption is an offer to restart once it has landed — see
-      // `AppUpdater` for why a blocking update screen is the wrong trade for
-      // a game that is fully playable offline.
+      // default, so the download happens while the player plays.
+      //
+      // THE LISTENER IS THE HALF THAT WAS MISSING. A flexible update does not
+      // install itself, so downloading one and never offering the restart left
+      // the update sitting on the device for ever while the app behaved as if
+      // nothing had happened. Registered before the check, because the check
+      // can raise it immediately when an earlier run already downloaded one.
+      _updater.readyToInstall.addListener(_offerRestart);
       unawaited(_updater.check());
 
       // And today's board, so the home card knows whether it has been played
@@ -204,9 +208,40 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     }
   }
 
+  /// Offers the restart that installs a downloaded update.
+  ///
+  /// A bar rather than a dialog, and never automatic. `completeFlexibleUpdate`
+  /// restarts the process; doing that unasked would close the game on somebody
+  /// halfway through a board, which is a worse bug than being a version behind.
+  /// It waits to be taken up, and says nothing if it is not.
+  void _offerRestart() {
+    if (!mounted || !_updater.readyToInstall.value) return;
+
+    final tokens = PourfectTokens.of(context);
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: tokens.surfaceRaised,
+          duration: const Duration(seconds: 10),
+          content: Text(
+            'An update is ready to install.',
+            style: bodyStyle(tokens),
+          ),
+          action: SnackBarAction(
+            label: 'Restart',
+            textColor: tokens.accent,
+            onPressed: _updater.install,
+          ),
+        ),
+      );
+  }
+
   @override
   void dispose() {
     _taps?.cancel();
+    _updater.readyToInstall.removeListener(_offerRestart);
+    _updater.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

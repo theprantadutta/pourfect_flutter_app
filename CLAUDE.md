@@ -511,6 +511,35 @@ It does nothing unless the app came from Play — `checkForUpdate` throws
 otherwise, which is every debug build — so it is logged and shrugged off. Same
 shape as the review prompter, and unverifiable for the same reason.
 
+**A flexible update does NOT install itself, and the first version of this
+shipped without the half that does.** `startFlexibleUpdate` fetches the bytes
+and stops; `completeFlexibleUpdate` installs them and restarts the app. Nothing
+called it, so Play's dialog appeared, the player accepted, the download ran to
+completion, and then nothing happened — for ever. Reported from production as
+"I clicked update and the popup just vanished".
+
+**The second launch was worse.** An update that is downloaded and not installed
+reports `developerTriggeredUpdateInProgress`, not `updateAvailable`, so a check
+that only looks for the latter goes silent about an update already sitting on
+the device. `installStatus == InstallStatus.downloaded` says the same thing.
+Both are handled now, and both raise `readyToInstall`.
+
+**`startFlexibleUpdate` returns whether the player accepted**, and that result
+was being discarded by a seam declared `Future<void>`. Declining therefore
+looked identical to a completed download, and the app would offer a restart for
+bytes it never fetched.
+
+**The install is never automatic.** Completing restarts the process, and doing
+that unasked closes the game on somebody mid-board. `readyToInstall` is a
+`ValueNotifier` because the download finishes minutes after the check, so the
+offer has to arrive then rather than having been asked at launch — the shell
+listens and shows a bar with a Restart action.
+
+**The test that passed while the feature was broken is the lesson.** It drove
+`completeDownloadedUpdate` directly and asserted the plugin call, so it was
+green while nothing in the app reached that method. Every path now asserts
+`readyToInstall`, which is the signal the app actually consumes.
+
 ## Frame timing
 
 `adb shell dumpsys gfxinfo` reports ZERO frames for this app — Impeller renders
