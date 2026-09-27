@@ -653,6 +653,20 @@ Measure PER-ABI, the way Play delivers it — never the universal APK.
 | armeabi-v7a | 16.8 MB |
 | universal (never shipped) | 26.9 MB |
 
+**Those figures are from before sign-in, sync, notifications and in-app
+update landed, and they no longer hold.** Measured again 2026-09-27, both
+built the same way (`flutter build apk --release --split-per-abi`):
+
+| arm64-v8a | Size |
+|---|---|
+| `master` before Toybox | 26.7 MB |
+| Toybox | 27.2 MB |
+
+The redesign itself costs ~0.5 MB — more Dart, the splash images at every
+density — and would have cost 1.5 MB more without subsetting Bagel Fat One.
+The growth to ~27 MB happened on `master` before it and has not been
+attributed; the engine (11.8 MB) and compiled Dart (7.3 MB) are most of it.
+
 Audio costs ~5.4 MB: SoLoud ships native libs for all three ABIs regardless of
 `--target-platform`, which filters only Flutter's own libs. The App Bundle
 splits them per device.

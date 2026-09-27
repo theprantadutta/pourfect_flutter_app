@@ -1,11 +1,18 @@
 /// The seam between the native splash and the first real screen.
 ///
-/// The native splash is a flat tomato ground with `splash_logo_1200.png` drawn
-/// at 300dp in the middle (flutter_native_splash treats the master as 4x). The
-/// first Flutter frame paints EXACTLY that — same color, same image, same box —
-/// so the engine taking over is invisible. Only then does anything move: the
-/// logo drops a little and bounces, the dots, the POUR · SORT · RELAX tag and
-/// three balls arrive, and the whole thing fades off the hub underneath.
+/// The first Flutter frame paints EXACTLY what the native splash was showing,
+/// so the engine taking over is invisible:
+///
+///  * **Android 12+** shows only the icon — `android12_splash_icon_1152.png`
+///    at 288dp, centered, which is just the amber ball. The handoff starts
+///    from that, then lifts and shrinks the ball onto the full logo's ball and
+///    cross-fades the wordmark in around it. Measured on the A24: native ball
+///    130dp, 4dp below center; logo ball 120dp, 34dp above.
+///  * **Everything else** (iOS, older Android) shows `splash_logo_1200.png`
+///    at 300dp, and the handoff starts from that and bounces it.
+///
+/// Then the dots, the POUR · SORT · RELAX tag and three balls arrive, and the
+/// whole thing fades off the hub underneath.
 ///
 /// It is short on purpose (about 900ms) and a tap ends it. This plays on every
 /// cold start, and a launch animation somebody has to sit through on their
@@ -14,6 +21,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/ball_palette.dart';
@@ -52,13 +60,23 @@ class _SplashHandoffState extends State<SplashHandoff>
     // native splash hands over to a tomato screen with NO logo for a frame or
     // two, which is precisely the jump this widget exists to prevent.
     final binding = WidgetsBinding.instance..deferFirstFrame();
-    precacheImage(_logo, context).whenComplete(() {
+    Future.wait([
+      precacheImage(_logo, context),
+      if (_fromIcon) precacheImage(_icon, context),
+    ]).whenComplete(() {
       binding.allowFirstFrame();
       if (mounted) _t.forward();
     });
   }
 
   static const _logo = AssetImage('assets/brand/splash_logo_1200.png');
+  static const _icon = AssetImage(
+    'assets/brand/android12_splash_icon_1152.png',
+  );
+
+  /// Android's native splash is the icon alone (every Android the game
+  /// supports in practice is 12+); elsewhere it is the full logo.
+  bool get _fromIcon => defaultTargetPlatform == TargetPlatform.android;
 
   @override
   void dispose() {
@@ -68,6 +86,46 @@ class _SplashHandoffState extends State<SplashHandoff>
 
   double _span(double from, double to) =>
       ((_t.value - from) / (to - from)).clamp(0.0, 1.0);
+
+  /// The icon rises onto the logo's ball; the logo fades in under it.
+  List<Widget> _fromIconLayers(bool calm) {
+    final rise = calm ? 1.0 : Curves.easeOutBack.transform(_span(0.06, 0.4));
+    final swap = calm ? 1.0 : _span(0.32, 0.46);
+    // Native ball: 130dp, 4dp below center. Logo ball: 120dp, 34dp above.
+    const endScale = 120 / 130;
+    final scale = 1 + (endScale - 1) * rise;
+    final dy = (-34 - 4 * endScale) * rise;
+    return [
+      Center(
+        child: Opacity(
+          opacity: swap,
+          child: const Image(
+            image: _logo,
+            width: 300,
+            height: 300,
+            gaplessPlayback: true,
+          ),
+        ),
+      ),
+      Center(
+        child: Opacity(
+          opacity: 1 - swap,
+          child: Transform.translate(
+            offset: Offset(0, dy),
+            child: Transform.scale(
+              scale: scale,
+              child: const Image(
+                image: _icon,
+                width: 288,
+                height: 288,
+                gaplessPlayback: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,25 +158,26 @@ class _SplashHandoffState extends State<SplashHandoff>
                       painter: DotGridPainter.surface(ToySurface.splash),
                     ),
                   ),
-                  Center(
-                    child: Transform.translate(
-                      offset: Offset(0, bounce),
-                      child: Transform(
-                        alignment: Alignment.bottomCenter,
-                        transform: Matrix4.diagonal3Values(
-                          2 - squash,
-                          squash,
-                          1,
-                        ),
-                        child: Image.asset(
-                          'assets/brand/splash_logo_1200.png',
-                          width: 300,
-                          height: 300,
-                          gaplessPlayback: true,
+                  if (_fromIcon) ..._fromIconLayers(calm) else
+                    Center(
+                      child: Transform.translate(
+                        offset: Offset(0, bounce),
+                        child: Transform(
+                          alignment: Alignment.bottomCenter,
+                          transform: Matrix4.diagonal3Values(
+                            2 - squash,
+                            squash,
+                            1,
+                          ),
+                          child: const Image(
+                            image: _logo,
+                            width: 300,
+                            height: 300,
+                            gaplessPlayback: true,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   // Tag and balls sit below the logo and arrive after it has
                   // landed; they are extras, not part of the native frame.
                   Align(

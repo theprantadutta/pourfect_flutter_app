@@ -132,9 +132,11 @@ flutter:
     # is readable with no network — which matters for a game that is otherwise
     # fully playable offline.
     - assets/legal/
-    # The Toybox wordmark and logo mark, plus the launcher and splash masters
-    # that flutter_launcher_icons / flutter_native_splash read at build time.
-    - assets/brand/
+    # Only the two images the splash handoff paints at runtime. The rest of
+    # assets/brand/ are build-time masters (flutter_native_splash, store art)
+    # and would be dead bytes in the APK.
+    - assets/brand/splash_logo_1200.png
+    - assets/brand/android12_splash_icon_1152.png
     # Public identifiers and endpoint URLs: the backend base URLs and the
     # Google OAuth web client id. Gitignored, so a fresh clone must copy
     # .env.example to .env before it will build — the same setup step the
