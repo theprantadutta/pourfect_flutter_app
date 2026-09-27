@@ -59,8 +59,12 @@ class Ball extends StatelessWidget {
     final painted = SizedBox(
       width: size,
       height: size,
+      // Both bounds pinned: a stretched ball is NARROWER than its slot, and a
+      // max below the parent's tight min is an invalid constraint.
       child: OverflowBox(
+        minWidth: width,
         maxWidth: width,
+        minHeight: height,
         maxHeight: height,
         child: SizedBox(
           width: width,

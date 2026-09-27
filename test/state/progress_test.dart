@@ -368,7 +368,8 @@ void main() {
 
     test('the brief profile keeps every beat, just tighter', () {
       expect(WinProfile.brief.starAt, hasLength(3));
-      expect(WinProfile.brief.present, isNull, reason: 'flourish dropped');
+      expect(WinProfile.brief.rays, isNull, reason: 'rays dropped');
+      expect(WinProfile.brief.confetti, isNull, reason: 'confetti dropped');
       expect(
         WinProfile.brief.starAt[1] - WinProfile.brief.starAt[0],
         120,
@@ -380,9 +381,10 @@ void main() {
     test('every beat finishes inside its profile', () {
       for (final p in [WinProfile.full, WinProfile.brief]) {
         expect(p.cta.end, lessThanOrEqualTo(p.total));
-        expect(p.secondary.end, lessThanOrEqualTo(p.total));
         expect(p.band.end, lessThanOrEqualTo(p.total));
-        expect(p.moves.end, lessThanOrEqualTo(p.total));
+        expect(p.sticker.end, lessThanOrEqualTo(p.total));
+        expect(p.chips.end + 2 * p.chipStagger, lessThanOrEqualTo(p.total));
+        expect(p.title.end, lessThanOrEqualTo(p.total));
         for (final at in p.starAt) {
           expect(at + p.starLength, lessThanOrEqualTo(p.total));
         }
@@ -394,9 +396,8 @@ void main() {
       // arriving.
       for (final p in [WinProfile.full, WinProfile.brief]) {
         expect(p.cta.at, greaterThan(p.band.at));
-        expect(p.cta.at, greaterThan(p.moves.at));
+        expect(p.cta.at, greaterThan(p.chips.at));
         expect(p.cta.at, greaterThan(p.starAt.last));
-        expect(p.secondary.at, greaterThan(p.cta.at));
       }
     });
   });

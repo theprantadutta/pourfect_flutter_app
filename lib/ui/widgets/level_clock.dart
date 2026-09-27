@@ -4,9 +4,9 @@
 /// an animating board does not rebuild the whole tree once a second just to
 /// advance two digits.
 ///
-/// Quiet by design. It counts UP and it is the same muted grey as every other
-/// number on the HUD until par passes, at which point it warms to amber and
-/// stops there — no red, no flashing, no countdown. Par costs a fraction of
+/// Quiet by design. It counts UP, sits inline after the world name in the
+/// same muted ink, and once par passes it turns tomato and stops there — no
+/// flashing, no countdown. Par costs a fraction of
 /// the score and nothing else, and a puzzle people play to unwind should not
 /// look like it is timing an exam.
 library;
@@ -16,8 +16,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../format.dart';
-import '../theme/tokens.dart';
-import '../theme/typography.dart';
+import '../theme/toy.dart';
 
 class LevelClock extends StatefulWidget {
   /// Reads the live elapsed time. A callback rather than a value because the
@@ -33,12 +32,17 @@ class LevelClock extends StatefulWidget {
 
   final double fontSize;
 
+  /// Ink while within par. Inherits the surrounding text color when null, so
+  /// it matches the subtitle it sits in on any ground.
+  final Color? color;
+
   const LevelClock({
     super.key,
     required this.elapsedSeconds,
     required this.parSeconds,
     required this.isRunning,
-    this.fontSize = 26,
+    this.fontSize = 13,
+    this.color,
   });
 
   @override
@@ -83,18 +87,18 @@ class _LevelClockState extends State<LevelClock> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
     final overPar = widget.parSeconds > 0 && _seconds > widget.parSeconds;
+    final base = widget.color ?? DefaultTextStyle.of(context).style.color;
 
     return Semantics(
       label: 'Time ${formatSpan(_seconds)}',
       child: ExcludeSemantics(
         child: Text(
           formatClock(_seconds),
-          style: numericStyle(
-            tokens,
-            size: widget.fontSize,
-            color: overPar ? tokens.accentWarm : tokens.textNumeric,
+          style: Toy.numbers(
+            widget.fontSize,
+            weight: FontWeight.w700,
+            color: overPar ? Toy.tomato : (base ?? Toy.inkMuted),
           ),
         ),
       ),

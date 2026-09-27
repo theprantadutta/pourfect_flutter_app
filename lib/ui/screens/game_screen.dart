@@ -1,4 +1,5 @@
-/// The board screen, and the level-complete sequence that plays on top of it.
+/// The board screen, and the level-complete sequence that plays over it: the
+/// win moment on the board, then the blue result screen.
 library;
 
 import 'package:flutter/material.dart';
@@ -15,11 +16,11 @@ import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../../state/review_prompter.dart';
 import '../../state/sync_controller.dart';
-import '../theme/tokens.dart';
-import '../theme/typography.dart';
+import '../theme/toy.dart';
 import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
 import '../widgets/level_clock.dart';
+import '../widgets/toy_kit.dart';
 import '../widgets/win_overlay.dart';
 import '../widgets/win_profile.dart';
 
@@ -275,9 +276,15 @@ class _GameScreenState extends ConsumerState<GameScreen>
     ref.read(audioServiceProvider).win();
     ref.read(hapticsServiceProvider).levelCompleted();
 
-    _win
-      ..duration = profile.duration
-      ..forward(from: 0);
+    _win.duration = profile.duration;
+    if (Toy.calm(context)) {
+      // Reduced motion keeps the state change and drops the show: straight to
+      // the settled result, with no skip layer to spend a tap on.
+      _win.value = 1;
+      _skipped = true;
+    } else {
+      _win.forward(from: 0);
+    }
   }
 
   /// Fires star and personal-best cues as their beats arrive.
@@ -302,7 +309,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     }
 
     if (result.isNewBest &&
-        elapsed >= _profile.moves.at + 120 &&
+        elapsed >= _profile.sticker.at &&
         _fired.add('best')) {
       ref.read(audioServiceProvider).newBest();
       ref.read(hapticsServiceProvider).tubeCompleted();
@@ -589,242 +596,268 @@ class _GameScreenState extends ConsumerState<GameScreen>
     }
   }
 
-  /// Asks before taking the player into a video. Never auto-play an ad.
-  /// Asks before a rewarded video plays.
+  /// Asks before a rewarded video plays. Never auto-play an ad.
   ///
   /// Defaults to the hint wording, because that was the only caller for a long
   /// time. A placement that reads differently passes its own — "you have 2
   /// free hints left" is nonsense next to an offer of an extra tube, which has
   /// no free allowance at all.
-  Future<bool> _confirmWatchAd({String? title, String? body}) async {
-    final tokens = PourfectTokens.of(context);
+  Future<bool> _confirmWatchAd({String? title, String? body}) {
     final remaining = ref.read(monetizationProvider).freeHintsRemaining;
-
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: tokens.surfaceRaised,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(tokens.panelRadius),
-              side: BorderSide(color: tokens.hairline),
-            ),
-            title: Text(
-              title ?? 'Watch a video for a hint?',
-              style: titleStyle(tokens),
-            ),
-            content: Text(
-              body ??
-                  (remaining > 0
-                      ? 'You have $remaining free hints left.'
-                      : 'Your free hints are used up. A short video earns one '
-                          'more.'),
-              style: bodyStyle(tokens),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text(
-                  'Not now',
-                  style: actionStyle(tokens, color: tokens.textMuted),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text(
-                  'Watch',
-                  style: actionStyle(tokens, color: tokens.accent),
-                ),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    return showToyConfirm(
+      context: context,
+      title: title ?? 'Watch a video for a hint?',
+      body:
+          body ??
+          (remaining > 0
+              ? 'You have $remaining free hints left.'
+              : 'Your free hints are used up. A short video earns one more.'),
+      cancelLabel: 'Not now',
+      confirmLabel: 'Watch',
+      confirmColor: Toy.yellow,
+    );
   }
 
   void _toast(String message) {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-      );
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   // ---- build ---------------------------------------------------------------
 
+  /// The "Holding 2 · drop into a bouncing tube" coaching toast is for the
+  /// first few levels only. By level four everybody knows; after that it
+  /// would be the game talking over the board.
+  static const _coachUntilLevel = 3;
+
+  /// What the coaching toast last said, kept so it can fade out intact.
+  ({int color, int count})? _coach;
+
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
     final campaign = ref.watch(campaignProvider);
     final state = ref.watch(gameControllerProvider);
 
-    return Scaffold(
-      backgroundColor: tokens.surface,
-      body: campaign.when(
-        loading: () => const _Loading(),
-        error: (error, _) => _LoadFailed(message: '$error'),
-        data: (levelSet) {
-          // Started from HERE, not from initState: the campaign is a future,
-          // and a post-frame callback fires before it resolves. Opening the
-          // level the moment the data actually exists is the only ordering
-          // that cannot race.
-          if (!_started) {
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => _startLevel(widget.levelId),
-            );
-            return const _Loading();
-          }
-          if (state == null) return const _Loading();
-
-          final elapsed = _win.value * _profile.total;
-          final result = _result;
-          final progress = ref.read(progressProvider.notifier);
-          final band = campaignBands().firstWhere(
-            (b) => b.contains(state.level.id),
+    return campaign.when(
+      loading: () => const _Loading(),
+      error: (error, _) => _LoadFailed(message: '$error'),
+      data: (levelSet) {
+        // Started from HERE, not from initState: the campaign is a future,
+        // and a post-frame callback fires before it resolves. Opening the
+        // level the moment the data actually exists is the only ordering
+        // that cannot race.
+        if (!_started) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _startLevel(widget.levelId),
           );
-          final clearedNow = progress.clearedIn(
-            band.firstLevel,
-            band.lastLevel,
-          );
+          return const _Loading();
+        }
+        if (state == null) return const _Loading();
 
-          return SafeArea(
-            child: Stack(
-              children: [
-                Column(
-                  children: [
-                    // The HUD recedes rather than disappearing — the level
-                    // number is still the answer to "where am I".
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 380),
-                      opacity: _winActive ? 0.34 : 1,
-                      child: BoardHud(
-                        levelId: state.level.id,
-                        bandName: band.name,
-                        movesUsed: state.movesUsed,
-                        minMoves: state.level.minMoves,
-                        clock: LevelClock(
-                          // Read through the notifier rather than closing over
-                          // `state`: the ticker outlives this build, and a
-                          // captured snapshot would freeze at the time of the
-                          // last move.
-                          elapsedSeconds: () =>
-                              ref
-                                  .read(gameControllerProvider)
-                                  ?.elapsedSecondsAt(DateTime.now()) ??
-                              0,
-                          parSeconds: state.parSeconds,
-                          isRunning: state.isClockRunning,
-                          // Smaller than the level number and the move count
-                          // on either side of it. Three 26px numerals across
-                          // one bar read as three scores; the clock is the one
-                          // that only moves points, and it should look it.
-                          fontSize: 19,
-                        ),
-                        onExit: _exit,
-                      ),
-                    ),
-                    Expanded(
-                      flex: _winActive ? 5 : 7,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: tokens.space4,
-                        ),
-                        child: BoardView(
-                          onTapTube: _onTapTube,
-                          onBallLanded: _onBallLanded,
-                          win: result == null
-                              ? null
-                              : WinPhase(
-                                  profile: _profile,
-                                  elapsedMs: elapsed,
-                                  celebrateThird: result.stars >= 3,
-                                ),
-                        ),
-                      ),
-                    ),
-                    if (result != null)
-                      Expanded(
-                        flex: 5,
-                        child: SingleChildScrollView(
-                          child: WinOverlay(
+        final elapsed = _win.value * _profile.total;
+        final result = _result;
+        final progress = ref.read(progressProvider.notifier);
+        final bands = campaignBands();
+        final band = bands.firstWhere((b) => b.contains(state.level.id));
+        final clearedNow = progress.clearedIn(band.firstLevel, band.lastLevel);
+
+        // Where the win sequence is. Both are 0 while playing.
+        final raysIn = _profile.rays == null
+            ? 0.0
+            : ((elapsed - _profile.rays!.at) / _profile.rays!.length).clamp(
+                0.0,
+                1.0,
+              );
+        final settled = result == null
+            ? 0.0
+            : ((elapsed - _profile.settle.at) / _profile.settle.length).clamp(
+                0.0,
+                1.0,
+              );
+
+        final selected = state.selectedTube;
+        final coaching =
+            result == null &&
+            selected != null &&
+            state.board[selected].isNotEmpty &&
+            state.level.id <= _coachUntilLevel;
+        if (coaching) {
+          _coach = (
+            color: state.board[selected].balls.last,
+            count: state.board[selected].topRunLength,
+          );
+        }
+
+        final playfield = ToyScaffold(
+          padding: EdgeInsets.zero,
+          backdrop: raysIn > 0
+              ? WinRays(color: const Color(0x47FFC233), opacity: raysIn)
+              : null,
+          child: Column(
+            children: [
+              // The HUD recedes rather than disappearing during the win
+              // moment — the level number still answers "where am I".
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: _winActive ? 0.5 : 1,
+                child: BoardHud(
+                  levelId: state.level.id,
+                  bandName: band.name,
+                  movesUsed: state.movesUsed,
+                  minMoves: state.level.minMoves,
+                  showParMeter: !_winActive,
+                  clock: LevelClock(
+                    // Read through the notifier rather than closing over
+                    // `state`: the ticker outlives this build, and a captured
+                    // snapshot would freeze at the time of the last move.
+                    elapsedSeconds: () =>
+                        ref
+                            .read(gameControllerProvider)
+                            ?.elapsedSecondsAt(DateTime.now()) ??
+                        0,
+                    parSeconds: state.parSeconds,
+                    isRunning: state.isClockRunning,
+                  ),
+                  onExit: _exit,
+                ),
+              ),
+              SizedBox(
+                height: 58,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  // One toast that fades, holding its last words while it
+                  // does, rather than a switcher: deselecting and reselecting
+                  // the same tube would hand a switcher two identical keys.
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 160),
+                    opacity: coaching ? 1 : 0,
+                    child: _coach == null
+                        ? const SizedBox.shrink()
+                        : ToyToast(
+                            leading: ToyBall.id(_coach!.color, size: 22),
+                            text:
+                                'Holding ${_coach!.count}'
+                                ' · drop into a bouncing tube',
+                          ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: BoardView(
+                    onTapTube: _onTapTube,
+                    onBallLanded: _onBallLanded,
+                    win: result == null
+                        ? null
+                        : WinPhase(
                             profile: _profile,
                             elapsedMs: elapsed,
-                            stars: result.stars,
-                            movesUsed: state.movesUsed,
-                            minMoves: state.level.minMoves,
-                            previousBest: result.previousBest,
-                            isNewBest: result.isNewBest,
-                            elapsedSeconds: result.elapsedSeconds,
-                            parSeconds: result.parSeconds,
-                            points: result.points,
-                            previousFastest: result.previousFastest,
-                            bandName: band.name,
-                            bandClearedBefore: (clearedNow - 1).clamp(
-                              0,
-                              band.length,
-                            ),
-                            bandClearedAfter: clearedNow,
-                            bandTotal: band.length,
-                            onNext: levelSet.byId(state.level.id + 1) == null
-                                ? null
-                                : () => _advanceFrom(
-                                    state.level.id,
-                                    state.level.id + 1,
-                                  ),
-                            onReplay: () => _startLevel(state.level.id),
-                            onLevels: _exit,
-                            interactive: !_skipActive,
+                            celebrateThird: result.stars >= 3,
                           ),
-                        ),
-                      )
-                    else ...[
-                      if (state.isStuck && !state.isWon)
-                        _StuckBanner(
-                          onUndo: () =>
-                              ref.read(gameControllerProvider.notifier).undo(),
-                        ),
-                      BoardControls(
-                        // Hidden until par is spent — see
-                        // GameState.canOfferExtraTube for why that particular
-                        // moment, which is about what the server will accept
-                        // rather than about difficulty.
-                        onExtraTube:
-                            state.canOfferExtraTube ? _onExtraTube : null,
-                        onUndo: state.canUndo
-                            ? () {
-                                ref
-                                    .read(gameControllerProvider.notifier)
-                                    .undo();
-                              }
-                            : null,
-                        onRestart: () {
-                          // Banked BEFORE the restart, which discards the
-                          // clock. Time spent on an attempt somebody threw
-                          // away is still time they played.
-                          _bankPlaytime();
-                          _startLevel(state.level.id);
-                        },
-                        onHint: _onHint,
-                        hintBusy: state.hintPending,
-                      ),
-                    ],
-                  ],
-                ),
-
-                // Swallows exactly one tap, then removes itself.
-                if (_skipActive)
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _skip,
-                      child: const SizedBox.expand(),
-                    ),
                   ),
+                ),
+              ),
+              if (result != null)
+                WinMomentCaption(
+                  movesUsed: state.movesUsed,
+                  minMoves: state.level.minMoves,
+                  opacity: (elapsed / 180).clamp(0.0, 1.0),
+                )
+              else ...[
+                if (state.isStuck && !state.isWon)
+                  _StuckBanner(
+                    onUndo: () =>
+                        ref.read(gameControllerProvider.notifier).undo(),
+                  ),
+                BoardControls(
+                  // Hidden until par is spent — see
+                  // GameState.canOfferExtraTube for why that particular
+                  // moment, which is about what the server will accept rather
+                  // than about difficulty.
+                  onExtraTube: state.canOfferExtraTube ? _onExtraTube : null,
+                  onUndo: state.canUndo
+                      ? () => ref.read(gameControllerProvider.notifier).undo()
+                      : null,
+                  onRestart: () {
+                    // Banked BEFORE the restart, which discards the clock.
+                    // Time spent on an attempt somebody threw away is still
+                    // time they played.
+                    _bankPlaytime();
+                    _startLevel(state.level.id);
+                  },
+                  onHint: _onHint,
+                  hintBusy: state.hintPending,
+                  hintBadge: _hintBadge(),
+                ),
               ],
-            ),
-          );
-        },
-      ),
+            ],
+          ),
+        );
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            playfield,
+            if (result != null && _profile.confetti != null)
+              WinConfetti(
+                t: ((elapsed - _profile.confetti!.at) /
+                        _profile.confetti!.length)
+                    .clamp(0.0, 1.0),
+                seed: state.level.id,
+              ),
+            if (result != null && settled > 0)
+              Opacity(
+                opacity: settled,
+                child: WinResult(
+                  profile: _profile,
+                  elapsedMs: elapsed,
+                  levelId: state.level.id,
+                  board: state.board,
+                  stars: result.stars,
+                  movesUsed: state.movesUsed,
+                  minMoves: state.level.minMoves,
+                  previousBest: result.previousBest,
+                  isNewBest: result.isNewBest,
+                  elapsedSeconds: result.elapsedSeconds,
+                  parSeconds: result.parSeconds,
+                  points: result.points,
+                  previousFastest: result.previousFastest,
+                  bandName: band.name,
+                  worldNumber: bands.indexOf(band) + 1,
+                  bandClearedBefore: (clearedNow - 1).clamp(0, band.length),
+                  bandClearedAfter: clearedNow,
+                  bandTotal: band.length,
+                  onNext: levelSet.byId(state.level.id + 1) == null
+                      ? null
+                      : () => _advanceFrom(state.level.id, state.level.id + 1),
+                  onReplay: () => _startLevel(state.level.id),
+                  onLevels: _exit,
+                  interactive: !_skipActive,
+                ),
+              ),
+
+            // Swallows exactly one tap, then removes itself.
+            if (_skipActive)
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _skip,
+                  child: const SizedBox.expand(),
+                ),
+              ),
+          ],
+        );
+      },
     );
+  }
+
+  /// Free hints plus banked credits: what the Hint button can give without a
+  /// video. Zero turns the badge into a ▶.
+  int _hintBadge() {
+    final money = ref.watch(monetizationProvider);
+    return money.freeHintsRemaining + money.hintCredits;
   }
 }
 
@@ -836,35 +869,34 @@ class _StuckBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: tokens.space4),
-      padding: EdgeInsets.symmetric(
-        horizontal: tokens.space3,
-        vertical: tokens.space2,
-      ),
-      decoration: BoxDecoration(
-        color: tokens.surfaceRaised,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: tokens.hairline),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'No moves left — step back and try another line.',
-              style: bodyStyle(tokens).copyWith(fontSize: 13),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+      child: ToyBox(
+        color: Toy.tomatoTint,
+        radius: Toy.rButton,
+        shadow: 3,
+        padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'No moves left — step back and try another line.',
+                style: Toy.ui(13, weight: FontWeight.w700),
+              ),
             ),
-          ),
-          TextButton(
-            onPressed: onUndo,
-            child: Text(
-              'Undo',
-              style: actionStyle(tokens, color: tokens.accent),
+            const SizedBox(width: 8),
+            Pressable(
+              onPressed: onUndo,
+              depth: 2,
+              child: ToyBox(
+                radius: Toy.rChip,
+                shadow: 2,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Text('Undo', style: Toy.ui(14, weight: FontWeight.w800)),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -874,10 +906,11 @@ class _Loading extends StatelessWidget {
   const _Loading();
 
   @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-    return Center(child: Text('POURFECT', style: labelStyle(tokens)));
-  }
+  Widget build(BuildContext context) => ToyScaffold(
+    child: Center(
+      child: Text('Pourfect', style: Toy.display(40, color: Toy.tomato, shadow: 3)),
+    ),
+  );
 }
 
 class _LoadFailed extends StatelessWidget {
@@ -886,17 +919,20 @@ class _LoadFailed extends StatelessWidget {
   const _LoadFailed({required this.message});
 
   @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(tokens.space4),
-        child: Text(
-          'Could not load levels.\n$message',
-          textAlign: TextAlign.center,
-          style: bodyStyle(tokens),
-        ),
+  Widget build(BuildContext context) => ToyScaffold(
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Could not load levels', style: Toy.display(26)),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Toy.ui(14, weight: FontWeight.w500, color: Toy.inkMuted),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }

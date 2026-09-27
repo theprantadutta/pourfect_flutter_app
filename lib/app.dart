@@ -28,6 +28,7 @@ import 'ui/theme/tokens.dart';
 import 'ui/theme/toy.dart';
 import 'ui/theme/typography.dart';
 import 'ui/transitions.dart';
+import 'ui/widgets/splash_handoff.dart';
 
 class PourfectApp extends StatelessWidget {
   const PourfectApp({super.key});
@@ -364,12 +365,19 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     );
   }
 
+  /// True until the splash handoff has played out, once per cold start.
+  bool _splashing = true;
+
   @override
-  Widget build(BuildContext context) => _showLegalGate == true
-      ? LegalConsentScreen(
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      if (_showLegalGate == true)
+        LegalConsentScreen(
           onAccepted: () => setState(() => _showLegalGate = false),
         )
-      : HomeScreen(
+      else
+        HomeScreen(
           onOpenLevel: _openLevel,
           onOpenSettings: _openSettings,
           onOpenStatistics: _openStatistics,
@@ -377,7 +385,11 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
           onOpenLeaderboard: _openLeaderboard,
           onOpenAccount: _openAccount,
           onOpenJourney: _openJourney,
-        );
+        ),
+      if (_splashing)
+        SplashHandoff(onDone: () => setState(() => _splashing = false)),
+    ],
+  );
 }
 
 /// System chrome for a full-bleed board.

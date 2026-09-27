@@ -478,20 +478,30 @@ class ToyToggle extends StatelessWidget {
 }
 
 /// Pill tabs: Today / Campaign, Overview / Levels.
+///
+/// Tomato when the tab IS the primary choice on the screen (Rankings); ink
+/// when it only switches a view (Stats), where tomato would shout.
 class ToyTabs extends StatelessWidget {
   final List<String> labels;
   final int index;
   final ValueChanged<int> onChanged;
+  final Color selectedColor;
+  final double height;
+  final double fontSize;
 
   const ToyTabs({
     super.key,
     required this.labels,
     required this.index,
     required this.onChanged,
+    this.selectedColor = Toy.tomato,
+    this.height = 38,
+    this.fontSize = 15,
   });
 
   @override
   Widget build(BuildContext context) {
+    final calm = Toy.calm(context);
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -511,21 +521,25 @@ class ToyTabs extends StatelessWidget {
                   behavior: HitTestBehavior.opaque,
                   onTap: () => onChanged(i),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    height: 38,
+                    duration: calm
+                        ? Duration.zero
+                        : const Duration(milliseconds: 160),
+                    height: height,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: i == index ? Toy.tomato : Colors.transparent,
+                      color: i == index ? selectedColor : Colors.transparent,
                       borderRadius: BorderRadius.circular(11),
                       border: Border.all(
-                        color: i == index ? Toy.ink : Colors.transparent,
+                        color: i == index && selectedColor != Toy.ink
+                            ? Toy.ink
+                            : Colors.transparent,
                         width: Toy.strokeThin,
                       ),
                     ),
                     child: Text(
                       labels[i],
                       style: Toy.ui(
-                        15,
+                        fontSize,
                         weight: FontWeight.w800,
                         color: i == index ? Colors.white : Toy.inkMuted,
                       ),
@@ -914,33 +928,25 @@ class ToyGlyphPainter extends CustomPainter {
         );
       case ToyGlyph.undo:
       case ToyGlyph.restart:
-        final undo = glyph == ToyGlyph.undo;
-        final rect = Rect.fromCircle(
-          center: Offset(w / 2, h * 0.55),
-          radius: w * 0.34,
-        );
-        line.strokeWidth = math.max(2.5, w * 0.12);
-        if (undo) {
-          canvas.drawArc(rect, math.pi * 1.1, math.pi * 1.3, false, line);
-          final tip = Offset(w * 0.18, h * 0.42);
-          canvas.drawPath(
-            Path()
-              ..moveTo(tip.dx - w * 0.02, tip.dy - h * 0.24)
-              ..lineTo(tip.dx, tip.dy)
-              ..lineTo(tip.dx + w * 0.24, tip.dy + h * 0.02),
-            line,
-          );
-        } else {
-          canvas.drawArc(rect, -math.pi * 0.35, math.pi * 1.6, false, line);
-          final tip = Offset(w * 0.78, h * 0.28);
-          canvas.drawPath(
-            Path()
-              ..moveTo(tip.dx - w * 0.24, tip.dy - h * 0.06)
-              ..lineTo(tip.dx, tip.dy)
-              ..lineTo(tip.dx + w * 0.04, tip.dy - h * 0.26),
-            line,
-          );
-        }
+        // Circular arrows are the one glyph a hand-drawn path gets visibly
+        // wrong at 20px; the rounded Material pair has the right weight.
+        final icon = glyph == ToyGlyph.undo
+            ? Icons.undo_rounded
+            : Icons.refresh_rounded;
+        final tp = TextPainter(
+          text: TextSpan(
+            text: String.fromCharCode(icon.codePoint),
+            style: TextStyle(
+              fontFamily: icon.fontFamily,
+              package: icon.fontPackage,
+              fontSize: w * 1.15,
+              color: color,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset((w - tp.width) / 2, (h - tp.height) / 2));
       case ToyGlyph.hint:
         final style = Toy.display(h * 0.95, color: color);
         final tp = TextPainter(

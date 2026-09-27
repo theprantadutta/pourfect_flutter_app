@@ -150,7 +150,7 @@ void main() {
   }
 
   Future<void> tapHint(WidgetTester tester) async {
-    await tester.tap(find.text('HINT'));
+    await tester.tap(find.text('Hint'));
     await tester.pump();
     await tester.pump();
   }
