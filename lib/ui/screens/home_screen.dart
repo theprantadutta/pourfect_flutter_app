@@ -459,7 +459,7 @@ class _Daily extends ConsumerWidget {
       played: daily.challenge?.isPlayed,
       stars: daily.challenge?.yourAttempt?.stars,
       unavailable: daily.isUnavailable,
-      rank: switch (ref.watch(campaignRankProvider)) {
+      rank: switch (ref.watch(dailyRankProvider)) {
         AsyncData(:final value?) => value,
         _ => null,
       },

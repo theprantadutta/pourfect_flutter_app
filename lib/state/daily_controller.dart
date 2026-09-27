@@ -17,6 +17,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/api/api_result.dart';
 import '../services/api/daily_api.dart';
+import '../services/api/leaderboard_api.dart';
+import 'account_controller.dart';
 import 'providers.dart';
 
 @immutable
@@ -158,3 +160,30 @@ class DailyController extends Notifier<DailyState> {
 final dailyProvider = NotifierProvider<DailyController, DailyState>(
   DailyController.new,
 );
+
+/// The player's position on TODAY's board, or null.
+///
+/// The home screen's rank sticker sits on the daily card, so it has to be the
+/// daily rank. It showed the campaign rank for a while, which put "#4" on a
+/// daily somebody had not even opened. Null — an em dash — until they have a
+/// result today, and for every other reason there is no number: offline, no
+/// backend, or hidden from the boards.
+///
+/// Re-asks when today's attempt lands, so finishing the daily and returning to
+/// the hub shows the new position without a restart.
+final dailyRankProvider = FutureProvider<int?>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  if (!client.isConfigured) return null;
+
+  ref.watch(accountProvider);
+  final played = ref.watch(
+    dailyProvider.select((d) => d.challenge?.isPlayed ?? false),
+  );
+  if (!played) return null;
+
+  final result = await LeaderboardApi(client).daily(limit: 1);
+  return switch (result) {
+    ApiOk(:final value) => value.you?.rank,
+    ApiFailure() => null,
+  };
+});
