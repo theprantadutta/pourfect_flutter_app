@@ -19,7 +19,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/ball_palette.dart';
 import '../theme/tokens.dart';
-import 'ball.dart' show paintBallGlyph;
+import 'ball.dart' show paintToyBall;
 
 /// Vertical distance between consecutive levels.
 /// Tuned on a device, not guessed. At 104 only five levels fitted a screen and
@@ -258,28 +258,18 @@ class JourneyPainter extends CustomPainter {
     double opacity,
   ) {
     final style = kBallPalette[colorId % kBallPalette.length];
-    final color = Color(0xFF000000 | style.rgb).withValues(alpha: opacity);
-
-    canvas.drawCircle(
-      centre,
-      radius,
-      Paint()
-        ..color = color
-        ..isAntiAlias = true,
-    );
 
     // The glyph is not decoration. Color is never the only cue in this game,
     // and the path is where a color-blind player reads their own progress.
-    canvas.save();
-    canvas.translate(centre.dx - radius, centre.dy - radius);
-    paintBallGlyph(
+    paintToyBall(
       canvas,
-      Size(radius * 2, radius * 2),
-      style.glyph,
+      Rect.fromCircle(center: centre, radius: radius),
+      color: Color(0xFF000000 | style.rgb),
+      glyph: style.glyph,
+      glyphInk: Color(0xFF000000 | style.glyphInk),
       bold: boldGlyphs,
       opacity: opacity,
     );
-    canvas.restore();
   }
 
   /// A band's name, set beside its first level rather than across the path.

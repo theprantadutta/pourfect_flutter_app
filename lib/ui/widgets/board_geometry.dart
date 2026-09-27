@@ -49,10 +49,14 @@ class BoardGeometry {
     required int tubeCount,
     required int capacity,
     double minBallSize = 22,
-    double maxBallSize = 58,
-    double gap = 14,
-    double rowGap = 28,
+    double maxBallSize = 44,
+    double? gap,
+    double rowGap = 44,
   }) {
+    // The gap between tubes is generous on a short row, as the Toybox boards
+    // are drawn, and tightens as a row fills. A fixed wide gap on a six-tube
+    // row costs the ball the legibility the glyphs depend on.
+    const tightGap = 10.0;
     // Up to six tubes read comfortably in one row on a phone. Past that, two
     // rows keep the balls big enough to tell apart, which matters more than
     // keeping the board on one line.
@@ -62,7 +66,7 @@ class BoardGeometry {
     // makes the row wider than the screen. So the desired split is checked
     // against what actually fits and rows are added until it does.
     final minTubeWidth = minBallSize + 2 * _paddingFor(minBallSize);
-    final maxPerRow = ((available.width + gap) / (minTubeWidth + gap))
+    final maxPerRow = ((available.width + tightGap) / (minTubeWidth + tightGap))
         .floor()
         .clamp(1, tubeCount);
 
@@ -71,6 +75,11 @@ class BoardGeometry {
       rows++;
     }
     final perRow = (tubeCount / rows).ceil();
+    gap ??= perRow <= 4
+        ? 18.0
+        : perRow == 5
+        ? 14.0
+        : tightGap;
 
     // Solve for the ball size that fits both axes, then clamp.
     //

@@ -102,6 +102,12 @@ dev_dependencies:
   flutter_driver:
     sdk: flutter
 
+  # The native splash, generated from assets/brand/:
+  #   dart run flutter_native_splash:create
+  # Launcher icons are NOT generated: the pre-sized mipmaps are dropped in by
+  # hand so the documented adaptive-icon XML is not overwritten.
+  flutter_native_splash: ^2.4.0
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -126,6 +132,9 @@ flutter:
     # is readable with no network — which matters for a game that is otherwise
     # fully playable offline.
     - assets/legal/
+    # The Toybox wordmark and logo mark, plus the launcher and splash masters
+    # that flutter_launcher_icons / flutter_native_splash read at build time.
+    - assets/brand/
     # Public identifiers and endpoint URLs: the backend base URLs and the
     # Google OAuth web client id. Gitignored, so a fresh clone must copy
     # .env.example to .env before it will build — the same setup step the
@@ -137,25 +146,24 @@ flutter:
     # Bundled, not fetched. `google_fonts` exists for runtime fetching, which we
     # explicitly do not do — the game must be fully playable offline and a font
     # must never pop in on first launch. See assets/fonts/ATTRIBUTION.md.
-    - family: JetBrainsMono
+    #
+    # Display face: the logo, titles, big numbers and CTA labels. One weight.
+    # Subset to Latin — the upstream file carries Hangul and weighs 1.5 MB.
+    - family: BagelFatOne
       fonts:
-        - asset: assets/fonts/JetBrainsMono-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/JetBrainsMono-Bold.ttf
-          weight: 700
-    # Discrete static weights, not the variable font. Flutter's weight matching
-    # is far more predictable with separate files, and a variable axis it
-    # cannot address is dead bytes against the APK budget.
-    - family: Manrope
+        - asset: assets/fonts/BagelFatOne-Regular.ttf
+    # UI face. Discrete static weights, not the variable font: Flutter's weight
+    # matching is far more predictable with separate files.
+    - family: Outfit
       fonts:
-        - asset: assets/fonts/Manrope-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/Manrope-Medium.ttf
+        - asset: assets/fonts/Outfit-Medium.ttf
           weight: 500
-        - asset: assets/fonts/Manrope-SemiBold.ttf
+        - asset: assets/fonts/Outfit-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Manrope-Bold.ttf
+        - asset: assets/fonts/Outfit-Bold.ttf
           weight: 700
+        - asset: assets/fonts/Outfit-ExtraBold.ttf
+          weight: 800
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -187,3 +195,13 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_native_splash:
+  color: "#FF5A36"
+  image: assets/brand/splash_logo_1200.png
+  android_12:
+    color: "#FF5A36"
+    image: assets/brand/android12_splash_icon_1152.png
+    icon_background_color: "#FF5A36"
+  fullscreen: true
+  web: true

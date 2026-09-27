@@ -136,8 +136,8 @@ void main() {
       UncontrolledProviderScope(
         container: scope,
         child: MaterialApp(
-          theme: ThemeData.dark(useMaterial3: true)
-              .copyWith(extensions: const [PourfectTokens.dark]),
+          theme: ThemeData.light(useMaterial3: true)
+              .copyWith(extensions: const [PourfectTokens.toybox]),
           home: child,
         ),
       );

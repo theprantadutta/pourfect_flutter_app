@@ -1,6 +1,6 @@
 /// Registers the bundled font licences with Flutter's licence page.
 ///
-/// Both faces ship under the SIL Open Font License 1.1, which REQUIRES the
+/// Both faces (Bagel Fat One, Outfit) ship under the SIL Open Font License 1.1, which REQUIRES the
 /// licence text to travel with the software. Flutter surfaces registered
 /// licences through `showLicensePage`, so this is what makes us compliant
 /// rather than just attributed.
@@ -16,8 +16,8 @@ import 'package:flutter/services.dart';
 
 /// Licence files expected in `assets/licenses/`, and the packages they cover.
 const _fontLicenses = <String, List<String>>{
-  'assets/licenses/OFL-JetBrainsMono.txt': ['JetBrains Mono'],
-  'assets/licenses/OFL-Manrope.txt': ['Manrope'],
+  'assets/licenses/OFL-BagelFatOne.txt': ['Bagel Fat One'],
+  'assets/licenses/OFL-Outfit.txt': ['Outfit'],
 };
 
 /// Adds every bundled font licence to the registry.

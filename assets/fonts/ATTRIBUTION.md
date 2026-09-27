@@ -6,41 +6,46 @@ offline, and a face that pops in on first launch looks broken.
 
 ---
 
-## JetBrains Mono — present
+## Bagel Fat One — present
 
-Copyright 2020 The JetBrains Mono Project Authors.
-SIL Open Font License 1.1 · <https://github.com/JetBrains/JetBrainsMono>
+Copyright 2022 The Bagel Fat Project Authors.
+SIL Open Font License 1.1 · <https://github.com/JAMO-TYPEFACE/BagelFat>
 
-Carries every numeral in the game — move counts, level numbers, band counts.
-Chosen for even color at 11px and a slashed zero, so `0` and `O` never trade
-places on a leaderboard.
+The display face: the Ball-O wordmark, screen titles, big numbers and CTA
+labels. One weight; the ink drop shadow is what gives it its sticker weight.
+
+**Subset to Latin.** The upstream file carries Hangul and weighs 1.58 MB; the
+bundled one is 52 KB. Re-subset from the Google Fonts TTF with:
+
+    python -m fontTools.subset BagelFatOne-Regular.ttf \
+      --unicodes="U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+2605-2606,U+25B6,U+25BC" \
+      --layout-features='*' --output-file=BagelFatOne-Regular.ttf
+
+The OFL permits this; a subset is a Modified Version and keeps the licence.
 
 | File | Weight |
 |---|---|
-| `JetBrainsMono-Medium.ttf` | 500 |
-| `JetBrainsMono-Bold.ttf` | 700 |
+| `BagelFatOne-Regular.ttf` | 400 |
 
 ---
 
-## Manrope — present
+## Outfit — present
 
-Copyright 2018 The Manrope Project Authors.
-SIL Open Font License 1.1 · <https://github.com/sharanda/manrope>
+Copyright 2021 The Outfit Project Authors.
+SIL Open Font License 1.1 · <https://github.com/Outfitio/Outfit-Fonts>
 
-The UI face: titles, labels, body copy, buttons. Carries everything that is not
-a numeral. A geometric sans with a tall x-height, which holds up at the 11px
-label size without the tracking having to do all the work.
+The UI face: labels, body copy, buttons, and every number — with
+`FontFeature.tabularFigures()` so counters do not shift as they tick.
 
 Static weights, not the variable font. Flutter's weight matching is far more
-predictable with discrete files, and a variable axis it cannot address is dead
-bytes against the APK budget.
+predictable with discrete files.
 
 | File | Weight | Used for |
 |---|---|---|
-| `Manrope-Regular.ttf` | 400 | body copy, setting descriptions |
-| `Manrope-Medium.ttf` | 500 | secondary labels |
-| `Manrope-SemiBold.ttf` | 600 | HUD labels, section headers, button text |
-| `Manrope-Bold.ttf` | 700 | screen titles, the primary action |
+| `Outfit-Medium.ttf` | 500 | body copy, row details |
+| `Outfit-SemiBold.ttf` | 600 | captions, subtitles |
+| `Outfit-Bold.ttf` | 700 | row titles, chips |
+| `Outfit-ExtraBold.ttf` | 800 | buttons, caps labels, numbers |
 
 ---
 

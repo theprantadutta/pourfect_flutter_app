@@ -638,8 +638,8 @@ void main() {
       UncontrolledProviderScope(
         container: built.container,
         child: MaterialApp(
-          theme: ThemeData.dark().copyWith(
-            extensions: const [PourfectTokens.dark],
+          theme: ThemeData.light().copyWith(
+            extensions: const [PourfectTokens.toybox],
           ),
           home: DailyChallengeScreen(onExit: () {}),
         ),

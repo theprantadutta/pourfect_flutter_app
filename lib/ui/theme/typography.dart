@@ -1,81 +1,52 @@
 /// Type ramp.
 ///
-/// Two families, used for different jobs. The UI face is the platform sans;
-/// every NUMBER — move counts, level numbers, timers, leaderboard figures — is
-/// monospace with tabular figures, so a counter ticking from 9 to 10 does not
-/// shift the layout around it. That jitter is small and constant and it is
-/// exactly the kind of thing that makes an app feel cheap.
+/// Two families, bundled (OFL-1.1, see assets/fonts/ATTRIBUTION.md) rather than
+/// fetched — the game must be fully playable offline, and a face that pops in
+/// on first launch looks broken:
 ///
-/// JetBrains Mono is BUNDLED (OFL-1.1, see assets/fonts/ATTRIBUTION.md) rather
-/// than fetched: the game must be fully playable offline, and a face that pops
-/// in on first launch looks broken. It carries every numeral in the game.
+///  * **Bagel Fat One** for display: the logo, screen titles, big numbers and
+///    CTA labels. See `Toy.display`.
+///  * **Outfit** 500–800 for everything else. Every NUMBER a player reads —
+///    move counts, timers, leaderboard figures — uses tabular figures, so a
+///    counter ticking from 9 to 10 does not shift the layout around it.
 ///
-/// The UI face is still the platform default. Manrope is the chosen pairing but
-/// was not available on the build machine; adding it is a one-line change here
-/// plus a pubspec entry, and everything downstream reads these constants.
+/// These helpers keep their original names so the screens read the same API;
+/// the Toybox-specific ramp lives on [Toy].
 library;
 
 import 'package:flutter/material.dart';
 
 import 'tokens.dart';
+import 'toy.dart';
+
+/// UI face.
+const String kUiFontFamily = Toy.uiFamily;
 
 /// Display face.
-///
-/// Bundled rather than fetched, so it renders identically on every device and
-/// cannot pop in on first launch. This was null for a long time, which meant
-/// every screen fell back to whatever the OEM ships — and the difference
-/// between a Samsung and a Pixel was the difference between two products.
-const String kUiFontFamily = 'Manrope';
+const String kDisplayFontFamily = Toy.displayFamily;
 
-/// Monospace face for numerals. Bundled, so it renders identically on every
-/// device rather than inheriting whatever the OEM ships.
-const String kMonoFontFamily = 'JetBrainsMono';
+/// Small caps label: section headers, HUD captions. 11/800/+2.
+TextStyle labelStyle(PourfectTokens tokens) =>
+    Toy.caps(color: tokens.textMuted);
 
-/// Small uppercase label: section headers, HUD captions.
-///
-/// Wide tracking and a muted color on purpose — these should sit behind the
-/// board, not compete with it.
-TextStyle labelStyle(PourfectTokens tokens) => TextStyle(
-  fontFamily: kUiFontFamily,
-  fontSize: 11,
-  fontWeight: FontWeight.w600,
-  letterSpacing: 1.4,
-  height: 1.2,
-  color: tokens.textMuted,
-);
-
-/// Any number the player reads.
+/// Any number the player reads. Tabular Outfit, heavy by default.
 TextStyle numericStyle(
   PourfectTokens tokens, {
   double size = 20,
-  FontWeight weight = FontWeight.w600,
+  FontWeight weight = FontWeight.w800,
   Color? color,
-}) => TextStyle(
-  fontFamily: kMonoFontFamily,
-  fontSize: size,
-  fontWeight: weight,
-  height: 1.1,
-  letterSpacing: 0.5,
-  color: color ?? tokens.textNumeric,
-  fontFeatures: const [FontFeature.tabularFigures()],
-);
+}) => Toy.numbers(size, color: color ?? tokens.textNumeric, weight: weight);
 
-/// Card and dialogue titles.
-TextStyle titleStyle(PourfectTokens tokens) => TextStyle(
-  fontFamily: kUiFontFamily,
-  fontSize: 22,
-  fontWeight: FontWeight.w600,
-  height: 1.25,
-  letterSpacing: -0.2,
-  color: tokens.textPrimary,
-);
+/// Card and dialog titles: the display face, flat ink.
+TextStyle titleStyle(PourfectTokens tokens) =>
+    Toy.display(24, color: tokens.textPrimary, height: 1.1);
 
-/// Body copy. Generous line height — this is a calm game.
+/// Body copy.
 TextStyle bodyStyle(PourfectTokens tokens) => TextStyle(
   fontFamily: kUiFontFamily,
   fontSize: 15,
-  fontWeight: FontWeight.w400,
-  height: 1.55,
+  fontWeight: FontWeight.w500,
+  height: 1.45,
   color: tokens.textMuted,
 );
 
@@ -83,7 +54,7 @@ TextStyle bodyStyle(PourfectTokens tokens) => TextStyle(
 TextStyle actionStyle(PourfectTokens tokens, {Color? color}) => TextStyle(
   fontFamily: kUiFontFamily,
   fontSize: 14,
-  fontWeight: FontWeight.w600,
+  fontWeight: FontWeight.w800,
   letterSpacing: 0.2,
   color: color ?? tokens.textPrimary,
 );

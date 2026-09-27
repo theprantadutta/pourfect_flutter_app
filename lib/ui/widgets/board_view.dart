@@ -6,15 +6,19 @@
 ///  * **Balls arc, they do not slide.** A ball rises clear of its tube, travels,
 ///    and drops in — a cubic Bézier whose control points sit directly above each
 ///    tube, which makes it leave vertically and enter vertically for free.
-///  * **They squash on landing.** A damped spring on the vertical scale, volume
-///    preserved. This is what makes a ball feel like it has weight.
-///  * **No BackdropFilter anywhere.** The frosted-glass tubes are a translucent
-///    fill plus a hairline, not a real blur. A blur behind twelve tubes is the
-///    fastest way to miss 60fps on the low-end Android this game has to run on.
+///  * **They stretch in flight and squash on landing.** Volume preserved, on
+///    an elastic curve. This is what makes a ball feel like it has weight.
+///  * **Nothing blurs.** Tubes are a flat fill, an ink stroke and a hard offset
+///    shadow — the Toybox look — and a blur behind twelve tubes is the fastest
+///    way to miss 60fps on the low-end Android this game has to run on anyway.
+///
+/// While a run is held, every tube that can take it gets a mint fill and a
+/// bobbing tomato ▼; the rest dim to 40%. A tube that completes pops a SORTED!
+/// sticker and flashes a yellow ring.
 ///
 /// The board also PARTICIPATES IN THE WIN SEQUENCE rather than being covered by
-/// it: the solved tubes are the trophy, so they glow, the empties recede, and
-/// the whole board presents itself. See `win_profile.dart` for the timing.
+/// it: it bumps to 1.03 and the solved tubes flash in turn. See
+/// `win_profile.dart` for the timing.
 library;
 
 import 'dart:math' as math;
@@ -25,6 +29,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/game_state.dart';
 import '../../state/providers.dart';
 import '../theme/tokens.dart';
+import '../theme/toy.dart';
 import 'ball.dart';
 import 'board_geometry.dart';
 import 'win_profile.dart';
@@ -32,15 +37,18 @@ import 'win_profile.dart';
 /// Gap between successive balls leaving in one pour.
 const pourStagger = Duration(milliseconds: 58);
 
-/// How long a completed tube glows during play (not the win sequence).
-const _flourishDuration = Duration(milliseconds: 720);
+/// How long a completed tube's ring flash and sticker pop run.
+const _flourishDuration = Duration(milliseconds: 420);
+
+/// One bob of the ▼ over a legal target: 6px, sine, 600ms.
+const _bobDuration = Duration(milliseconds: 600);
 
 /// The board's state during a win sequence, or absent while playing.
 class WinPhase {
   final WinProfile profile;
   final double elapsedMs;
 
-  /// True when the run earned the third star's extra warm wash.
+  /// True when the run earned the third star.
   final bool celebrateThird;
 
   const WinPhase({
@@ -79,13 +87,16 @@ class _BoardViewState extends ConsumerState<BoardView>
 
   /// Breathes while a hint is on screen.
   ///
-  /// A hint used to be drawn with the same static accent border as a tapped
-  /// tube, which made it indistinguishable from the player's own selection —
-  /// worst of all right after a rewarded video, when they return from a
-  /// fullscreen ad having lost all context and cannot tell they were given
-  /// anything. Motion is what separates "the game is telling you something"
-  /// from "you tapped this".
+  /// A hint drawn with the same static treatment as a tapped tube is
+  /// indistinguishable from the player's own selection — worst of all right
+  /// after a rewarded video, when they return from a fullscreen ad having lost
+  /// all context and cannot tell they were given anything. Motion is what
+  /// separates "the game is telling you something" from "you tapped this".
   late final AnimationController _hintPulse;
+
+  /// Drives the ▼ bobbing over every legal target while a run is held. Like
+  /// the hint pulse, it only runs while there is something to point at.
+  late final AnimationController _bob;
 
   PourEvent? _active;
   int? _glowTube;
@@ -109,6 +120,7 @@ class _BoardViewState extends ConsumerState<BoardView>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     );
+    _bob = AnimationController(vsync: this, duration: _bobDuration);
   }
 
   @override
@@ -116,6 +128,7 @@ class _BoardViewState extends ConsumerState<BoardView>
     _pour.dispose();
     _flourish.dispose();
     _hintPulse.dispose();
+    _bob.dispose();
     super.dispose();
   }
 
@@ -141,21 +154,27 @@ class _BoardViewState extends ConsumerState<BoardView>
         (slot + 1) / capacity,
         isLast && active.completedDestination,
       );
+      if (isLast && active.completedDestination) {
+        // The ring and the sticker go off as the tube actually fills, not when
+        // the pour was requested.
+        _glowTube = active.move.to;
+        _flourish.forward(from: 0);
+      }
       if (mounted) setState(() {});
     }
   }
 
   void _startPour(PourEvent event, PourfectTokens tokens) {
     _landed = 0;
+    // The controller runs on past the last landing for the settle, so the
+    // final ball squashes and springs back instead of freezing mid-squash.
     _pour
-      ..duration = tokens.pourDuration + pourStagger * (event.ballsMoved - 1)
+      ..duration =
+          tokens.pourDuration +
+          pourStagger * (event.ballsMoved - 1) +
+          tokens.settleDuration
       ..forward(from: 0);
     setState(() => _active = event);
-
-    if (event.completedDestination) {
-      _glowTube = event.move.to;
-      _flourish.forward(from: 0);
-    }
   }
 
   @override
@@ -193,18 +212,17 @@ class _BoardViewState extends ConsumerState<BoardView>
             height: constraints.maxHeight,
             child: AnimatedBuilder(
               animation: Listenable.merge([_pour, _flourish]),
-              builder: (context, _) => Transform.translate(
-                offset: Offset(0, _presentLift()),
-                child: Transform.scale(
-                  scale: _presentScale(),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      ..._buildTubes(state, geometry, tokens),
-                      ..._buildRestingBalls(state, geometry, tokens),
-                      ..._buildFlyingBalls(state, geometry, tokens),
-                    ],
-                  ),
+              builder: (context, _) => Transform.scale(
+                scale: _presentScale(),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ..._buildTubes(state, geometry, tokens),
+                    ..._buildRestingBalls(state, geometry, tokens),
+                    ..._buildFlyingBalls(state, geometry, tokens),
+                    ..._buildLegalArrows(state, geometry),
+                    ..._buildSortedStickers(state, geometry),
+                  ],
                 ),
               ),
             ),
@@ -223,18 +241,11 @@ class _BoardViewState extends ConsumerState<BoardView>
     return ((win.elapsedMs - at) / length).clamp(0.0, 1.0);
   }
 
-  double _presentLift() {
-    final present = widget.win?.profile.present;
-    if (present == null) return 0;
-    return -24 *
-        Curves.easeOutBack.transform(_winSpan(present.at, present.length));
-  }
-
+  /// The board bumps to 1.03 as the last ball lands and settles back — the
+  /// toy equivalent of holding something up. Every win gets it.
   double _presentScale() {
-    final present = widget.win?.profile.present;
-    if (present == null) return 1;
-    // Swells to 1.04 and settles back — the gesture of holding something up.
-    return 1 + 0.04 * math.sin(math.pi * _winSpan(present.at, present.length));
+    if (widget.win == null || Toy.calm(context)) return 1;
+    return 1 + 0.03 * math.sin(math.pi * _winSpan(0, 250));
   }
 
   // ---- tubes ---------------------------------------------------------------
@@ -246,6 +257,7 @@ class _BoardViewState extends ConsumerState<BoardView>
   ) {
     _syncHintPulse(state.hintMove != null);
 
+    final k = geometry.ballSize / 41;
     return [
       for (var i = 0; i < geometry.tubeRects.length; i++)
         Positioned.fromRect(
@@ -254,21 +266,42 @@ class _BoardViewState extends ConsumerState<BoardView>
             animation: _hintPulse,
             builder: (context, _) => _TubeShell(
               tokens: tokens,
-              isSelected: state.selectedTube == i,
-              isHintSource: state.hintMove?.from == i,
-              isHintTarget: state.hintMove?.to == i,
+              scale: k,
+              look: _tubeLook(state, i),
               // A slow triangle wave, so it eases at both ends instead of
-              // snapping back. The destination is what the player has to act
-              // on, so only that tube gets the full swing.
+              // snapping back.
               hintPulse: Curves.easeInOut.transform(
                 1 - (2 * _hintPulse.value - 1).abs(),
               ),
               opacity: _tubeOpacity(state, i),
-              warm: math.max(_tubeGlow(i), _winGlow(state, i)),
+              ring: math.max(_tubeGlow(i), _winGlow(state, i)),
             ),
           ),
         ),
     ];
+  }
+
+  _TubeLook _tubeLook(GameState state, int i) {
+    final playing = widget.win == null;
+    if (playing && state.hintMove?.to == i) return _TubeLook.hintTarget;
+    if (playing && state.hintMove?.from == i) return _TubeLook.hintSource;
+    if (playing && state.selectedTube == i) return _TubeLook.selected;
+    if (playing &&
+        state.selectedTube != null &&
+        state.legalTargets.contains(i)) {
+      return _TubeLook.legal;
+    }
+    if (state.board[i].isComplete && !_stillLanding(i)) return _TubeLook.sorted;
+    return _TubeLook.idle;
+  }
+
+  /// A tube still receiving the ball that completes it is not complete on
+  /// screen yet.
+  bool _stillLanding(int tube) {
+    final active = _active;
+    return active != null &&
+        active.move.to == tube &&
+        _landed < active.ballsMoved;
   }
 
   /// Runs the pulse only while a hint is up. A permanently repeating
@@ -284,55 +317,152 @@ class _BoardViewState extends ConsumerState<BoardView>
     }
   }
 
-  double _tubeOpacity(GameState state, int tube) {
-    final win = widget.win;
-    if (win != null) {
-      // Empty tubes did not participate in the solve, so they recede and let
-      // the solved ones be the trophy.
-      if (state.board[tube].isEmpty) {
-        return 1 - 0.75 * _winSpan(0, win.profile.glowLength);
-      }
-      return 1;
+  /// Same rule as the hint pulse: the bob runs only while a run is held.
+  void _syncBob(bool holding) {
+    if (holding && !_bob.isAnimating && !Toy.calm(context)) {
+      _bob.repeat();
+    } else if (!holding && _bob.isAnimating) {
+      _bob.stop();
+      _bob.value = 0;
     }
+  }
+
+  double _tubeOpacity(GameState state, int tube) {
+    // During a win every tube stays at full strength: the solved ones wear
+    // their stickers and the empties are part of the finished picture.
+    if (widget.win != null) return 1;
     if (state.selectedTube == null) return 1;
     if (state.selectedTube == tube) return 1;
+    if (state.hintMove?.to == tube) return 1;
     return state.legalTargets.contains(tube)
         ? 1
         : PourfectTokens.illegalTargetOpacity;
   }
 
-  /// Warm glow on a solved tube during the win sequence, staggered left to
-  /// right so the board reads as settling rather than switching on.
+  /// A yellow ring flash on each solved tube during the win, staggered left to
+  /// right so the board reads as a ripple rather than switching on.
   double _winGlow(GameState state, int tube) {
     final win = widget.win;
-    if (win == null || state.board[tube].isEmpty) return 0;
-
-    final rise = _winSpan(
-      tube * win.profile.glowStagger,
-      win.profile.glowLength,
-    );
-    var glow = Curves.easeOut.transform(rise) * 0.6;
-
-    if (win.celebrateThird) {
-      // The third star's warm wash sweeps the board and fades. Only ever on a
-      // three-star run — this is what the extra star buys.
-      final at = win.profile.starAt[2];
-      final wash =
-          _winSpan(at, win.profile.thirdStarFlourishLength) *
-          (1 - _winSpan(at + win.profile.thirdStarFlourishLength, 400));
-      glow += 0.4 * wash;
+    if (win == null || state.board[tube].isEmpty || Toy.calm(context)) {
+      return 0;
     }
-    return glow.clamp(0.0, 1.0);
+    final t = _winSpan(tube * win.profile.glowStagger, win.profile.glowLength);
+    if (t <= 0 || t >= 1) return 0;
+    return math.sin(math.pi * t);
   }
 
   double _tubeGlow(int tube) => _glowTube == tube ? _flourishCurve : 0;
 
+  /// The completion ring: at full strength the instant the tube fills, then
+  /// spreading out and fading.
   double get _flourishCurve {
     final t = _flourish.value;
     if (t == 0 || t == 1) return 0;
-    return t < 0.25
-        ? Curves.easeOut.transform(t / 0.25)
-        : Curves.easeInCubic.transform(1 - (t - 0.25) / 0.75);
+    return 1 - Curves.easeIn.transform(t);
+  }
+
+  // ---- markers over tubes --------------------------------------------------
+
+  /// A tomato ▼ over every tube that can take the held run, and a yellow one
+  /// over a hint's destination.
+  List<Widget> _buildLegalArrows(GameState state, BoardGeometry geometry) {
+    final playing = widget.win == null;
+    final holding = playing && state.selectedTube != null;
+    final hintTarget = playing ? state.hintMove?.to : null;
+    final targets = {if (holding) ...state.legalTargets, ?hintTarget};
+    _syncBob(targets.isNotEmpty);
+    if (targets.isEmpty) return const [];
+
+    final k = geometry.ballSize / 41;
+    final size = 22 * k;
+    return [
+      for (final i in targets)
+        Positioned(
+          left: geometry.tubeRects[i].center.dx - size / 2,
+          top: geometry.tubeRects[i].top - size - 12 * k,
+          width: size,
+          height: size * 0.8,
+          child: IgnorePointer(
+            child: AnimatedBuilder(
+              animation: _bob,
+              builder: (context, child) => Transform.translate(
+                offset: Offset(0, 3 * k * math.sin(2 * math.pi * _bob.value)),
+                child: child,
+              ),
+              child: CustomPaint(
+                painter: _ArrowPainter(
+                  i == hintTarget ? Toy.yellow : Toy.tomato,
+                ),
+              ),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  /// SORTED! over each completed tube. Pops in when the tube completes during
+  /// play; a tube already complete simply wears it.
+  List<Widget> _buildSortedStickers(GameState state, BoardGeometry geometry) {
+    final k = geometry.ballSize / 41;
+    final calm = Toy.calm(context);
+    final widgets = <Widget>[];
+    for (var i = 0; i < state.board.tubeCount; i++) {
+      if (!state.board[i].isComplete || _stillLanding(i)) continue;
+      // Lifted: the sticker would sit on top of the held run.
+      if (state.selectedTube == i && widget.win == null) continue;
+
+      var pop = 1.0;
+      if (_glowTube == i && _flourish.isAnimating && !calm) {
+        // 320ms of the flourish: 0 → 1.15 → 1.
+        pop = Curves.easeOutBack.transform(
+          (_flourish.value * 420 / 320).clamp(0.0, 1.0),
+        );
+      }
+
+      final rect = geometry.tubeRects[i];
+      widgets.add(
+        Positioned(
+          left: rect.center.dx - 60 * k,
+          width: 120 * k,
+          top: rect.top - 22 * k,
+          child: IgnorePointer(
+            child: Center(
+              child: Transform.scale(
+                scale: pop,
+                child: Transform.rotate(
+                  angle: -8 * math.pi / 180,
+                  child: Opacity(
+                    opacity: _tubeOpacity(state, i),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 6 * k,
+                        vertical: 2 * k,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Toy.mint,
+                        borderRadius: BorderRadius.circular(6 * k),
+                        border: Border.all(color: Toy.ink, width: 2 * k),
+                        boxShadow: Toy.hard(2.5 * k),
+                      ),
+                      child: Text(
+                        'SORTED!',
+                        maxLines: 1,
+                        style: Toy.ui(
+                          10 * k,
+                          weight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return widgets;
   }
 
   // ---- balls at rest -------------------------------------------------------
@@ -345,6 +475,7 @@ class _BoardViewState extends ConsumerState<BoardView>
     final widgets = <Widget>[];
     final active = _active;
     final bold = ref.watch(settingsProvider).boldSymbols;
+    final calm = Toy.calm(context);
 
     for (var tube = 0; tube < state.board.tubeCount; tube++) {
       final balls = state.board[tube].balls;
@@ -358,7 +489,6 @@ class _BoardViewState extends ConsumerState<BoardView>
 
       final liftedFrom = _liftedFromSlot(state, tube);
       final opacity = _tubeOpacity(state, tube);
-      final warm = math.max(_tubeGlow(tube), _winGlow(state, tube));
 
       for (var slot = 0; slot < visibleCount; slot++) {
         final centre = geometry.ballCentre(tube, slot);
@@ -372,7 +502,8 @@ class _BoardViewState extends ConsumerState<BoardView>
           AnimatedPositioned(
             key: ValueKey('ball-$tube-$slot'),
             duration: tokens.selectDuration,
-            curve: Curves.easeOutCubic,
+            // A tiny overshoot on the way up, none on the way down.
+            curve: isLifted && !calm ? Curves.easeOutBack : Curves.easeOutCubic,
             left: centre.dx - geometry.ballSize / 2,
             top: y - geometry.ballSize / 2,
             width: geometry.ballSize,
@@ -381,7 +512,8 @@ class _BoardViewState extends ConsumerState<BoardView>
               colorId: balls[slot],
               size: geometry.ballSize,
               opacity: opacity,
-              glow: warm,
+              squash: calm ? 1 : _settleSquash(active, tube, slot, tokens),
+              drop: isLifted,
               boldGlyph: bold,
             ),
           ),
@@ -389,6 +521,26 @@ class _BoardViewState extends ConsumerState<BoardView>
       }
     }
     return widgets;
+  }
+
+  /// Vertical scale of a ball that has just landed: squashed to 0.86 on
+  /// contact, then springing back through 1 on an elastic curve.
+  double _settleSquash(
+    PourEvent? active,
+    int tube,
+    int slot,
+    PourfectTokens tokens,
+  ) {
+    if (active == null || tube != active.move.to) return 1;
+    final j = slot - active.destBaseSlot;
+    if (j < 0 || j >= _landed) return 1;
+
+    final landedAt =
+        j * pourStagger.inMilliseconds + tokens.pourDuration.inMilliseconds;
+    final elapsed = _pour.value * _pour.duration!.inMilliseconds;
+    final t = (elapsed - landedAt) / tokens.settleDuration.inMilliseconds;
+    if (t >= 1 || t < 0) return 1;
+    return 0.86 + 0.14 * const ElasticOutCurve(0.6).transform(t);
   }
 
   /// Lowest slot of the run currently lifted out of [tube], or -1.
@@ -415,6 +567,7 @@ class _BoardViewState extends ConsumerState<BoardView>
     final totalMs = _pour.duration!.inMilliseconds;
     final travelMs = tokens.pourDuration.inMilliseconds;
     final elapsedMs = _pour.value * totalMs;
+    final calm = Toy.calm(context);
 
     final widgets = <Widget>[];
     for (var j = 0; j < active.ballsMoved; j++) {
@@ -430,7 +583,13 @@ class _BoardViewState extends ConsumerState<BoardView>
 
       final position = elapsedMs < startMs
           ? from
-          : _arc(from, to, geometry, active, Curves.easeInOut.transform(local));
+          : _arc(
+              from,
+              to,
+              geometry,
+              active,
+              Curves.easeInOutCubic.transform(local),
+            );
 
       widgets.add(
         Positioned(
@@ -441,6 +600,9 @@ class _BoardViewState extends ConsumerState<BoardView>
           child: Ball(
             colorId: active.color,
             size: geometry.ballSize,
+            // Stretches along its flight and is round again as it lands.
+            squash: calm ? 1 : 1 + 0.1 * math.sin(math.pi * local),
+            drop: true,
             boldGlyph: ref.read(settingsProvider).boldSymbols,
           ),
         ),
@@ -483,102 +645,132 @@ class _BoardViewState extends ConsumerState<BoardView>
   }
 }
 
-/// The tube itself: a frosted pane with a hairline edge.
+/// What a tube is doing right now, which decides its fill, stroke and shadow.
+enum _TubeLook { idle, selected, legal, sorted, hintSource, hintTarget }
+
+/// The tube itself: flat fill, ink stroke, hard shadow. Rounder at the base
+/// than the mouth, like a real vessel.
 class _TubeShell extends StatelessWidget {
   final PourfectTokens tokens;
-  final bool isSelected;
-  final bool isHintSource;
-  final bool isHintTarget;
+
+  /// ballSize / 41 — stroke, shadow and radii scale with the board.
+  final double scale;
+  final _TubeLook look;
 
   /// 0..1, breathing, while a hint is on screen.
   final double hintPulse;
 
   final double opacity;
 
-  /// Completion warmth, 0..1 — from an in-play tube completing or from the win
-  /// sequence.
-  final double warm;
+  /// 0..1 yellow ring flash: a tube completing, or the win ripple.
+  final double ring;
 
   const _TubeShell({
     required this.tokens,
-    required this.isSelected,
-    required this.isHintSource,
-    required this.isHintTarget,
+    required this.scale,
+    required this.look,
     required this.hintPulse,
     required this.opacity,
-    required this.warm,
+    required this.ring,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isHint = isHintSource || isHintTarget;
-    final highlighted = isSelected || isHint;
-
-    // The DESTINATION carries the message — it is the tube the player has to
-    // act on — so it swings furthest. The source only needs to say where the
-    // run is coming from, and matching the target's intensity would leave the
-    // player reading two equal signals with no direction between them.
-    final pulse = isHintTarget
-        ? hintPulse
-        : isHintSource
-        ? hintPulse * 0.45
-        : 0.0;
-
-    return AnimatedOpacity(
-      duration: tokens.selectDuration,
-      opacity: opacity,
-      child: AnimatedContainer(
-        duration: tokens.selectDuration,
-        decoration: BoxDecoration(
-          color: tokens.tubeGlass,
-          // Rounder at the base than the mouth, like a real vessel.
-          borderRadius: BorderRadius.vertical(
-            top: const Radius.circular(6),
-            bottom: Radius.circular(tokens.tubeRadius),
-          ),
-          border: Border.all(
-            color: warm > 0
-                ? Color.lerp(
-                    tokens.hairline,
-                    tokens.accentWarm.withValues(alpha: 0.62),
-                    warm,
-                  )!
-                : isHint
-                ? tokens.accent.withValues(alpha: 0.45 + 0.5 * pulse)
-                : highlighted
-                ? tokens.accent.withValues(alpha: 0.75)
-                : tokens.hairline,
-            width: isHintTarget
-                ? 1.5 + 1.0 * pulse
-                : highlighted || warm > 0.2
-                ? 1.5
-                : 1,
-          ),
-          boxShadow: [
-            if (warm > 0)
-              BoxShadow(
-                color: tokens.accentWarm.withValues(alpha: 0.26 * warm),
-                blurRadius: 24 * warm,
-                spreadRadius: 2 * warm,
-              ),
-            if (isSelected)
-              BoxShadow(
-                color: tokens.accent.withValues(alpha: 0.16),
-                blurRadius: 18,
-              ),
-            // The halo only exists on a hint, and only on the destination.
-            // This is the part that is visible from across the room, which is
-            // the actual requirement: a player coming back from a fullscreen
-            // ad is re-orienting, not studying the board.
-            if (isHintTarget)
-              BoxShadow(
-                color: tokens.accent.withValues(alpha: 0.10 + 0.26 * pulse),
-                blurRadius: 16 + 22 * pulse,
-                spreadRadius: 1 + 3 * pulse,
-              ),
-          ],
-        ),
+    final k = scale;
+    final (fill, stroke, shadow, shadowColor) = switch (look) {
+      _TubeLook.idle => (Toy.tubeFill, Toy.ink, 4.0, Toy.ink),
+      _TubeLook.selected => (Toy.selectedTubeFill, Toy.tomato, 5.0, Toy.tomato),
+      _TubeLook.legal => (Toy.legalTubeFill, Toy.ink, 4.0, Toy.ink),
+      _TubeLook.sorted => (Toy.sortedTubeFill, Toy.ink, 4.0, Toy.ink),
+      _TubeLook.hintSource => (Toy.tubeFill, Toy.yellow, 4.0, Toy.ink),
+      // The destination carries the message, so it is the one that breathes.
+      _TubeLook.hintTarget => (
+        Color.lerp(Toy.sortedTubeFill, const Color(0xFFFFE9A8), hintPulse)!,
+        Toy.ink,
+        4.0,
+        Color.lerp(Toy.ink, Toy.yellow, hintPulse)!,
       ),
+    };
+
+    return LayoutBuilder(
+      builder: (context, box) {
+        final radius = BorderRadius.vertical(
+          top: Radius.circular(12 * k),
+          bottom: Radius.circular(box.maxWidth / 2),
+        );
+        return AnimatedOpacity(
+          duration: tokens.selectDuration,
+          opacity: opacity,
+          child: Stack(
+            clipBehavior: Clip.none,
+            fit: StackFit.expand,
+            children: [
+              if (ring > 0)
+                Positioned.fill(
+                  left: -(3 + 7 * (1 - ring)) * k,
+                  right: -(3 + 7 * (1 - ring)) * k,
+                  top: -(3 + 7 * (1 - ring)) * k,
+                  bottom: -(3 + 7 * (1 - ring)) * k,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(18 * k),
+                        bottom: Radius.circular(box.maxWidth),
+                      ),
+                      border: Border.all(
+                        color: Toy.yellow.withValues(alpha: ring),
+                        width: 4 * k,
+                      ),
+                    ),
+                  ),
+                ),
+              AnimatedContainer(
+                duration: tokens.selectDuration,
+                decoration: BoxDecoration(
+                  color: fill,
+                  borderRadius: radius,
+                  border: Border.all(
+                    color: stroke,
+                    width: (look == _TubeLook.hintSource ? 3.5 : Toy.stroke) * k,
+                  ),
+                  boxShadow: Toy.hard(shadow * k, shadowColor),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
+}
+
+/// The bobbing ▼ over a tube that can take the held run.
+class _ArrowPainter extends CustomPainter {
+  final Color color;
+
+  const _ArrowPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+    // Yellow alone disappears into the cream; it gets the ink outline.
+    if (color == Toy.yellow) {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = Toy.ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = size.width * 0.09
+          ..strokeJoin = StrokeJoin.round,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ArrowPainter old) => old.color != color;
 }

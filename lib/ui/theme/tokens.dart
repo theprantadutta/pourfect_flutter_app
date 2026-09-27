@@ -1,21 +1,21 @@
 /// Semantic design tokens.
 ///
-/// Every color, space and type ramp in the app resolves through here. Nothing
-/// downstream writes a raw hex value or a magic number — that is what makes the
-/// warm-paper light theme a token remap later rather than a rewrite, and it is
-/// why [PourfectTokens] is read off the widget tree instead of being a global.
+/// Every color, space and type ramp the board reads resolves through here.
+/// Nothing downstream writes a raw hex value or a magic number, and
+/// [PourfectTokens] is read off the widget tree instead of being a global.
 ///
-/// Design direction, restated because it constrains every value below: deep
-/// calm dark, near-black ink ground, frosted-glass tubes, muted jewel balls,
-/// hairline borders. References are deliberately outside the genre — meditation
-/// apps, premium habit trackers, high-end audio equipment UI. Explicitly NOT
-/// the mobile-puzzle house style: no rainbow gradients, no cartoon bevels, no
-/// bouncy display faces, no confetti.
+/// Design direction: **Toybox** — cream dotted ground, chunky ink outlines,
+/// hard drop shadows, toy balls, and big celebratory moments. This reverses
+/// the original deep-calm-dark direction on purpose. The values that direction
+/// never needed (ink stroke, offset shadows, brand accents, surfaces) live in
+/// `toy.dart`; this set keeps the semantic names so the board and its motion
+/// read the same fields they always did.
 library;
 
 import 'package:flutter/material.dart';
 
 import 'ball_palette.dart';
+import 'toy.dart';
 
 /// The app's color, spacing, radius and motion tokens.
 @immutable
@@ -109,31 +109,28 @@ class PourfectTokens extends ThemeExtension<PourfectTokens> {
     required this.selectDuration,
   });
 
-  /// The shipped dark theme.
-  ///
-  /// Surfaces step in small increments (0E→18→1F) rather than the usual
-  /// dark-grey jumps: on OLED the eye reads separation from the hairlines, and
-  /// big fills would flatten the frosted-glass effect the tubes depend on.
-  static const dark = PourfectTokens(
-    surface: Color(0xFF0E1116),
-    surfaceRaised: Color(0xFF181C24),
-    tubeGlass: Color(0x14FFFFFF),
-    hairline: Color(0x1AFFFFFF),
-    hairlineStrong: Color(0x33FFFFFF),
-    textPrimary: Color(0xFFE8EAF0),
-    textMuted: Color(0xFF7C8698),
-    textNumeric: Color(0xFFC3CAD8),
-    dimText: Color(0xFF545C6B),
-    accent: Color(0xFF8FC9E8),
-    accentWarm: Color(0xFFE4D9B4),
-    ballSize: 30,
-    tubeRadius: 18,
-    panelRadius: 16,
+  /// The shipped Toybox theme. There is no dark variant.
+  static const toybox = PourfectTokens(
+    surface: Toy.cream,
+    surfaceRaised: Toy.card,
+    tubeGlass: Toy.tubeFill,
+    hairline: Toy.divider,
+    hairlineStrong: Toy.ink,
+    textPrimary: Toy.ink,
+    textMuted: Toy.inkMuted,
+    textNumeric: Toy.ink,
+    dimText: Toy.inkDim,
+    accent: Toy.tomato,
+    accentWarm: Toy.yellow,
+    ballSize: 41,
+    // The BOTTOM radius. The mouth is a fixed 12 — see board_view.dart.
+    tubeRadius: 27,
+    panelRadius: Toy.rCard,
     space1: 4,
     space2: 8,
-    space3: 16,
-    space4: 24,
-    space5: 40,
+    space3: 14,
+    space4: 20,
+    space5: 32,
     pourDuration: Duration(milliseconds: 260),
     settleDuration: Duration(milliseconds: 180),
     selectDuration: Duration(milliseconds: 140),
@@ -141,13 +138,13 @@ class PourfectTokens extends ThemeExtension<PourfectTokens> {
 
   /// Opacity applied to a tube that cannot receive the held run.
   ///
-  /// 40%, not 30%: on a near-black ground the muted jewel tones crush toward
-  /// invisible below about 35%, and a dimmed tube still has to read as a tube.
+  /// 40%, not 30%: below about 35% the ink outline fades into the dot grid
+  /// and a dimmed tube stops reading as a tube at all.
   static const double illegalTargetOpacity = 0.4;
 
   /// Reads the tokens off the tree.
   static PourfectTokens of(BuildContext context) =>
-      Theme.of(context).extension<PourfectTokens>() ?? dark;
+      Theme.of(context).extension<PourfectTokens>() ?? toybox;
 
   @override
   PourfectTokens copyWith({
@@ -240,3 +237,11 @@ Color ballColor(int colorId) =>
 /// Resolves an engine `ColorId` to its accessibility glyph.
 BallGlyph ballGlyph(int colorId) =>
     kBallPalette[colorId % kBallPalette.length].glyph;
+
+/// Resolves an engine `ColorId` to the ink its glyph is drawn in.
+///
+/// Ink on every ball except indigo, which is too dark to carry an ink glyph
+/// and takes white instead.
+Color ballGlyphInk(int colorId) => Color(
+  0xFF000000 | kBallPalette[colorId % kBallPalette.length].glyphInk,
+);

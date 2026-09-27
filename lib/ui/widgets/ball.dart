@@ -1,9 +1,9 @@
-/// The ball: a colored disc carrying its accessibility glyph.
+/// The ball: a toy disc with an ink outline, carrying its accessibility glyph.
 ///
-/// Geometry here MIRRORS `tool/cvd_harness.dart` exactly, in the same
-/// normalised 100x100 space. The harness is the artifact the palette was signed
-/// off against, so if these two ever drift, the proof sheet stops proving
-/// anything about the shipped game.
+/// Glyph geometry here MIRRORS `tool/cvd_harness.dart` exactly, in the same
+/// normalised 100x100 space (100 = the disc inside its outline). The harness is
+/// the artifact the palette was signed off against, so if these two ever
+/// drift, the proof sheet stops proving anything about the shipped game.
 library;
 
 import 'dart:math' as math;
@@ -12,6 +12,7 @@ import 'package:flutter/widgets.dart';
 
 import '../theme/ball_palette.dart';
 import '../theme/tokens.dart';
+import '../theme/toy.dart';
 
 /// A single ball, painted at [size].
 class Ball extends StatelessWidget {
@@ -19,20 +20,21 @@ class Ball extends StatelessWidget {
   final double size;
 
   /// Vertical squash factor. 1.0 is at rest; the landing settle drives this
-  /// below 1 and lets it spring back.
+  /// below 1 and lets it spring back, and flight stretches it above 1.
   final double squash;
 
   /// Dimming applied when this ball's tube cannot receive the held run.
   final double opacity;
 
-  /// 0-1 glow used for the completion flourish.
+  /// 0-1 yellow ring flash, for a tube completing and the win sequence.
   final double glow;
 
-  /// Draws the glyph larger and at full contrast.
-  ///
-  /// The glyph is ALWAYS drawn — it is not a mode to discover in a menu. This
-  /// only controls emphasis, for a player who needs the shape rather than the
-  /// color to carry the whole distinction. See Settings.
+  /// Paints the hard ink drop under the ball — a lifted or flying ball.
+  final bool drop;
+
+  /// Draws the glyph larger. The glyph is ALWAYS drawn — it is not a mode to
+  /// discover in a menu. This only controls emphasis, for a player who needs
+  /// the shape rather than the color to carry the whole distinction.
   final bool boldGlyph;
 
   const Ball({
@@ -42,6 +44,7 @@ class Ball extends StatelessWidget {
     this.squash = 1,
     this.opacity = 1,
     this.glow = 0,
+    this.drop = false,
     this.boldGlyph = false,
   });
 
@@ -49,195 +52,273 @@ class Ball extends StatelessWidget {
   Widget build(BuildContext context) {
     // Squash preserves volume: as the ball flattens it widens, which is what
     // makes a landing read as weight rather than as a scale animation.
-    final width = size / math.sqrt(squash.clamp(0.35, 1.6));
-    final height = size * squash.clamp(0.35, 1.6);
+    final s = squash.clamp(0.35, 1.6);
+    final width = size / math.sqrt(s);
+    final height = size * s;
 
-    return Opacity(
-      opacity: opacity,
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Center(
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: CustomPaint(
-              painter: _BallPainter(
-                color: ballColor(colorId),
-                glyph: ballGlyph(colorId),
-                glow: glow,
-                bold: boldGlyph,
-              ),
+    final painted = SizedBox(
+      width: size,
+      height: size,
+      child: OverflowBox(
+        maxWidth: width,
+        maxHeight: height,
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: CustomPaint(
+            painter: BallPainter(
+              color: ballColor(colorId),
+              ink: ballGlyphInk(colorId),
+              glyph: ballGlyph(colorId),
+              glow: glow,
+              drop: drop,
+              bold: boldGlyph,
             ),
           ),
         ),
       ),
     );
+    return opacity >= 1 ? painted : Opacity(opacity: opacity, child: painted);
   }
 }
 
-class _BallPainter extends CustomPainter {
+/// Paints one toy ball into its size. Public so other painters (the journey
+/// path, confetti) can draw balls without a widget each.
+class BallPainter extends CustomPainter {
   final Color color;
+  final Color ink;
   final BallGlyph glyph;
   final double glow;
+  final bool drop;
   final bool bold;
 
-  _BallPainter({
+  const BallPainter({
     required this.color,
     required this.glyph,
-    required this.glow,
-    required this.bold,
+    this.ink = Toy.ink,
+    this.glow = 0,
+    this.drop = false,
+    this.bold = false,
   });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final centre = rect.center;
-
-    if (glow > 0) {
-      canvas.drawCircle(
-        centre,
-        size.width * 0.5 + 6 * glow,
-        Paint()
-          ..color = color.withValues(alpha: 0.35 * glow)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 8 * glow),
+  void paint(Canvas canvas, Size size) =>
+      paintToyBall(
+        canvas,
+        Offset.zero & size,
+        color: color,
+        glyph: glyph,
+        glyphInk: ink,
+        glow: glow,
+        drop: drop,
+        bold: bold,
       );
-    }
-
-    // A single soft top-left light, not a bevel. Real objects under diffuse
-    // light have one gentle gradient; the stacked highlight-plus-rim-plus-drop
-    // -shadow treatment is what makes puzzle games look like toys.
-    canvas.drawOval(
-      rect,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(-0.35, -0.45),
-          radius: 0.95,
-          colors: [
-            Color.lerp(color, const Color(0xFFFFFFFF), 0.16)!,
-            color,
-            Color.lerp(color, const Color(0xFF000000), 0.22)!,
-          ],
-          stops: const [0, 0.55, 1],
-        ).createShader(rect),
-    );
-
-    paintBallGlyph(canvas, size, glyph, bold: bold);
-  }
 
   @override
-  bool shouldRepaint(_BallPainter old) =>
+  bool shouldRepaint(BallPainter old) =>
       old.color != color ||
+      old.ink != ink ||
       old.glyph != glyph ||
       old.glow != glow ||
+      old.drop != drop ||
       old.bold != bold;
 }
 
-/// Glyphs are drawn in translucent ink rather than a per-color foreground,
-/// so one rule works on the palest ball and the deepest without a lookup
-/// table that would inevitably fall out of sync with the palette.
+/// Draws a toy ball filling [rect]: fill, bottom shade, top highlight, ink
+/// outline, glyph.
 ///
-/// Public because the journey path paints its own balls: it draws hundreds on
-/// a long scroll and cannot afford a widget each, and a second copy of this
-/// switch would drift from the palette the first time a glyph changed.
-void paintBallGlyph(
-Canvas canvas,
-Size size,
-BallGlyph glyph, {
-bool bold = false,
-double opacity = 1,
+/// Every measurement scales with the diameter against the 40px reference the
+/// mockups were drawn at, so a 22px preview ball and a 58px board ball are the
+/// same object at different sizes.
+void paintToyBall(
+  Canvas canvas,
+  Rect rect, {
+  required Color color,
+  required BallGlyph glyph,
+  Color glyphInk = Toy.ink,
+  double glow = 0,
+  bool drop = false,
+  bool bold = false,
+  double opacity = 1,
 }) {
-  // Bold mode scales the glyph up and takes the ink to near-opaque, so shape
-  // alone can carry the distinction.
+  final k = rect.shortestSide / 40;
+  final stroke = Toy.stroke * k;
+  final centre = rect.center;
+  final oval = rect.deflate(stroke / 2);
+
+  Color a(Color c) => opacity >= 1 ? c : c.withValues(alpha: c.a * opacity);
+
+  if (glow > 0) {
+    canvas.drawOval(
+      rect.inflate(2 * k + 5 * k * glow),
+      Paint()
+        ..color = a(Toy.yellow.withValues(alpha: 0.9 * glow))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.5 * k,
+    );
+  }
+
+  if (drop) {
+    canvas.drawOval(rect.shift(Offset(0, 4 * k)), Paint()..color = a(Toy.ink));
+  }
+
+  canvas.drawOval(oval, Paint()..color = a(color));
+
+  // The two inset bands from the mockup's box-shadow: a shade along the bottom
+  // and a highlight along the top, both crescents of the disc against a copy
+  // of itself nudged vertically. Solid, no gradient — this is a toy, not glass.
+  final disc = Path()..addOval(oval);
+  canvas
+    ..save()
+    ..clipPath(disc)
+    ..drawPath(
+      Path.combine(
+        PathOperation.difference,
+        disc,
+        Path()..addOval(oval.shift(Offset(0, -4 * k))),
+      ),
+      Paint()..color = a(const Color(0x29000000)),
+    )
+    ..drawPath(
+      Path.combine(
+        PathOperation.difference,
+        disc,
+        Path()..addOval(oval.shift(Offset(0, 3 * k))),
+      ),
+      Paint()..color = a(const Color(0x73FFFFFF)),
+    )
+    ..restore();
+
+  canvas.drawOval(
+    oval,
+    Paint()
+      ..color = a(Toy.ink)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke,
+  );
+
+  final inner = Rect.fromCenter(
+    center: centre,
+    width: rect.width - stroke * 2,
+    height: rect.height - stroke * 2,
+  );
+  paintBallGlyph(
+    canvas,
+    inner,
+    glyph,
+    ink: a(glyphInk),
+    background: a(color),
+    bold: bold,
+  );
+}
+
+/// Draws [glyph] into [rect] (the disc inside its outline) in solid [ink].
+///
+/// [background] is the ball's own color, used to knock out the ring and arc
+/// holes so they read as holes on any ground.
+void paintBallGlyph(
+  Canvas canvas,
+  Rect rect,
+  BallGlyph glyph, {
+  required Color ink,
+  required Color background,
+  bool bold = false,
+}) {
   final scale = bold ? 1.18 : 1.0;
-  final s = size.width / 100 * scale;
-  final sy = size.height / 100 * scale;
-  final ink = const Color(0xFF0A0C10)
-      .withValues(alpha: (bold ? 0.92 : 0.72) * opacity);
+  final sx = rect.width / 100 * scale;
+  final sy = rect.height / 100 * scale;
+  final ox = rect.center.dx - 50 * sx;
+  final oy = rect.center.dy - 50 * sy;
+  Offset p(double x, double y) => Offset(ox + x * sx, oy + y * sy);
+  Rect r(double l, double t, double w, double h) =>
+      Rect.fromLTWH(ox + l * sx, oy + t * sy, w * sx, h * sy);
+  Path poly(List<List<double>> pts) {
+    final path = Path()..moveTo(p(pts[0][0], pts[0][1]).dx, p(pts[0][0], pts[0][1]).dy);
+    for (final pt in pts.skip(1)) {
+      path.lineTo(p(pt[0], pt[1]).dx, p(pt[0], pt[1]).dy);
+    }
+    return path..close();
+  }
 
   final fill = Paint()
     ..color = ink
-    ..style = PaintingStyle.fill
     ..isAntiAlias = true;
-  final stroke = Paint()
-    ..color = ink
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 9 * s
-    ..strokeCap = StrokeCap.round
-    ..strokeJoin = StrokeJoin.round
-    ..isAntiAlias = true;
+  final hole = Paint()..color = background;
 
-  final dx = (size.width - 100 * s) / 2;
-  final dy = (size.height - 100 * sy) / 2;
-  Offset p(double x, double y) => Offset(dx + x * s, dy + y * sy);
-
+  // Coordinates below are in the 100-unit space and must match _ballSvg in
+  // tool/cvd_harness.dart.
   switch (glyph) {
     case BallGlyph.dot:
-      canvas.drawCircle(p(50, 50), 13 * s, fill);
+      canvas.drawOval(r(37, 37, 26, 26), fill);
     case BallGlyph.ring:
-      canvas.drawCircle(p(50, 50), 17 * s, stroke);
+      canvas
+        ..drawOval(r(27, 27, 46, 46), fill)
+        ..drawOval(r(39, 39, 22, 22), hole);
     case BallGlyph.triangle:
       canvas.drawPath(
-        Path()
-          ..moveTo(p(50, 30).dx, p(50, 30).dy)
-          ..lineTo(p(69, 64).dx, p(69, 64).dy)
-          ..lineTo(p(31, 64).dx, p(31, 64).dy)
-          ..close(),
+        poly([
+          [50, 29],
+          [71, 66],
+          [29, 66],
+        ]),
         fill,
       );
     case BallGlyph.square:
       canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(dx + 33 * s, dy + 33 * sy, 34 * s, 34 * sy),
-          Radius.circular(3 * s),
-        ),
+        RRect.fromRectAndRadius(r(34, 34, 32, 32), Radius.circular(4.5 * sx)),
         fill,
       );
     case BallGlyph.plus:
+    case BallGlyph.cross:
+      canvas.save();
+      if (glyph == BallGlyph.cross) {
+        final c = p(50, 50);
+        canvas
+          ..translate(c.dx, c.dy)
+          ..rotate(math.pi / 4)
+          ..translate(-c.dx, -c.dy);
+      }
+      final radius = Radius.circular(2.5 * sx);
       canvas
-        ..drawLine(p(50, 30), p(50, 70), stroke)
-        ..drawLine(p(30, 50), p(70, 50), stroke);
+        ..drawRRect(RRect.fromRectAndRadius(r(27, 45.4, 46, 9.2), radius), fill)
+        ..drawRRect(RRect.fromRectAndRadius(r(45.4, 27, 9.2, 46), radius), fill)
+        ..restore();
     case BallGlyph.bar:
       canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(dx + 28 * s, dy + 43 * sy, 44 * s, 14 * sy),
-          Radius.circular(7 * s),
-        ),
+        RRect.fromRectAndRadius(r(25, 41.5, 50, 17), Radius.circular(5 * sx)),
         fill,
       );
     case BallGlyph.diamond:
-      canvas.drawPath(
-        Path()
-          ..moveTo(p(50, 28).dx, p(50, 28).dy)
-          ..lineTo(p(70, 50).dx, p(70, 50).dy)
-          ..lineTo(p(50, 72).dx, p(50, 72).dy)
-          ..lineTo(p(30, 50).dx, p(30, 50).dy)
-          ..close(),
-        fill,
-      );
-    case BallGlyph.cross:
+      final c = p(50, 50);
       canvas
-        ..drawLine(p(35, 35), p(65, 65), stroke)
-        ..drawLine(p(65, 35), p(35, 65), stroke);
+        ..save()
+        ..translate(c.dx, c.dy)
+        ..rotate(math.pi / 4)
+        ..translate(-c.dx, -c.dy)
+        ..drawRRect(
+          RRect.fromRectAndRadius(r(35, 35, 30, 30), Radius.circular(3 * sx)),
+          fill,
+        )
+        ..restore();
     case BallGlyph.arc:
-      canvas.drawArc(
-        Rect.fromLTWH(dx + 30 * s, dy + 38 * sy, 40 * s, 48 * sy),
-        math.pi,
-        math.pi,
-        false,
-        stroke,
-      );
+      // The top half of a ring whose centre sits below the middle.
+      canvas
+        ..save()
+        ..clipRect(r(0, 0, 100, 61))
+        ..drawOval(r(25, 36, 50, 50), fill)
+        ..drawOval(r(37, 48, 26, 26), hole)
+        ..restore();
     case BallGlyph.hexagon:
       canvas.drawPath(
-        Path()
-          ..moveTo(p(50, 28).dx, p(50, 28).dy)
-          ..lineTo(p(69, 39).dx, p(69, 39).dy)
-          ..lineTo(p(69, 61).dx, p(69, 61).dy)
-          ..lineTo(p(50, 72).dx, p(50, 72).dy)
-          ..lineTo(p(31, 61).dx, p(31, 61).dy)
-          ..lineTo(p(31, 39).dx, p(31, 39).dy)
-          ..close(),
-        stroke,
+        poly([
+          [40, 32],
+          [60, 32],
+          [70, 50],
+          [60, 68],
+          [40, 68],
+          [30, 50],
+        ]),
+        fill,
       );
   }
 }

@@ -329,7 +329,7 @@ all stay separable, so the glyph carries the pairs color loses.</p>
     // Balls on the real surface color, at real size.
     body.writeln('<div class="board">');
     for (var i = 0; i < kBallPalette.length; i++) {
-      body.writeln(_ballSvg(simulated[i], kBallPalette[i].glyph, _ballSizeDp));
+      body.writeln(_ballSvg(simulated[i], kBallPalette[i], _ballSizeDp));
     }
     body.writeln('</div>');
 
@@ -337,7 +337,7 @@ all stay separable, so the glyph carries the pairs color loses.</p>
     body.writeln('<div class="board magnified">');
     for (var i = 0; i < kBallPalette.length; i++) {
       body.writeln(
-        _ballSvg(simulated[i], kBallPalette[i].glyph, _ballSizeDp * 2.5),
+        _ballSvg(simulated[i], kBallPalette[i], _ballSizeDp * 2.5),
       );
     }
     body.writeln('</div>');
@@ -421,41 +421,51 @@ all stay separable, so the glyph carries the pairs color loses.</p>
 ''';
 }
 
-/// One ball: a filled circle with its glyph drawn on top.
-///
-/// The glyph is drawn in a translucent dark ink rather than a fixed color, so
-/// it stays legible on both the palest and the deepest balls without needing a
-/// per-color override.
-String _ballSvg(int rgb, BallGlyph glyph, double size) {
-  const vb = 100.0;
-  const c = vb / 2;
-  final ink = 'rgba(10,12,16,.72)';
-  final stroke =
-      'stroke="$ink" stroke-width="9" fill="none" '
-      'stroke-linecap="round" stroke-linejoin="round"';
+/// One ball: a toy disc with its ink outline and glyph, exactly as the game
+/// paints it. The glyph coordinates are in the same 100-unit space as
+/// `paintBallGlyph` in lib/ui/widgets/ball.dart (100 = the disc inside its
+/// outline) and must stay identical to it.
+String _ballSvg(int rgb, BallStyle style, double size) {
+  final ink = _css(style.glyphInk);
+  final bg = _css(rgb);
+  const outline = 6.25; // 2.5px at the 40px reference diameter
 
-  final shape = switch (glyph) {
-    BallGlyph.dot => '<circle cx="$c" cy="$c" r="13" fill="$ink"/>',
-    BallGlyph.ring => '<circle cx="$c" cy="$c" r="17" $stroke/>',
-    BallGlyph.triangle => '<path d="M50 30 L69 64 L31 64 Z" fill="$ink"/>',
+  final shape = switch (style.glyph) {
+    BallGlyph.dot => '<circle cx="50" cy="50" r="13" fill="$ink"/>',
+    BallGlyph.ring =>
+      '<circle cx="50" cy="50" r="23" fill="$ink"/>'
+          '<circle cx="50" cy="50" r="11" fill="$bg"/>',
+    BallGlyph.triangle => '<path d="M50 29 L71 66 L29 66 Z" fill="$ink"/>',
     BallGlyph.square =>
-      '<rect x="33" y="33" width="34" height="34" rx="3" '
-          'fill="$ink"/>',
-    BallGlyph.plus => '<path d="M50 30 V70 M30 50 H70" $stroke/>',
+      '<rect x="34" y="34" width="32" height="32" rx="4.5" fill="$ink"/>',
+    BallGlyph.plus =>
+      '<rect x="27" y="45.4" width="46" height="9.2" rx="2.5" fill="$ink"/>'
+          '<rect x="45.4" y="27" width="9.2" height="46" rx="2.5" fill="$ink"/>',
     BallGlyph.bar =>
-      '<rect x="28" y="43" width="44" height="14" rx="7" '
-          'fill="$ink"/>',
+      '<rect x="25" y="41.5" width="50" height="17" rx="5" fill="$ink"/>',
     BallGlyph.diamond =>
-      '<path d="M50 28 L70 50 L50 72 L30 50 Z" fill="$ink"/>',
-    BallGlyph.cross => '<path d="M35 35 L65 65 M65 35 L35 65" $stroke/>',
-    BallGlyph.arc => '<path d="M30 62 A24 24 0 0 1 70 62" $stroke/>',
+      '<rect x="35" y="35" width="30" height="30" rx="3" fill="$ink" '
+          'transform="rotate(45 50 50)"/>',
+    BallGlyph.cross =>
+      '<g transform="rotate(45 50 50)">'
+          '<rect x="27" y="45.4" width="46" height="9.2" rx="2.5" fill="$ink"/>'
+          '<rect x="45.4" y="27" width="9.2" height="46" rx="2.5" fill="$ink"/>'
+          '</g>',
+    BallGlyph.arc =>
+      '<clipPath id="arc"><rect width="100" height="61"/></clipPath>'
+          '<g clip-path="url(#arc)"><circle cx="50" cy="61" r="25" fill="$ink"/>'
+          '<circle cx="50" cy="61" r="13" fill="$bg"/></g>',
     BallGlyph.hexagon =>
-      '<path d="M50 28 L69 39 L69 61 L50 72 L31 61 L31 39 Z" $stroke/>',
+      '<path d="M40 32 L60 32 L70 50 L60 68 L40 68 L30 50 Z" fill="$ink"/>',
   };
 
+  // The outline sits OUTSIDE the 100-unit disc, so the viewBox grows by it.
+  const o = outline;
   return '<svg width="${size.toStringAsFixed(0)}" '
-      'height="${size.toStringAsFixed(0)}" viewBox="0 0 100 100">'
-      '<circle cx="$c" cy="$c" r="48" fill="${_css(rgb)}"/>'
+      'height="${size.toStringAsFixed(0)}" '
+      'viewBox="${-o} ${-o} ${100 + 2 * o} ${100 + 2 * o}">'
+      '<circle cx="50" cy="50" r="${50 + o / 2}" fill="$bg" '
+      'stroke="#1f1a33" stroke-width="$o"/>'
       '$shape</svg>';
 }
 

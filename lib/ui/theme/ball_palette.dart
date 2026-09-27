@@ -16,10 +16,10 @@
 ///    not a constant edit — it needs `tool/cvd_harness.dart` re-run and the
 ///    pairwise separations re-checked.
 ///
-/// The palette is tuned for a near-black ground and deliberately muted: this is
-/// a relaxing game, not a toy. Saturation is kept moderate and LIGHTNESS does
-/// much of the separating work, because lightness is the one channel no form of
-/// color blindness takes away.
+/// The palette is the Toybox set: bright toy colors on a cream ground, each
+/// ball wrapped in a 2.5px ink outline. The outline and the glyph do the
+/// separating work that saturation cannot do alone under dichromacy — the CVD
+/// harness passes with every color-weak pair carried by a distinct silhouette.
 library;
 
 /// A shape drawn on the ball, in addition to its color.
@@ -52,7 +52,11 @@ final class BallStyle {
   /// The shape drawn on this ball.
   final BallGlyph glyph;
 
-  const BallStyle(this.name, this.rgb, this.glyph);
+  /// 0xRRGGBB the glyph is drawn in. Ink, except where the ball is too dark
+  /// for ink to read (indigo), where it is white.
+  final int glyphInk;
+
+  const BallStyle(this.name, this.rgb, this.glyph, {this.glyphInk = kInkRgb});
 
   int get r => (rgb >> 16) & 0xFF;
 
@@ -73,23 +77,26 @@ final class BallStyle {
 /// widely separated set in the palette — the tutorial should never be where
 /// somebody discovers they cannot tell two balls apart.
 const List<BallStyle> kBallPalette = [
-  BallStyle('amber', 0xD9A047, BallGlyph.dot),
-  BallStyle('azure', 0x4A8FD4, BallGlyph.ring),
-  BallStyle('rose', 0xC85F72, BallGlyph.triangle),
-  BallStyle('teal', 0x3FA396, BallGlyph.square),
-  BallStyle('iris', 0xA4A9EA, BallGlyph.plus),
-  BallStyle('moss', 0xB2DB76, BallGlyph.bar),
-  BallStyle('cream', 0xE4D9B4, BallGlyph.diamond),
-  BallStyle('clay', 0xB25A38, BallGlyph.cross),
-  BallStyle('sky', 0x8FC9E8, BallGlyph.arc),
-  BallStyle('indigo', 0x3B4E8C, BallGlyph.hexagon),
+  BallStyle('amber', 0xFFC233, BallGlyph.dot),
+  BallStyle('azure', 0x3D8BFF, BallGlyph.ring),
+  BallStyle('rose', 0xFF5F8F, BallGlyph.triangle),
+  BallStyle('teal', 0x22C3A6, BallGlyph.square),
+  BallStyle('iris', 0xA78BFA, BallGlyph.plus),
+  BallStyle('moss', 0x9BE15D, BallGlyph.bar),
+  BallStyle('cream', 0xF6E3B4, BallGlyph.diamond),
+  BallStyle('clay', 0xE0703F, BallGlyph.cross),
+  BallStyle('sky', 0x7FD8FF, BallGlyph.arc),
+  BallStyle('indigo', 0x4B50C8, BallGlyph.hexagon, glyphInk: 0xFFFFFF),
 ];
 
 /// Ceiling on simultaneous colors. Mirrors the engine's `kMaxColors`.
 const int kPaletteSize = 10;
 
-/// Ground the palette is tuned against — the deep-calm-dark surface.
-const int kSurfaceRgb = 0x0E1116;
+/// Ground the palette is tuned against — the Toybox cream.
+const int kSurfaceRgb = 0xFFF3DF;
 
-/// Raised surface (tube glass) the balls sit inside.
-const int kSurfaceRaisedRgb = 0x181C24;
+/// The tube interior the balls sit inside.
+const int kSurfaceRaisedRgb = 0xFFFFFF;
+
+/// The ink every ball is outlined in, and most glyphs are drawn in.
+const int kInkRgb = 0x1F1A33;

@@ -710,7 +710,6 @@ class _RemoveAdsRow extends StatelessWidget {
     return Pressable(
       onPressed: onBuy,
       semanticLabel: 'Remove ads',
-      scale: 0.99,
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: tokens.space3,
@@ -793,7 +792,6 @@ class _PlayerHeader extends StatelessWidget {
     return Pressable(
       onPressed: onRename,
       semanticLabel: 'Your name',
-      scale: 0.99,
       child: Container(
         padding: EdgeInsets.all(tokens.space4),
         decoration: BoxDecoration(

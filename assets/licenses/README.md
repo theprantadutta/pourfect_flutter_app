@@ -2,8 +2,8 @@
 
 Drop the OFL-1.1 text for each bundled face here, named exactly:
 
-- `OFL-JetBrainsMono.txt`
-- `OFL-Manrope.txt`
+- `OFL-BagelFatOne.txt`
+- `OFL-Outfit.txt`
 
 `lib/services/licenses.dart` registers whatever it finds, so no code change is
 needed — the text then appears under the app's licence page. See

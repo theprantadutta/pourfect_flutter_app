@@ -25,6 +25,7 @@ import 'ui/screens/journey_screen.dart';
 import 'ui/screens/settings_screen.dart';
 import 'ui/screens/statistics_screen.dart';
 import 'ui/theme/tokens.dart';
+import 'ui/theme/toy.dart';
 import 'ui/theme/typography.dart';
 import 'ui/transitions.dart';
 
@@ -33,46 +34,56 @@ class PourfectApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const tokens = PourfectTokens.dark;
+    const tokens = PourfectTokens.toybox;
 
     return MaterialApp(
       title: 'Pourfect',
       debugShowCheckedModeBanner: false,
-      // The light theme is deliberately absent rather than stubbed. Every value
-      // the UI uses comes from PourfectTokens, so adding warm-paper later is a
-      // second constant plus a themeMode, not a rewrite.
+      // One theme. Toybox replaced the original dark direction outright; there
+      // is no dark variant to fall back to or keep in sync.
       theme: _buildTheme(tokens),
       home: const _Shell(),
     );
   }
 
   ThemeData _buildTheme(PourfectTokens tokens) {
-    final base = ThemeData.dark(useMaterial3: true);
+    final base = ThemeData.light(useMaterial3: true);
 
     return base.copyWith(
       scaffoldBackgroundColor: tokens.surface,
       canvasColor: tokens.surface,
       extensions: [tokens],
       colorScheme: base.colorScheme.copyWith(
+        brightness: Brightness.light,
         surface: tokens.surface,
-        primary: tokens.accent,
+        onSurface: Toy.ink,
+        primary: Toy.tomato,
+        onPrimary: Colors.white,
+        secondary: Toy.yellow,
+        onSecondary: Toy.ink,
+        error: Toy.tomatoDark,
       ),
       textTheme: base.textTheme.apply(
         bodyColor: tokens.textPrimary,
         displayColor: tokens.textPrimary,
         fontFamily: kUiFontFamily,
       ),
+      textSelectionTheme: const TextSelectionThemeData(
+        cursorColor: Toy.tomato,
+        selectionColor: Color(0x73A78BFA),
+        selectionHandleColor: Toy.tomato,
+      ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: tokens.surfaceRaised,
-        contentTextStyle: bodyStyle(tokens)
-            .copyWith(color: tokens.textPrimary, fontSize: 14),
+        backgroundColor: Toy.ink,
+        behavior: SnackBarBehavior.floating,
+        contentTextStyle: Toy.ui(14, weight: FontWeight.w700, color: Colors.white),
+        actionTextColor: Toy.yellow,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: tokens.hairline),
+          borderRadius: BorderRadius.circular(Toy.rButton),
         ),
       ),
       // Material's ink ripple belongs to a different design language. Every
-      // control here responds through Pressable instead.
+      // control here responds through Pressable, which sinks instead.
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,
       pageTransitionsTheme: const PageTransitionsTheme(
@@ -369,16 +380,17 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
         );
 }
 
-/// System chrome for a full-bleed dark board.
+/// System chrome for a full-bleed board.
 ///
 /// Edge-to-edge with transparent bars: the board should meet the screen edges,
-/// and a grey status-bar strip above a near-black game is the sort of detail
-/// that makes an app feel unfinished.
+/// and a grey status-bar strip above the dotted ground is the sort of detail
+/// that makes an app feel unfinished. Each screen's `ToyScaffold` sets the
+/// icon brightness for its own ground when the bars are swiped back in.
 void configureSystemChrome() {
   // FULL SCREEN. No status bar, no navigation bar.
   //
   // A game does not need the clock and the battery on top of its board, and
-  // the strip they sit in is the most reliable way to make a full-bleed dark
+  // the strip they sit in is the most reliable way to make a full-bleed
   // screen look like a web page. `immersiveSticky` rather than `immersive`:
   // the bars come back on a swipe from the edge and then hide themselves
   // again, so nothing is unreachable and nothing stays.
@@ -391,8 +403,8 @@ void configureSystemChrome() {
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       systemNavigationBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
   SystemChrome.setPreferredOrientations([

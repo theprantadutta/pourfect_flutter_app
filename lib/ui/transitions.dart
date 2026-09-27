@@ -41,13 +41,12 @@ class PourfectPageRoute<T> extends PageRoute<T> {
   @override
   bool get maintainState => true;
 
-  /// Long enough to read as a considered move, short enough that a player
-  /// moving between levels quickly never waits on it.
+  /// Short: a player moving between levels quickly should never wait on it.
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 420);
+  Duration get transitionDuration => const Duration(milliseconds: 220);
 
   @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 320);
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 200);
 
   @override
   Widget buildPage(
@@ -101,7 +100,10 @@ class PourfectPageRoute<T> extends PageRoute<T> {
             child: Transform.scale(scale: scale, child: content),
           );
         } else {
-          content = Transform.scale(scale: 0.97 + 0.03 * t, child: content);
+          content = Transform.translate(
+            offset: Offset(0, 24 * (1 - t)),
+            child: content,
+          );
         }
 
         return content;

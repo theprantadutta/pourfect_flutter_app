@@ -152,7 +152,6 @@ class ToggleRow extends StatelessWidget {
     return Pressable(
       onPressed: () => onChanged(!value),
       semanticLabel: '$title, ${value ? "on" : "off"}',
-      scale: 0.99,
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: tokens.space3,
@@ -303,7 +302,6 @@ class ActionRow extends StatelessWidget {
     return Pressable(
       onPressed: onTap,
       semanticLabel: title,
-      scale: 0.99,
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: tokens.space3,

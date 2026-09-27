@@ -5,8 +5,8 @@
          settings, only one of which does anything. -->
     <string name="default_notification_channel_id">pourfect.reminders</string>
 
-    <!-- tokens.accent (0xFF8FC9E8) verbatim — the same sky blue the app uses
-         for "this one is current". Android tints the white silhouette with it.
-         Copied from lib/ui/theme/tokens.dart; if that moves, move this. -->
-    <color name="notification_accent">#FF8FC9E8</color>
+    <!-- Toy.tomato (0xFFFF5A36) verbatim — the brand color the app uses
+         for the primary action and "this one is current". Android tints the white silhouette with it.
+         Copied from lib/ui/theme/toy.dart; if that moves, move this. -->
+    <color name="notification_accent">#FFFF5A36</color>
 </resources>
