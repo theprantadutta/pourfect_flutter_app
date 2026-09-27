@@ -20,6 +20,7 @@ import '../../services/api/push_service.dart';
 import '../../state/daily_controller.dart';
 import '../../state/game_controller.dart';
 import '../../state/hint_controller.dart';
+import '../../state/play_history.dart';
 import '../../state/providers.dart';
 import '../format.dart';
 import '../theme/toy.dart';
@@ -40,6 +41,13 @@ class DailyChallengeScreen extends ConsumerStatefulWidget {
 
 class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
   late final GameController _game;
+
+  /// Held from initState for the same reason as [_game]: dispose banks the
+  /// time played, and reading a provider during teardown is when it throws.
+  late final PlayHistoryController _history;
+
+  /// True once a move has been made on this board. See [_bankPlaytime].
+  bool _moved = false;
 
   /// The challenge THIS SCREEN is playing.
   ///
@@ -62,6 +70,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
   void initState() {
     super.initState();
     _game = ref.read(gameControllerProvider.notifier);
+    _history = ref.read(playHistoryProvider.notifier);
     ref.read(dailyProvider.notifier).ensureLoaded();
 
     // Read, never requested. Knowing the answer is what lets the offer appear
@@ -73,10 +82,26 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
 
   @override
   void dispose() {
+    _bankPlaytime();
     // Same rule as the campaign board: the session ends when the screen does,
     // so nothing in flight can land on a board nobody is looking at.
     _game.endSession();
     super.dispose();
+  }
+
+  /// Logs the time spent on today's board into the play history.
+  ///
+  /// The daily never did this, so a day spent only on the daily was not a
+  /// played day: the streak on the hub read 0 for somebody who had just
+  /// finished today's board. Banked as PLAYTIME, not as a solve — the daily is
+  /// not a campaign level, and "levels solved" must not count it.
+  ///
+  /// Only once a move has been made. Opening a daily that is already finished
+  /// to look at the result is not playing it.
+  void _bankPlaytime() {
+    if (!_moved) return;
+    final seconds = _game.takeUnbankedSeconds();
+    if (seconds > 0) _history.recordPlaytime(seconds: seconds);
   }
 
   void _startIfReady(DailyChallenge challenge) {
@@ -98,6 +123,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
     }
 
     final state = ref.read(gameControllerProvider);
+    if ((state?.movesUsed ?? 0) > 0) _moved = true;
     if (state != null && state.isWon && _result == null && !_submitting) {
       await _submit();
     }
@@ -115,6 +141,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
 
     ref.read(audioServiceProvider).win();
     ref.read(hapticsServiceProvider).levelCompleted();
+    _bankPlaytime();
 
     final result = await ref
         .read(dailyProvider.notifier)

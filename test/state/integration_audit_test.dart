@@ -27,6 +27,7 @@ import 'package:pourfect_flutter_app/services/iap/billing_service.dart';
 import 'package:pourfect_flutter_app/state/daily_controller.dart';
 import 'package:pourfect_flutter_app/state/monetization_controller.dart';
 import 'package:pourfect_flutter_app/state/progress_repository.dart';
+import 'package:pourfect_flutter_app/state/play_history.dart';
 import 'package:pourfect_flutter_app/state/providers.dart';
 import 'package:pourfect_flutter_app/state/sync_controller.dart';
 import 'package:pourfect_flutter_app/ui/screens/daily_challenge_screen.dart';
@@ -673,5 +674,67 @@ void main() {
       '2026-09-08',
       reason: 'yesterday’s board was submitted as today’s result',
     );
+  });
+
+  testWidgets('playing the daily counts the day toward the streak', (
+    tester,
+  ) async {
+    // The daily never wrote to the play history, so somebody whose only play
+    // today was the daily saw a 0-day streak on the hub. It counts as TIME
+    // played, not as a solve: the daily is not a campaign level.
+    final built = harness((request) async {
+      if (request.url.path.endsWith('/daily/submit')) {
+        return http.Response('{"stars":3,"moves":3,"daily_streak":1}', 200);
+      }
+      return http.Response(
+        jsonEncode({
+          'date': '2026-09-08',
+          'capacity': 2,
+          'min_moves': 3,
+          'color_count': 2,
+          'empty_tube_count': 1,
+          'tubes': [
+            [0, 1],
+            [1, 0],
+            <int>[],
+          ],
+        }),
+        200,
+      );
+    });
+
+    await built.container.read(dailyProvider.notifier).ensureLoaded();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: built.container,
+        child: MaterialApp(
+          theme: ThemeData.light().copyWith(
+            extensions: const [PourfectTokens.toybox],
+          ),
+          home: DailyChallengeScreen(onExit: () {}),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final history = built.container.read(playHistoryProvider.notifier);
+    expect(history.currentStreak(), 0);
+
+    final moves = [0, 2, 1, 0, 1, 2];
+    for (var i = 0; i < moves.length; i++) {
+      // The clock reads wall time, which pump does not advance.
+      if (i == moves.length - 1) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 1100)),
+        );
+      }
+      tester.widget<BoardView>(find.byType(BoardView)).onTapTube(moves[i]);
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+    await tester.pump();
+
+    expect(built.container.read(gameControllerProvider)!.isWon, isTrue);
+    expect(history.currentStreak(), 1, reason: 'the daily was not a played day');
+    expect(history.totalSolves, 0, reason: 'the daily counted as a level');
   });
 }
