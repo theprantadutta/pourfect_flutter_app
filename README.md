@@ -6,8 +6,12 @@
 
 <p align="center"><i>Pour, sort, relax.</i></p>
 
-A calm ball-sort puzzle for Android. Pour the balls between tubes until each
-one holds a single color — no timers, no lives, no waiting to play again.
+A ball-sort puzzle for Android. Pour the balls between tubes until each one
+holds a single color — no countdowns, no lives, no waiting to play again.
+
+It looks like a toy box: a cream dotted ground, chunky ink outlines, hard drop
+shadows, toy balls, and a win that throws confetti balls and slams a
+"Perfect Pour!" onto a blue burst of rays.
 
 The whole campaign is on the device, so it plays the same offline as on wifi.
 The backend is strictly optional enrichment: leaderboards, the daily challenge
@@ -18,15 +22,14 @@ nothing it does is allowed to block a level from starting.
 
 | | | |
 |---|---|---|
-| ![The hub](screenshots/01_home.png) | ![A board](screenshots/02_gameplay.png) | ![A run held](screenshots/03_gameplay_selected.png) |
-| The hub | A board at move 0 | A run held — illegal destinations dim to 40% |
-| ![Win](screenshots/15_win_settled.png) | ![Daily challenge](screenshots/05_daily_challenge.png) | ![Statistics](screenshots/08_statistics_levels.png) |
-| The win moment | Today's challenge | Per-level statistics |
-| ![Settings](screenshots/09_settings.png) | ![Account](screenshots/11_account.png) | ![Campaign path](screenshots/04_campaign_path.png) |
-| Settings | Your account | The campaign path |
+| ![The hub](screenshots/01_home.png) | ![A run held](screenshots/02_gameplay_held.png) | ![The last pour](screenshots/03_win_moment.png) |
+| The hub | A run held: legal tubes bounce, the rest dim | The last pour |
+| ![Perfect Pour](screenshots/04_win_result.png) | ![Journey](screenshots/05_journey.png) | ![Daily challenge](screenshots/06_daily.png) |
+| The result | The journey | Today's challenge |
+| ![Rankings](screenshots/09_rankings_campaign.png) | ![Statistics](screenshots/10_stats.png) | ![Account](screenshots/12_account.png) |
+| Rankings | Statistics | Your account |
 
-More, including the win choreography mid-flight, in
-[`screenshots/`](screenshots/).
+More in [`screenshots/`](screenshots/).
 
 ## What is actually in here
 
@@ -48,6 +51,8 @@ More, including the win choreography mid-flight, in
   air column.
 - **It mixes with your music.** No audio focus is requested, so nothing you were
   already listening to gets interrupted.
+- **Reduced motion is honored everywhere.** With the system setting on, every
+  state change still happens — the flourishes around it do not.
 
 ## Building it
 
@@ -97,6 +102,7 @@ tried and reverted. It is worth reading before changing any of them.
 
 ## Status
 
-Pre-launch. Flutter 3.47.1, Dart 3.13.1, `com.pranta.pourfect`, version
-`1.0.0+1`. Android only for now; iOS needs Sign in with Apple before it can be
-submitted, since Apple requires it alongside any other social login.
+Version `2.0.0+10`, the Toybox redesign. Flutter 3.47.5, Dart 3.13,
+`com.pranta.pourfect`. Android only for now; iOS needs Sign in with Apple
+before it can be submitted, since Apple requires it alongside any other social
+login.
