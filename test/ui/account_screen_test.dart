@@ -18,6 +18,7 @@ import 'package:pourfect_flutter_app/state/account_controller.dart';
 import 'package:pourfect_flutter_app/state/progress_repository.dart';
 import 'package:pourfect_flutter_app/state/providers.dart';
 import 'package:pourfect_flutter_app/ui/screens/account_screen.dart';
+import 'package:pourfect_flutter_app/ui/widgets/toy_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Records what was asked of it and never touches Firebase.
@@ -126,7 +127,9 @@ void main() {
       findsNothing,
       reason: 'offered a sign-in to somebody already signed in',
     );
-    expect(find.text('player@example.com'), findsOneWidget);
+    // Masked on screen, the way the Player Card shows it: recognizable to its
+    // owner, unreadable in a screenshot.
+    expect(find.text('pla•••@example.com'), findsOneWidget);
     expect(find.text('Amber_Cascade_1284'), findsOneWidget);
   });
 
@@ -298,7 +301,7 @@ void main() {
       await tester.tap(find.text('Continue with Google'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byType(ToyDialogCard), findsOneWidget);
       expect(find.text('You already have an account'), findsOneWidget);
       expect(find.text('Use that account'), findsOneWidget);
     });
@@ -355,7 +358,7 @@ void main() {
       await tester.tap(find.text('Not now'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(ToyDialogCard), findsNothing);
       expect(find.textContaining('already have an account'), findsOneWidget);
       expect(stub.calls, isNot(contains('existingGoogle')));
     });
@@ -378,7 +381,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Sign in'), findsWidgets);
-      await tester.tap(find.widgetWithText(TextButton, 'Sign in'));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ToyDialogCard),
+          matching: find.text('Sign in'),
+        ),
+      );
       await tester.pumpAndSettle();
 
       // Signed in with what was already in the form, not a Google chooser.

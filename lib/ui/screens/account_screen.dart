@@ -12,20 +12,21 @@
 /// here says "safe" or "backed up forever".
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/api/identity.dart';
 import '../../state/account_controller.dart';
+import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
-import '../theme/tokens.dart';
-import '../theme/typography.dart';
-import '../../state/play_history.dart';
+import '../../state/sync_controller.dart';
+import '../theme/toy.dart';
 import '../widgets/rename_dialog.dart';
 import '../widgets/settings_rows.dart';
-import '../widgets/player_crest.dart';
-import '../widgets/pressable.dart';
+import '../widgets/toy_kit.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key, this.onOpenStatistics});
@@ -155,49 +156,27 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     required String confirmLabel,
     required Future<IdentityResult> Function() onConfirmed,
   }) async {
-    final tokens = PourfectTokens.of(context);
     final cleared = ref.read(progressProvider).length;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showRowConfirm(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: tokens.surfaceRaised,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(tokens.panelRadius),
-          side: BorderSide(color: tokens.hairline),
-        ),
-        title: Text('You already have an account', style: titleStyle(tokens)),
-        content: Text(
-          // THE REINSTALL CASE IS THE FIRST BRANCH ON PURPOSE. An empty device
-          // has nothing to lose and everything to gain, and telling somebody
-          // otherwise is how cloud progress goes unclaimed.
-          cleared == 0
-              ? 'This phone will load the stars already saved to it.'
-              : 'This phone has $cleared solved '
-                    '${cleared == 1 ? "level" : "levels"} that are not on that '
-                    'account. They cannot be combined, so they will be '
-                    'replaced by whatever the account already holds.',
-          style: bodyStyle(tokens),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Not now',
-              style: actionStyle(tokens, color: tokens.textMuted),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(confirmLabel, style: actionStyle(tokens)),
-          ),
-        ],
-      ),
+      title: 'You already have an account',
+      // THE REINSTALL CASE IS THE FIRST BRANCH ON PURPOSE. An empty device
+      // has nothing to lose and everything to gain, and telling somebody
+      // otherwise is how cloud progress goes unclaimed.
+      body: cleared == 0
+          ? 'This phone will load the stars already saved to it.'
+          : 'This phone has $cleared solved '
+                '${cleared == 1 ? "level" : "levels"} that are not on that '
+                'account. They cannot be combined, so they will be '
+                'replaced by whatever the account already holds.',
+      cancelLabel: 'Not now',
+      confirmLabel: confirmLabel,
     );
 
     if (!mounted) return;
 
-    if (confirmed != true) {
+    if (!confirmed) {
       setState(
         () => _problem = _explain(
           IdentityOutcome.credentialBelongsToAnotherAccount,
@@ -294,195 +273,135 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   /// screen that told you nothing about yourself.
   ///
   /// The thing a player actually wants here is the answer to "what is attached
-  /// to this account", so that is what it leads with: the four figures that
-  /// say what would travel to a new phone. The controls under them are the
-  /// identity ones only; the deep numbers live in Statistics and the settings
-  /// live in Settings, and this links to both rather than reprinting them.
-  Widget _signedIn(
-    BuildContext context,
-    PourfectTokens tokens,
-    AccountState account,
-  ) {
+  /// to this account", so that is what it leads with: the Player Card, whose
+  /// four figures say what would travel to a new phone. The controls under it
+  /// are the identity ones only; the deep numbers live in Statistics and the
+  /// settings live in Settings, and this links to both rather than reprinting
+  /// them.
+  Widget _signedIn(BuildContext context, AccountState account) {
     final progress = ref.watch(progressProvider);
+    final history = ref.watch(playHistoryProvider);
     final stars = ref.read(progressProvider.notifier).totalStars;
     final streak = ref.read(playHistoryProvider.notifier).currentStreak();
     final rank = switch (ref.watch(campaignRankProvider)) {
       AsyncData(:final value?) => '#$value',
       _ => '—',
     };
+    final sync = ref.watch(syncControllerProvider);
 
-    return Scaffold(
-      backgroundColor: tokens.surface,
-      appBar: AppBar(
-        backgroundColor: tokens.surface,
-        elevation: 0,
-        title: Text('Your account', style: titleStyle(tokens)),
-        iconTheme: IconThemeData(color: tokens.textPrimary),
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.all(tokens.space4),
+    return _Screen(
+      title: 'Your account',
+      children: [
+        _PlayerCard(
+          account: account,
+          since: _pouringSince(progress, history),
+          solved: progress.length,
+          stars: stars,
+          streak: streak > 0 ? '${streak}d' : '—',
+          rank: rank,
+        ),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            // The honest claim and the whole of it — an account moves this
+            // to a new phone, and that is all it promises.
+            'This card goes with your account, so a new phone starts right '
+            'where you left off.',
+            style: Toy.ui(13, weight: FontWeight.w500, color: Toy.inkMuted),
+          ),
+        ),
+
+        const SectionHeader(label: 'Your name'),
+        Group(
           children: [
-            Row(
-              children: [
-                PlayerCrest(
-                  seed: account.userId,
-                  signedIn: true,
-                  size: 56,
-                  photoUrl: account.photoUrl,
-                ),
-                SizedBox(width: tokens.space3),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Shrinks rather than crops, like the Settings header:
-                      // half a name with an ellipsis on it is worse than a
-                      // small whole one.
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          account.handle ?? 'Naming you…',
-                          style: titleStyle(tokens).copyWith(fontSize: 22),
-                          maxLines: 1,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        account.email ?? 'Signed in',
-                        style: bodyStyle(tokens).copyWith(fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            // Says what tapping DOES, not the handle again — that is already
+            // the largest thing on the screen. Same reasoning as the Settings
+            // row, and the same words.
+            ActionRow(
+              icon: const Icon(Icons.edit_rounded),
+              iconColor: Toy.mint,
+              title: 'Change your name',
+              detail: 'How you appear on the boards',
+              onTap: _rename,
             ),
+            ToggleRow(
+              icon: const Icon(Icons.contrast_rounded),
+              iconColor: kRowMoss,
+              title: 'Show me on leaderboards',
+              detail: 'Off hides your name and rank. Stars still count.',
+              value: account.showOnLeaderboards,
+              onChanged: _setVisibility,
+            ),
+          ],
+        ),
 
-            SizedBox(height: tokens.space5),
-            SectionHeader(
-              icon: Icons.inventory_2_rounded,
-              label: 'What travels with you',
-            ),
-            Group(children: [
-              GroupInset(
-                child: Padding(
-                  padding: EdgeInsets.only(top: tokens.space3),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _Stat(value: '${progress.length}', label: 'SOLVED'),
-                      _Stat(
-                        value: '$stars',
-                        label: 'STARS',
-                        color: tokens.accentWarm,
-                      ),
-                      _Stat(
-                        value: streak > 0 ? '${streak}d' : '—',
-                        label: 'STREAK',
-                        color: tokens.accent,
-                      ),
-                      _Stat(value: rank, label: 'RANK', color: tokens.accent),
-                    ],
-                  ),
-                ),
-              ),
-            ]),
-            SizedBox(height: tokens.space2),
-            Text(
-              // The honest claim and the whole of it — an account moves this
-              // to a new phone, and that is all it promises.
-              'These move with your account, so a new phone starts where you '
-              'left off.',
-              style: bodyStyle(tokens).copyWith(fontSize: 12),
-            ),
-
-            SizedBox(height: tokens.space5),
-            SectionHeader(
-              icon: Icons.badge_rounded,
-              label: 'Your name',
-            ),
-            Group(children: [
-              // Says what tapping DOES, not the handle again — that is
-              // already the largest thing on the screen, six rows up. Same
-              // reasoning as the Settings row, and the same words.
-              ActionRow(
-                icon: Icons.edit_rounded,
-                title: 'Change your name',
-                detail: 'How you appear on the boards.',
-                onTap: _rename,
-              ),
-              ToggleRow(
-                icon: Icons.public_rounded,
-                title: 'Show me on leaderboards',
-                detail: 'Off hides your name and rank. Stars still count.',
-                value: account.showOnLeaderboards,
-                onChanged: _setVisibility,
-                last: true,
-              ),
-            ]),
-
-            if (widget.onOpenStatistics != null) ...[
-            SizedBox(height: tokens.space5),
-            SectionHeader(
-              icon: Icons.insights_rounded,
-              label: 'Your play',
-            ),
-            Group(children: [
+        if (widget.onOpenStatistics != null ||
+            sync.status != SyncStatus.off) ...[
+          const SectionHeader(label: 'Your play'),
+          Group(
+            children: [
               // WHERE THE STATISTICS SCREEN IS REACHED FROM.
               //
               // It was only ever reachable by tapping the stat row on the home
               // screen, which is drawn as plain text and reads as a caption
               // rather than a control — so a whole screen of content went
               // unfound. A profile is where somebody looks for their numbers.
-              ActionRow(
-                icon: Icons.bar_chart_rounded,
-                title: 'Statistics',
-                // ActionRow gives a detail ONE line and ellipsises the rest —
-                // that is the Settings rule, so the copy fits the row rather
-                // than the row growing for it. The first draft ran to 47
-                // characters and clipped at "and your a…", which reads as a
-                // bug rather than as restraint.
-                detail: 'Your times, activity and every level.',
-                onTap: widget.onOpenStatistics!,
-                last: true,
-              ),
-            ]),
-            ],
-
-            SizedBox(height: tokens.space5),
-            SectionHeader(
-              icon: Icons.logout_rounded,
-              label: 'Session',
-              danger: true,
-            ),
-            Group(
-              danger: true,
-              children: [
+              if (widget.onOpenStatistics != null)
                 ActionRow(
-                  icon: Icons.logout_rounded,
-                  title: 'Sign out',
-                  // States what it does NOT do, because that is the fear.
-                  detail: 'Your progress stays on this phone.',
-                  onTap: _confirmSignOut,
-                  destructive: true,
-                  last: true,
+                  icon: const BarsGlyph(),
+                  iconColor: Toy.pink,
+                  title: 'Statistics',
+                  // ActionRow gives a detail ONE line and ellipsises the rest
+                  // — that is the Settings rule, so the copy fits the row
+                  // rather than the row growing for it.
+                  detail: 'Your times, activity and every level',
+                  onTap: widget.onOpenStatistics!,
                 ),
-              ],
-            ),
-            SizedBox(height: tokens.space3),
-            Text(
-              'Deleting your account is in Settings, with the other '
-              'irreversible things.',
-              style: bodyStyle(tokens).copyWith(fontSize: 12),
-            ),
-          ],
+              if (sync.status != SyncStatus.off) _SyncRow(sync: sync),
+            ],
+          ),
+        ],
+
+        const SectionHeader(label: 'Session', danger: true),
+        _SignOutCard(onPressed: _confirmSignOut),
+        const SizedBox(height: 24),
+        Text(
+          'To delete your account, go to Settings → Danger zone.',
+          textAlign: TextAlign.center,
+          style: Toy.ui(12, weight: FontWeight.w500, color: Toy.inkMuted),
         ),
-      ),
+      ],
     );
+  }
+
+  /// The month this player's history starts, from what this device knows.
+  ///
+  /// The earlier of the first day played and the first level cleared. Null
+  /// when neither is known, and the card then simply leaves the line out —
+  /// there is no account-creation date on the session to fall back to.
+  static DateTime? _pouringSince(
+    Map<int, LevelProgress> progress,
+    Map<String, DayRecord> history,
+  ) {
+    DateTime? earliest;
+    void consider(DateTime? d) {
+      if (d != null && (earliest == null || d.isBefore(earliest!))) {
+        earliest = d;
+      }
+    }
+
+    for (final key in history.keys) {
+      consider(parseDayKey(key));
+    }
+    for (final p in progress.values) {
+      if (p.firstClearedAtMillis > 0) {
+        consider(
+          DateTime.fromMillisecondsSinceEpoch(p.firstClearedAtMillis).toLocal(),
+        );
+      }
+    }
+    return earliest;
   }
 
   /// Renames through the SAME dialog Settings uses.
@@ -493,8 +412,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
     if (chosen == null || !mounted) return;
 
-    final problem = await ref.read(accountProvider.notifier).renameHandle(chosen);
-    if (problem != null && mounted) _toast(problem);
+    final problem = await ref
+        .read(accountProvider.notifier)
+        .renameHandle(chosen);
+    if (problem != null && mounted) showRowMessage(context, problem);
   }
 
   Future<void> _setVisibility(bool visible) async {
@@ -504,58 +425,28 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     // The switch has NOT moved, because the server never agreed. Saying so is
     // the point: a control that looks like it worked on a request that did not
     // tells somebody they are hidden while they are still listed.
-    if (!ok && mounted) _toast('Could not reach the server, so nothing changed.');
+    if (!ok && mounted) {
+      showRowMessage(context, 'Could not reach the server, so nothing changed.');
+    }
   }
 
   Future<void> _confirmSignOut() async {
-    final tokens = PourfectTokens.of(context);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showRowConfirm(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: tokens.surfaceRaised,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(tokens.panelRadius),
-          side: BorderSide(color: tokens.hairline),
-        ),
-        title: Text('Sign out?', style: titleStyle(tokens)),
-        content: Text(
+      title: 'Sign out?',
+      body:
           'Your progress stays on this phone. You can sign back in any time '
           'to pick it up somewhere else.',
-          style: bodyStyle(tokens),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Stay signed in',
-              style: actionStyle(tokens, color: tokens.textMuted),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Sign out', style: actionStyle(tokens)),
-          ),
-        ],
-      ),
+      cancelLabel: 'Stay signed in',
+      confirmLabel: 'Sign out',
     );
 
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     await ref.read(accountProvider.notifier).signOut();
-  }
-
-  void _toast(String message) {
-    final tokens = PourfectTokens.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: bodyStyle(tokens)),
-        backgroundColor: tokens.surfaceRaised,
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
     final account = ref.watch(accountProvider);
 
     // ALREADY SIGNED IN IS A STATE THIS SCREEN HAS TO HAVE.
@@ -567,155 +458,514 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     // conditional: the "Save your progress" row is hidden once you are signed
     // in. The crest had no such guard, so the bug was in the routing as much
     // as in this file.
-    if (account.signedIn) return _signedIn(context, tokens, account);
+    if (account.signedIn) return _signedIn(context, account);
 
-    return Scaffold(
-      backgroundColor: tokens.surface,
-      appBar: AppBar(
-        backgroundColor: tokens.surface,
-        elevation: 0,
-        title: Text('Save your progress', style: titleStyle(tokens)),
-        iconTheme: IconThemeData(color: tokens.textPrimary),
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.all(tokens.space4),
-          children: [
-            Text(
-              // Precisely what it does. Not "your progress is safe" — an
-              // account moves it to a new phone, and that is the whole claim.
-              'Your stars, streak and leaderboard name move with your account, '
-              'so a new phone starts where you left off.',
-              style: bodyStyle(tokens),
-            ),
-            SizedBox(height: tokens.space5),
-
-            _GoogleButton(onPressed: account.busy ? null : _google),
-
-            SizedBox(height: tokens.space4),
-            Row(
-              children: [
-                Expanded(child: Divider(color: tokens.hairline)),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: tokens.space3),
-                  child: Text('or', style: labelStyle(tokens)),
+    return _Screen(
+      title: 'Save your progress',
+      children: [
+        ToyBox(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+          radius: Toy.rHero,
+          shadow: 5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                // Precisely what it does. Not "your progress is safe" — an
+                // account moves it to a new phone, and that is the whole claim.
+                'Your stars, streak and leaderboard name move with your '
+                'account, so a new phone starts where you left off.',
+                style: Toy.ui(
+                  14,
+                  weight: FontWeight.w500,
+                  color: Toy.inkMuted,
+                  height: 1.45,
                 ),
-                Expanded(child: Divider(color: tokens.hairline)),
-              ],
-            ),
-            SizedBox(height: tokens.space4),
+              ),
+              const SizedBox(height: 16),
 
-            Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              ToyButton.secondary(
+                label: 'Continue with Google',
+                icon: const _GoogleMark(),
+                onPressed: account.busy ? null : _google,
+              ),
+
+              const SizedBox(height: 16),
+              Row(
                 children: [
-                  _Field(
-                    controller: _email,
-                    label: 'Email',
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.email],
-                    validator: (value) {
-                      final text = (value ?? '').trim();
-                      if (text.isEmpty) return 'Enter your email.';
-                      // Deliberately loose. Firebase is the real arbiter, and
-                      // a strict pattern here rejects valid addresses.
-                      if (!text.contains('@') || !text.contains('.')) {
-                        return 'That does not look like an email address.';
-                      }
-                      return null;
-                    },
+                  const Expanded(child: _Rule()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('OR', style: Toy.caps()),
                   ),
-                  SizedBox(height: tokens.space3),
-                  _Field(
-                    controller: _password,
-                    label: 'Password',
-                    obscure: true,
-                    autofillHints: [
-                      _registering
-                          ? AutofillHints.newPassword
-                          : AutofillHints.password,
-                    ],
-                    validator: (value) {
-                      final text = value ?? '';
-                      if (text.isEmpty) return 'Enter a password.';
-                      // Only enforced when CREATING one. Applying it at
-                      // sign-in would lock out anybody whose existing password
-                      // is shorter than a rule invented later.
-                      if (_registering && text.length < 8) {
-                        return 'At least 8 characters.';
-                      }
-                      return null;
-                    },
-                  ),
+                  const Expanded(child: _Rule()),
                 ],
               ),
-            ),
+              const SizedBox(height: 16),
 
-            // ORDER MATTERS, AND IT WAS BACKWARDS.
-            //
-            // The explanation comes first and the action that answers it comes
-            // directly underneath, so the two read as one thing. Previously the
-            // button sat ABOVE the sentence explaining what it would cost —
-            // which is the opposite of what `_google` documents, and left two
-            // primary buttons stacked with the reasoning stranded between them.
-            if (_problem != null) ...[
-              SizedBox(height: tokens.space3),
-              Text(
-                _problem!,
-                style: bodyStyle(tokens).copyWith(
-                  color: const Color(0xFFC85F72),
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _Field(
+                      controller: _email,
+                      label: 'Email',
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.email],
+                      validator: (value) {
+                        final text = (value ?? '').trim();
+                        if (text.isEmpty) return 'Enter your email.';
+                        // Deliberately loose. Firebase is the real arbiter, and
+                        // a strict pattern here rejects valid addresses.
+                        if (!text.contains('@') || !text.contains('.')) {
+                          return 'That does not look like an email address.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _Field(
+                      controller: _password,
+                      label: 'Password',
+                      obscure: true,
+                      autofillHints: [
+                        _registering
+                            ? AutofillHints.newPassword
+                            : AutofillHints.password,
+                      ],
+                      validator: (value) {
+                        final text = value ?? '';
+                        if (text.isEmpty) return 'Enter a password.';
+                        // Only enforced when CREATING one. Applying it at
+                        // sign-in would lock out anybody whose existing
+                        // password is shorter than a rule invented later.
+                        if (_registering && text.length < 8) {
+                          return 'At least 8 characters.';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
                 ),
               ),
-            ],
 
-
-            SizedBox(height: tokens.space4),
-            _PrimaryButton(
-              label: _registering ? 'Create account' : 'Sign in',
-              busy: account.busy,
-              onPressed: account.busy ? null : _submit,
-            ),
-
-            SizedBox(height: tokens.space3),
-            Pressable(
-              onPressed: () => setState(() {
-                _registering = !_registering;
-                _problem = null;
-              }),
-              semanticLabel: _registering
-                  ? 'Sign in instead'
-                  : 'Create an account instead',
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: tokens.space2),
-                child: Text(
-                  _registering
-                      ? 'Already have an account? Sign in'
-                      : 'Need an account? Create one',
-                  textAlign: TextAlign.center,
-                  style: actionStyle(tokens, color: tokens.accent),
-                ),
-              ),
-            ),
-
-            if (!_registering)
-              Pressable(
-                onPressed: _resetPassword,
-                semanticLabel: 'Reset your password',
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: tokens.space2),
-                  child: Text(
-                    'Forgot your password?',
-                    textAlign: TextAlign.center,
-                    style: actionStyle(tokens, color: tokens.textMuted),
+              // ORDER MATTERS, AND IT WAS BACKWARDS.
+              //
+              // The explanation comes first and the action that answers it
+              // comes directly underneath, so the two read as one thing.
+              if (_problem != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _problem!,
+                  style: Toy.ui(
+                    13,
+                    weight: FontWeight.w600,
+                    color: kDestructive,
+                    height: 1.4,
                   ),
                 ),
+              ],
+
+              const SizedBox(height: 16),
+              ToyButton(
+                label: _registering ? 'Create account' : 'Sign in',
+                height: 56,
+                fontSize: 22,
+                icon: account.busy
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : null,
+                onPressed: account.busy ? null : _submit,
               ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+        _TextLink(
+          label: _registering
+              ? 'Already have an account? Sign in'
+              : 'Need an account? Create one',
+          semanticLabel: _registering
+              ? 'Sign in instead'
+              : 'Create an account instead',
+          color: Toy.tomatoDark,
+          onPressed: () => setState(() {
+            _registering = !_registering;
+            _problem = null;
+          }),
+        ),
+        if (!_registering)
+          _TextLink(
+            label: 'Forgot your password?',
+            semanticLabel: 'Reset your password',
+            color: Toy.inkMuted,
+            onPressed: _resetPassword,
+          ),
+      ],
+    );
+  }
+}
+
+/// The ground both states of this screen stand on: header, then a scrolling
+/// column with room under it for the last card's hard shadow.
+class _Screen extends StatelessWidget {
+  const _Screen({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    // A Scaffold underneath the toy ground: it pads for the keyboard under the
+    // sign-in form, and it is what the row messages are shown on.
+    return Scaffold(
+      backgroundColor: Toy.cream,
+      body: ToyScaffold(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        safeBottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ToyHeader(title: title),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                  0,
+                  2,
+                  0,
+                  24 + MediaQuery.paddingOf(context).bottom,
+                ),
+                children: children,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+/// The yellow Player Card: who you are and what travels with the account.
+///
+/// Tilted, and carries the PLAYER CARD tag — the two tilted elements this
+/// screen is allowed. The photo appears here, inside the toy frame, when the
+/// provider supplied one: this is the player's own card, never a public one.
+class _PlayerCard extends StatelessWidget {
+  const _PlayerCard({
+    required this.account,
+    required this.since,
+    required this.solved,
+    required this.stars,
+    required this.streak,
+    required this.rank,
+  });
+
+  final AccountState account;
+  final DateTime? since;
+  final int solved;
+  final int stars;
+  final String streak;
+  final String rank;
+
+  static const _months = [
+    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', //
+    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final handle = account.handle;
+    final since = this.since;
+
+    final card = Container(
+      padding: const EdgeInsets.all(18),
+      decoration: Toy.box(
+        fill: Toy.yellow,
+        radius: Toy.rHero,
+        shadow: 6,
+        strokeWidth: 3,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: Toy.hard(4),
+                ),
+                child: ToyAvatar(
+                  name: handle ?? '',
+                  photoUrl: account.photoUrl,
+                  size: 72,
+                  color: Toy.lilac,
+                  strokeWidth: 3,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Shrinks rather than crops, like the Settings card: half
+                    // a name with an ellipsis on it is worse than a small
+                    // whole one.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        handle ?? 'Naming you…',
+                        style: Toy.display(30),
+                        maxLines: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      account.email == null
+                          ? 'Signed in'
+                          : maskEmail(account.email!),
+                      style: Toy.ui(13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (since != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'POURING SINCE ${_months[since.month - 1]} '
+                        '${since.year}',
+                        style: Toy.ui(
+                          11,
+                          weight: FontWeight.w800,
+                          letterSpacing: 1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _StatStrip(solved: solved, stars: stars, streak: streak, rank: rank),
+        ],
+      ),
+    );
+
+    return Padding(
+      // Room for the tag above and the tilt at the corners.
+      padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
+      child: Transform.rotate(
+        angle: -1.5 * math.pi / 180,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            card,
+            Positioned(
+              top: -13,
+              right: 18,
+              child: Transform.rotate(
+                angle: 3 * math.pi / 180,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Toy.ink,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'PLAYER CARD',
+                    style: Toy.ui(
+                      10,
+                      weight: FontWeight.w800,
+                      color: Toy.yellow,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Solved, stars, streak, rank — four cells, rank in tomato.
+class _StatStrip extends StatelessWidget {
+  const _StatStrip({
+    required this.solved,
+    required this.stars,
+    required this.streak,
+    required this.rank,
+  });
+
+  final int solved;
+  final int stars;
+  final String streak;
+  final String rank;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget cell(String value, String label, {bool hot = false}) => Expanded(
+      child: Container(
+        color: hot ? Toy.tomato : null,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: Toy.numbers(19, color: hot ? Colors.white : Toy.ink),
+                maxLines: 1,
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              label,
+              style: Toy.ui(
+                10,
+                weight: FontWeight.w800,
+                color: hot ? Colors.white : Toy.inkMuted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    const rule = SizedBox(width: 2, child: ColoredBox(color: Toy.ink));
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Toy.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Toy.ink, width: Toy.stroke),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            cell('$solved', 'SOLVED'),
+            rule,
+            cell('$stars★', 'STARS'),
+            rule,
+            cell(streak, 'STREAK'),
+            rule,
+            cell(rank, 'RANK', hot: true),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Where this account's progress stands with the server. Read-only.
+class _SyncRow extends StatelessWidget {
+  const _SyncRow({required this.sync});
+
+  final SyncState sync;
+
+  @override
+  Widget build(BuildContext context) {
+    final (title, detail) = switch (sync.status) {
+      SyncStatus.syncing => ('Syncing…', 'Saving progress to your account'),
+      SyncStatus.unreachable => (
+        'Waiting to sync',
+        'Saves when you are back online',
+      ),
+      _ when sync.pending > 0 => (
+        'Waiting to sync',
+        'Your latest levels go up next',
+      ),
+      _ => (
+        _synced(sync.lastSucceededAt),
+        'Progress saved to your account',
+      ),
+    };
+    return ActionRow(
+      icon: const Icon(Icons.swap_vert_rounded),
+      iconColor: Toy.blue,
+      iconInk: Colors.white,
+      title: title,
+      detail: detail,
+      onTap: null,
+    );
+  }
+
+  static String _synced(DateTime? at) {
+    if (at == null) return 'Synced';
+    final ago = DateTime.now().difference(at);
+    if (ago.inMinutes < 1) return 'Synced just now';
+    if (ago.inHours < 1) return 'Synced ${ago.inMinutes}m ago';
+    if (ago.inDays < 1) return 'Synced ${ago.inHours}h ago';
+    return 'Synced ${ago.inDays}d ago';
+  }
+}
+
+/// Sign out: a card of its own, on a tomato shadow.
+class _SignOutCard extends StatelessWidget {
+  const _SignOutCard({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Pressable(
+      onPressed: onPressed,
+      semanticLabel: 'Sign out',
+      child: ToyBox(
+        radius: Toy.rControl,
+        shadowColor: Toy.tomato,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        child: Row(
+          children: [
+            const RowIcon(
+              icon: Icon(Icons.power_settings_new_rounded),
+              color: Toy.tomato,
+              ink: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sign out',
+                    style: Toy.ui(15, weight: FontWeight.w800, color: kDestructive),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    // States what it does NOT do, because that is the fear.
+                    'Your progress stays on this phone',
+                    style: Toy.ui(12, weight: FontWeight.w500, color: Toy.inkMuted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _Field extends StatelessWidget {
@@ -737,7 +987,10 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
+    OutlineInputBorder border(Color color) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: color, width: Toy.stroke),
+    );
 
     return TextFormField(
       controller: controller,
@@ -746,130 +999,78 @@ class _Field extends StatelessWidget {
       autofillHints: autofillHints,
       autocorrect: false,
       enableSuggestions: !obscure,
-      style: bodyStyle(tokens).copyWith(color: tokens.textPrimary),
-      cursorColor: tokens.accent,
+      style: Toy.ui(16),
+      cursorColor: Toy.tomato,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: labelStyle(tokens),
+        labelStyle: Toy.ui(14, weight: FontWeight.w600, color: Toy.inkMuted),
+        floatingLabelStyle: Toy.ui(14, weight: FontWeight.w700),
+        errorStyle: Toy.ui(12, color: kDestructive),
         filled: true,
-        fillColor: tokens.surfaceRaised,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(tokens.panelRadius),
-          borderSide: BorderSide(color: tokens.hairline),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(tokens.panelRadius),
-          borderSide: BorderSide(color: tokens.accent),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(tokens.panelRadius),
-          borderSide: const BorderSide(color: Color(0xFFC85F72)),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(tokens.panelRadius),
-          borderSide: const BorderSide(color: Color(0xFFC85F72)),
-        ),
+        fillColor: Toy.cream,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        enabledBorder: border(Toy.ink),
+        focusedBorder: border(Toy.tomato),
+        errorBorder: border(kDestructive),
+        focusedErrorBorder: border(kDestructive),
       ),
     );
   }
 }
 
-class _PrimaryButton extends StatelessWidget {
-  const _PrimaryButton({
+/// A line of text that is a control: the register / sign-in switch.
+class _TextLink extends StatelessWidget {
+  const _TextLink({
     required this.label,
-    required this.busy,
+    required this.semanticLabel,
+    required this.color,
     required this.onPressed,
   });
 
   final String label;
-  final bool busy;
-  final VoidCallback? onPressed;
+  final String semanticLabel;
+  final Color color;
+  final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
-    return Pressable(
-      onPressed: onPressed,
-      semanticLabel: label,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: tokens.space3),
-        decoration: BoxDecoration(
-          color: onPressed == null ? tokens.surfaceRaised : tokens.accent,
-          borderRadius: BorderRadius.circular(tokens.panelRadius),
-        ),
-        alignment: Alignment.center,
-        child: busy
-            ? SizedBox(
-                height: 18,
-                width: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: tokens.textPrimary,
-                ),
-              )
-            : Text(
-                label,
-                style: actionStyle(tokens, color: tokens.surface),
-              ),
+  Widget build(BuildContext context) => Pressable(
+    onPressed: onPressed,
+    semanticLabel: semanticLabel,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: Toy.ui(14, weight: FontWeight.w700, color: color),
       ),
-    );
-  }
+    ),
+  );
 }
 
-class _GoogleButton extends StatelessWidget {
-  const _GoogleButton({required this.onPressed});
-
-  final VoidCallback? onPressed;
+class _Rule extends StatelessWidget {
+  const _Rule();
 
   @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
-    return Pressable(
-      onPressed: onPressed,
-      semanticLabel: 'Continue with Google',
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: tokens.space3),
-        decoration: BoxDecoration(
-          color: tokens.surfaceRaised,
-          borderRadius: BorderRadius.circular(tokens.panelRadius),
-          border: Border.all(color: tokens.hairlineStrong),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          'Continue with Google',
-          style: actionStyle(tokens, color: tokens.textPrimary),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      Container(height: 1.5, color: Toy.divider);
 }
 
-/// One number and its unit, for the row at the top of the account screen.
-class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label, this.color});
-
-  final String value;
-  final String label;
-  final Color? color;
+/// A plain "G" in a small ink ring. Not Google's logo — the brand mark has
+/// usage rules and does not belong drawn by hand in a toy stroke.
+class _GoogleMark extends StatelessWidget {
+  const _GoogleMark();
 
   @override
-  Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: numericStyle(tokens, size: 20).copyWith(
-            color: color ?? tokens.textPrimary,
-          ),
-        ),
-        SizedBox(height: 2),
-        Text(label, style: labelStyle(tokens).copyWith(fontSize: 9)),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    width: 24,
+    height: 24,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: Toy.cream,
+      shape: BoxShape.circle,
+      border: Border.all(color: Toy.ink, width: Toy.strokeThin),
+    ),
+    child: Text('G', style: Toy.ui(13, weight: FontWeight.w800, height: 1)),
+  );
 }

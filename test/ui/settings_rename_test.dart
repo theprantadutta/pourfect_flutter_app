@@ -103,7 +103,7 @@ void main() {
     expect(find.text('At least 2 characters.'), findsOneWidget);
 
     // Tapping Save must do nothing at all — not close, not send.
-    await tester.tap(find.text('Save'));
+    await tester.tap(find.text('SAVE'));
     await tester.pumpAndSettle();
 
     expect(

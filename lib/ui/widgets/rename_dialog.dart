@@ -1,4 +1,4 @@
-/// The box for changing your leaderboard name.
+/// The box for changing your leaderboard name: a "HELLO my name is" tag.
 ///
 /// Shared by Settings and the account screen the crest opens. Both surfaces
 /// legitimately offer a rename, and one dialog is the difference between them
@@ -6,15 +6,17 @@
 /// two files.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../services/api/leaderboard_api.dart';
-import '../theme/tokens.dart';
-import '../theme/typography.dart';
+import '../theme/toy.dart';
+import 'toy_kit.dart';
 
 /// Opens the rename box and returns the chosen name, or null if cancelled.
 Future<String?> showRenameDialog(BuildContext context, String initial) =>
-    showDialog<String>(
+    showToyDialog<String>(
       context: context,
       builder: (context) => RenameDialog(initial: initial),
     );
@@ -57,75 +59,115 @@ class RenameDialogState extends State<RenameDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
+    final calm = Toy.calm(context);
 
-    return AlertDialog(
-      backgroundColor: tokens.surfaceRaised,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(tokens.panelRadius),
-        side: BorderSide(color: tokens.hairline),
-      ),
-      title: Text('Your name', style: titleStyle(tokens)),
-      // Scrollable, because an AlertDialog gives its content the height left
-      // over after the keyboard takes its share, and on a short screen that
-      // can be less than the content needs. The overflow that reported
-      // alongside the disposed-controller crash was this.
-      content: SingleChildScrollView(
-        child: Column(
+    final card = ToyDialogCard(
+      headerColor: Toy.tomato,
+      header: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'This is what other players see on the leaderboards.',
-            style: bodyStyle(tokens),
+            'HELLO',
+            style: Toy.display(46, color: Colors.white, shadow: 2),
           ),
-          SizedBox(height: tokens.space3),
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            maxLength: kMaxDisplayName,
-            style: bodyStyle(tokens).copyWith(color: tokens.textPrimary),
-            decoration: InputDecoration(
-              errorText: _problem,
-              counterStyle: labelStyle(tokens),
-              enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: tokens.hairline),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: tokens.accent),
-              ),
-            ),
-            onChanged: (value) =>
-                setState(() => _problem = displayNameProblem(value)),
-            onSubmitted: (_) => _submit(),
+          const SizedBox(height: 2),
+          Text(
+            'MY NAME IS',
+            style: Toy.caps(size: 15, color: Colors.white),
           ),
         ],
-        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            'Cancel',
-            style: actionStyle(tokens, color: tokens.textMuted),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _NameField(
+            controller: _controller,
+            onChanged: (value) =>
+                setState(() => _problem = displayNameProblem(value)),
+            onSubmitted: _submit,
           ),
-        ),
-        TextButton(
-          onPressed: _problem == null ? _submit : null,
-          // The color is set explicitly, which overrides the disabled tint
-          // Flutter would otherwise apply — so a Save that cannot be pressed
-          // looked exactly like one that could. Seen on device.
-          child: Text(
-            'Save',
-            style: actionStyle(
-              tokens,
-              color: _problem == null ? null : tokens.dimText,
-            ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  _problem ?? 'Other players see this on the boards',
+                  style: Toy.ui(
+                    12,
+                    weight: _problem == null ? FontWeight.w600 : FontWeight.w700,
+                    color: _problem == null ? Toy.inkMuted : Toy.tomatoDark,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _controller,
+                builder: (context, value, _) => Text(
+                  '${value.text.characters.length}/$kMaxDisplayName',
+                  style: Toy.numbers(12, color: Toy.inkMuted),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ToyButton.secondary(
+                  label: 'Cancel',
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ToyButton(
+                  label: 'SAVE',
+                  color: Toy.mint,
+                  textColor: Toy.ink,
+                  height: 52,
+                  radius: 16,
+                  shadow: 4,
+                  fontSize: 20,
+                  // Disabled while the name is refused, and it LOOKS disabled:
+                  // a Save that cannot be pressed looking exactly like one that
+                  // can was seen on device.
+                  onPressed: _problem == null ? _submit : null,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    // The tag wobbles as it lands: -3° settling to -1° on a spring. Calm keeps
+    // the resting tilt and drops the motion.
+    final tilted = calm
+        ? Transform.rotate(angle: _rad(-1), child: card)
+        : TweenAnimationBuilder<double>(
+            tween: Tween(begin: -3, end: -1),
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.elasticOut,
+            builder: (context, deg, child) =>
+                Transform.rotate(angle: _rad(deg), child: child),
+            child: card,
+          );
+
+    // Scrollable and lifted over the keyboard: a dialog route does not pad
+    // for the inset, and on a short screen the field would sit under it.
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 120),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: tilted,
+      ),
     );
   }
+
+  static double _rad(double deg) => deg * math.pi / 180;
 
   void _submit() {
     final name = _controller.text.trim();
@@ -135,5 +177,55 @@ class RenameDialogState extends State<RenameDialog> {
       return;
     }
     Navigator.of(context).pop(name);
+  }
+}
+
+/// The cream name field, written in the display face.
+class _NameField extends StatelessWidget {
+  const _NameField({
+    required this.controller,
+    required this.onChanged,
+    required this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: Toy.cream,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Toy.ink, width: Toy.stroke),
+      ),
+      child: TextSelectionTheme(
+        data: TextSelectionThemeData(
+          cursorColor: Toy.tomato,
+          selectionColor: Toy.lilac.withValues(alpha: 0.45),
+          selectionHandleColor: Toy.tomato,
+        ),
+        child: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: kMaxDisplayName,
+          // The counter is drawn under the box, as part of the tag.
+          buildCounter:
+              (_, {required currentLength, required isFocused, maxLength}) =>
+                  null,
+          cursorColor: Toy.tomato,
+          cursorWidth: 3,
+          cursorRadius: const Radius.circular(2),
+          style: Toy.display(28, height: 1.2),
+          decoration: const InputDecoration.collapsed(hintText: null),
+          onChanged: onChanged,
+          onSubmitted: (_) => onSubmitted(),
+        ),
+      ),
+    );
   }
 }
