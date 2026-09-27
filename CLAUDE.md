@@ -173,24 +173,56 @@ That matters because the anti-cheat floor rejects submissions BELOW `minMoves`
 and cannot tell an honest optimum from a looked-up one. See the backend's
 `DailyChallengeJobService`.
 
-## Design direction
+## Design direction — Toybox
 
-Deep calm dark. Near-black ink ground, frosted-glass tubes, muted jewel balls,
-hairline borders. References are deliberately **outside the genre**: meditation
-apps, premium habit trackers, high-end audio equipment UI, tasteful
-glassmorphism. Explicitly avoid the mobile-puzzle house style — no rainbow
-gradients, no cartoon bevels, no bouncy display fonts, no confetti.
+**Toybox**, since 2026-09-27: cream dotted ground, chunky ink outlines, hard
+drop shadows, toy balls, and big celebratory moments. The "o" in Pourfect is an
+amber dot ball — the Ball-O logo is the brand. The handoff (screens, tokens,
+reference HTML, every icon size) came from the designer as `pourfect-toybox`;
+its README is the spec, and `design-tokens.json` holds every value.
 
-Palette is defined as **semantic tokens** (`surface`, `surfaceRaised`,
-`tubeGlass`, `ballFill`, `hairline`, `textPrimary`, `textMuted`) so a warm-paper
-light theme is a token remap rather than a rewrite.
+This deliberately REVERSES the original direction — deep calm dark, frosted
+glass, muted jewel balls, "no bouncy display fonts, no confetti". That was a
+considered choice at the time, and so is this. Do not reintroduce dark mode:
+Toybox replaced it outright rather than sitting beside it, so every widget has
+one look to maintain. (Owner's decision.)
 
-Monospace for all numerics: move counters, timers, level numbers, leaderboard
-figures.
+Where the look lives:
+
+- `ui/theme/toy.dart` — `Toy`: ink `#1F1A33`, cream `#FFF3DF`, the accents
+  (tomato primary, yellow stars/hint, blue daily/win, mint done/on, pink,
+  lilac), radii 10/14/18/20/26, `Toy.hard()` shadows, the type helpers, and
+  `ToySurface` (cream, daily, win, splash) with `DotGridPainter`.
+- `ui/theme/tokens.dart` — `PourfectTokens.toybox`, the semantic set the board
+  and its motion still read.
+- `ui/widgets/toy_kit.dart` — the components: `ToyScaffold`, `ToyButton`,
+  `ToyHeader`, `ToyChip`, `ToySticker`, `ToyToggle`, `ToyTabs`, `ToyAvatar`,
+  `ToyStars`, `ToyIcon`, `showToyDialog`, `showToyConfirm`… Screens compose
+  these; they do not hand-roll a BoxDecoration. The look is a handful of
+  numbers, and thirty screens re-typing them slightly differently is how it
+  gets lost.
+
+The rules the look depends on:
+
+- **Shadows never blur.** Solid ink, offset straight down (`Toy.hard`). A soft
+  shadow anywhere reads as a different app. Selected and danger variants use a
+  tomato shadow instead.
+- **2.5px ink stroke on everything interactive**, 2px on small chips.
+- **The hard shadow paints OUTSIDE the layout box.** Leave its depth in padding
+  under any card inside a scroll view or clip, or it gets shaved off.
+- **Tilt is a garnish** — stickers and hero cards, −4° to +10°, at most two per
+  screen, never on a list row.
+- **Type:** Bagel Fat One for display (logo, titles, big numbers, CTA labels),
+  Outfit 500–800 for everything else. Every number a player reads uses tabular
+  figures (`Toy.numbers`), so a counter ticking from 9 to 10 does not shift.
+- **Reduced motion is honored everywhere** (`Toy.calm(context)`): the state
+  changes happen, the flourishes do not.
 
 **Fonts are bundled TTFs in `assets/fonts/`, declared in pubspec.** Do not add
 `google_fonts` — that package exists for runtime fetching, which we explicitly
-do not do, and it is dead weight against the 25 MB APK budget.
+do not do, and it is dead weight against the 25 MB APK budget. Bagel Fat One is
+SUBSET to Latin (1.58 MB upstream, 52 KB bundled); the command to re-subset is
+in `assets/fonts/ATTRIBUTION.md`.
 
 ### Board interaction
 
@@ -198,20 +230,30 @@ Tap-to-select, tap-to-pour.
 
 - Tapping the already-selected tube **deselects** it. Without this a player who
   changes their mind has to waste a move or hit undo.
-- Illegal destinations dim to **40%** while a run is held — not 30%, which
-  crushes muted jewel tones into near-invisibility on a dark ground.
-- Level complete: finished tubes settle, a soft glow rises, **one** chime, then
-  the board fades. Deliberate, not empty. This is the moment the game earns its
-  "satisfying" pitch.
+- The held run LIFTS with an ink drop shadow and the source tube goes tomato.
+  Every tube that can take it gets a mint fill and a bobbing tomato ▼; the
+  rest dim to **40%** — below about 35% the ink outline fades into the dot grid
+  and a dimmed tube stops reading as a tube.
+- Balls stretch in flight and squash on landing on an elastic curve. A tube
+  that completes flashes a yellow ring and pops a SORTED! sticker it keeps.
+- A hint's destination breathes yellow and gets a yellow ▼, so a player back
+  from a rewarded video can find it from across the room.
+- The first three levels coach the held run with an ink toast ("Holding 2 ·
+  drop into a bouncing tube"). After that it would be talking over the board.
 
 ### Accessibility
 
 Every ball carries **color AND a distinct shape glyph, always both** — not a
-mode that swaps one for the other.
+mode that swaps one for the other. Glyphs are solid ink (white on indigo, the
+one ball too dark for ink), and their geometry in `ball.dart` mirrors the SVG
+in `tool/cvd_harness.dart` coordinate for coordinate — change one, change both,
+or the proof sheet stops proving anything about the shipped game. Re-run the
+harness after any palette change; the Toybox palette passes with every
+color-weak pair carried by a distinct silhouette.
 
 **Maximum 10 simultaneous colors** (`kMaxColors`). This is an accessibility
 ceiling, not a search limit: past ten, glyphs stop being tellable apart at ball
-size and the muted palette runs out of separable hues. A board you squint at is
+size and the palette runs out of separable hues. A board you squint at is
 not relaxing, which is the product. Get difficulty from fewer empty tubes,
 higher scatter and lower forced-move ratio instead. Raising this constant
 requires re-running the CVD harness, not just editing the number.
@@ -369,25 +411,37 @@ Solved on a background isolate via `Isolate.run`. Three rules, all enforced in
 
 ## The win moment
 
-NOT a dialog. The board transforms: solved tubes glow and stay visible as the
-trophy, empty tubes recede to 25%, and the stars, move count, band track and CTA
-arrive around the board rather than over it. A card would turn the emotional
-payoff of the whole loop into an alert box.
+Two acts, choreographed in `win_profile.dart`.
+
+**The last pour plays ON the board.** The board bumps to 1.03, yellow rays open
+behind it, confetti — real toy balls with their glyphs — bursts and falls, the
+solved tubes wear SORTED! and ripple a ring flash, and "Last pour…" sits where
+the action bar was. The board is the trophy, so nothing covers it yet.
+
+**Then the result is a whole screen, not a dialog**: a cross-fade to blue, the
+title slamming in (3★ *Perfect Pour!*, 2★ *Nice Pour!*, 1★ *Poured!* — the words
+are part of the reward), stars dropping one by one with a rising ping, the
+solved board on a card, moves / time / points chips, UNDER PAR! (beat the time
+par) and NEW BEST! stickers, the world bar filling, and a breathing NEXT LEVEL.
+A back button sits top-left although the mockup has none: iOS has no system
+back, and a result screen whose only exits are "again" and "on" traps somebody
+who wanted to stop.
 
 **Duration is earned, not constant.** `WinProfile.full` (1820ms) runs for three
-stars, a personal best, or a band's last level. `WinProfile.brief` (1150ms) runs
-for everything else — same beats, 120ms star spacing, no present-lift. A player
-clearing level 60 on a two-star retry has seen this sixty times.
+stars, a personal best, or a band's last level. `WinProfile.brief` (1150ms)
+keeps only the beats that carry information — the landing, the title, the
+stars — with no rays or confetti. A player clearing level 60 on a two-star retry
+has seen this sixty times.
 
 **Skip must never advance the level.** The skip layer is a separate full-screen
 absorber that removes itself after one tap, so Next always needs its own. If a
 skip also triggered Next the gesture would become muscle memory and players
 would blow through two levels by accident, then correctly blame the game. The
 rule is expressed as LAYOUT, not as a flag somebody has to remember to check.
+Reduced motion jumps straight to the settled result with no skip layer.
 
-Three stars must feel meaningfully better than two: only the third star fires a
-wider ring pulse, a richer tone with an octave on top, a stronger haptic, and a
-warm wash across the board glow. Two stars gets none of it, by construction.
+Three stars must feel meaningfully better than two: only the third star throws
+a ring, plays the richer tone and fires the stronger haptic.
 
 ## Sound
 
@@ -420,17 +474,18 @@ is a one-star nothing else buys back.
 
 ## Browsing levels
 
-`JourneyScreen` is the level browser — a winding path, one `CustomPainter`, the
-geometry in `journey_path.dart` shared with the slice on the home screen so the
-two cannot disagree. See the home screen section for how it is drawn.
+`JourneyScreen` is the level browser — a zig-zag of rounded tiles, one
+`CustomPainter` with a hit test, clipped to the viewport. Done tiles are mint
+with stars, the current level is a big tomato tile with a YOU pin and a pulsing
+halo, locked ones are dashed. The blue world card follows the world in view.
+The hub no longer carries a slice of the path; the home dock opens Journey.
 
 **There was a `LevelSelectScreen` and it is gone.** A grid where every level was
-a TUBE holding pips for its stars, with sticky band headers and the list opened
-scrolled to where the player was. It was good, and it was replaced on purpose —
-the journey path was chosen over it, and keeping both would have meant two
-browsers disagreeing about what a level looks like. It sat unreachable for a
-while before anybody noticed, which is the argument for deleting a screen the
-moment it stops being reachable rather than leaving it to rot.
+a TUBE holding pips for its stars. It was replaced on purpose — keeping both
+would have meant two browsers disagreeing about what a level looks like. It sat
+unreachable for a while before anybody noticed, which is the argument for
+deleting a screen the moment it stops being reachable rather than leaving it to
+rot. (`level_complete_card.dart` went the same way in the Toybox pass.)
 
 **Breathers are not marked.** Labelling one would be condescending and a
 confession that the curve is engineered. They work because they are felt.
@@ -439,13 +494,21 @@ confession that the curve is engineered. They work because they are felt.
 
 ## Interaction and motion rules
 
-- **Everything tappable goes through `Pressable`** (scale, haptic, sound), so no
-  control can be added later that quietly forgets its feedback.
+- **Everything tappable goes through `Pressable`**, so no control can be added
+  later that quietly forgets its feedback. It SINKS rather than scaling: the
+  child moves down by the press depth and a `ToyBox` inside shrinks its shadow
+  by the same amount, so the bottom of the shadow stays planted and the button
+  goes down into it. Sound on the way down, haptic on release, no ink ripple.
 - **Never `MaterialPageRoute`.** Its slide is an OS convention for moving
-  between documents. Opening a level grows the board out of the tile the player
-  touched (`PourfectPageRoute.fromRect`).
+  between documents. Pages rise 24px and fade in (220ms); opening a level grows
+  the board out of the tile or button the player touched
+  (`PourfectPageRoute.fromRect`). Dialogs scale in from 0.9 with a small
+  overshoot (`showToyDialog`).
 - **Numbers animate.** Counts run up with a decelerating curve so they settle
   rather than appear. Static digits are what make a screen feel like a form.
+- **Every repeating animation runs only while it has something to show** — the
+  hint pulse, the legal-target bob, the NEXT LEVEL breath. A permanently
+  repeating controller rebuilds the board every frame for the whole session.
 
 ## Progress
 
@@ -776,10 +839,10 @@ Four changes, in order of how much they did:
 - **A danger zone**, last, behind its own red-tinted border. Reset and Delete
   used to sit mid-list at the weight of Haptics.
 
-What did NOT carry over from the reference is its neon: the accent glow, the
-corner brackets, the filled category tabs. Tabs were skipped deliberately —
-they earn their place across Snake Classic's many screens of controls, and for
-six sections they would only add a tap and hide things.
+In Toybox the panels are white cards with colored icon tiles and toy toggles,
+under a lilac player card, and the danger zone is a tomato-tint card. Tabs were
+skipped deliberately — for six sections they would only add a tap and hide
+things.
 
 ## The account screen, and where Statistics is reached from
 
@@ -837,8 +900,9 @@ the store listing while buying nobody anything. It is used now, which is the
 other honest way to resolve that.
 
 **Null is the ORDINARY case, not a failure.** Anonymous and email accounts have
-no picture at all, and they are most accounts. The generated ball is the design
-and the photo is the exception, so `PlayerCrest` draws the ball while the image
+no picture at all, and they are most accounts. The generated ball (or, on the
+Toybox player cards, the colored initial tile) is the design and the photo is
+the exception — shown inside the same toy frame, never bare, so `PlayerCrest` draws the ball while the image
 loads, if it fails, if the URL is empty, and if there is no URL — there is no
 state in which it draws a hole, a spinner or a broken-image glyph. A crest
 appears on the first frame of the home screen, so a spinner was never the right
@@ -1172,101 +1236,67 @@ What sign-in protects is PROGRESS, which has no token to replay. Do not justify
 auth work with monetization — the argument is a player on level 96 with a
 40-day streak changing phones.
 
-## The home screen has no cards in it
+## The home screen
 
-The diagnosis behind "this feels like an app, not a game" was not a missing
-element. The screen was built from CARDS — a bordered panel round the board, a
-grouped row with a divider, a grid of bordered tiles, a section rule. That is
-Material vocabulary. **Monument Valley, Two Dots and Mini Metro contain no
-rounded rectangle with a 1px border anywhere.** They group by distance and
-scale. Every box drawn on a game screen is a piece of app furniture, and a
-screen made of them reads as Settings however well it is lit.
+The hub is a toy box, and it is built from cards on purpose. The original
+direction banned them ("every bordered box reads as app furniture"); Toybox
+reverses that, and the reversal is the point — a chunky outlined card with a
+hard shadow IS the toy.
 
-So `HomeScreen` has none. The board's tubes sit directly on the ground — they
-are already containers and wrapping them in another was the whole problem. The
-challenge and rank are plain label-and-value pairs. The only filled shape is
-the Continue pill, because it is the one primary action.
+Top to bottom: the player chip and a menu square; the Ball-O wordmark (text
+plus a painted amber ball, so the ball can drop in and bounce on the first
+frame) over the POUR · SORT · RELAX tag; three colored stat chips; the hero
+card holding the next board and one big PLAY; the blue daily card with a tilted
+rank sticker; and a dock for Journey, Rankings and Stats. That dock replaced
+the old chevron on the stats row and the path slice — each of the three is one
+tap away.
 
-This cost two wrong turns worth recording. A `HomeScreen` was once built and
-put in FRONT of level select on the strength of the class name, without anybody
-opening the screen — it was a worse copy of something that already existed, and
-was reverted the same day. Then the campaign path replaced the home screen
-entirely; it looked striking and carried almost no information, because a path
-through 150 levels is mostly empty ground.
-
-**`JourneyScreen` is the level browser, and the hub shows a slice of it.** One
-geometry, one painter: `journey_path.dart` owns where a level sits, so the strip
-on the hub and the full screen it opens cannot disagree.
-
-That path is **painted, never built**. 150 levels as widgets is 150 layouts on a
-scroll that has to hold 60fps, so one `CustomPainter` draws the lot and a hit
-test maps a tap back to a level. It clips to the viewport, because the canvas is
-the whole campaign — around 10,000px — and the current level's breathing ring
-would otherwise repaint all of it every frame.
-
-**One screen, and only the path moves.** The home screen is exactly the
-viewport: a fixed head — identity, the board, Continue, the challenge clock —
-and the campaign path filling whatever is left. It was a single ListView, so
-the board and the primary action scrolled away together and the screen had no
-shape. What you are playing and the button that plays it stay put.
-
-**The wordmark is big and LEFT, on its own line.** Centring it between the
-crest and the settings icon saved a line and lost the thing the whole left
-column aligns to — the stat row then hung off nothing. Tried and reverted.
-
-**Where the screen deliberately differs from the reference.** The design draws
-tubes far taller than the balls in them, with three balls resting at the
-bottom. No real Pourfect board looks like that: level 3 is three colors of four
-against a capacity of four, so its tubes are genuinely full. The board is drawn
-AIRIER — wider gaps, more padding, via `BoardPreview.airiness` — rather than
-misreported. The tube's shape is likewise the playable board's, not the
-reference's pill, so the home screen shows the same object the game does.
-
-**Sizes come off the reference, not off a guess.** The ball is 68px on the
-1080-wide design, which is 25 logical pixels at this density. It was 44, and
-the board ate the room the path needs. Measure the artwork.
+**The daily has no number.** The mockup says "Daily Pour #17"; nothing on the
+server or the client numbers dailies, so the card says "Daily Pour" rather than
+inventing one.
 
 **No status bar, either platform.** `SystemUiMode.immersiveSticky` on Android;
 `UIStatusBarHidden` with `UIViewControllerBasedStatusBarAppearance` false on
-iOS, because otherwise iOS asks the view controller and ignores the key. A game
-does not need the clock and the battery above its board, and that strip is the
-most reliable way to make a full-bleed dark screen look like a web page.
+iOS. When the bars are swiped in, each `ToyScaffold` sets icon brightness for
+its own ground — dark on cream, light on blue and tomato.
 
-**The current level is the ACCENT, never a palette color.** Deriving it the way
-solved levels are derived put the player's own position on indigo, the darkest
-ball there is, so "where you are" was the least visible thing on a near-black
-screen. Measured on device: 0.4% janky frames over 246, scrolling.
+**The splash hands over without a seam.** `SplashHandoff` paints exactly what
+the native splash shows — tomato, `splash_logo_1200.png` at 300dp — holding the
+first frame until the image is decoded, then bounces the logo, brings in the
+dots and tag, and fades to the hub in about 900ms. A tap ends it. It plays on
+every cold start, so it is short on purpose.
 
-## App icon — five masters, everything else derived## App icon — five masters, everything else derived
+## App icon — pre-sized, dropped in by hand
 
-`generated/store/` holds the Play 512; the masters are the five 1024px PNGs the
-design produced. **Every density is RESAMPLED from those**, never hand-exported
-per size — twenty separate exports drift apart, one source cannot.
+The Toybox icon is the amber Ball-O on tomato. The handoff ships every size
+already rendered — `android/res/mipmap-*` (launcher, round, and the three
+adaptive layers), `ios/AppIcon.appiconset`, `web/icons`, and the store art —
+and they are copied in by hand rather than generated. `flutter_launcher_icons`
+would overwrite `mipmap-anydpi-v26/ic_launcher.xml`, whose comments carry the
+layer rules below. `assets/brand/` keeps the masters.
 
-The artwork is two tubes, one mixed (amber/indigo/rose) and one solved (all
-sky), on the radial ground `#181C24` → `#0E1116`. It was chosen off a 48px
-thumbnail row against loud competitor icons, not off the full-size artboards:
-at icon size the only thing that survives is silhouette and lightness contrast,
-and the in-app hairline/frosted-glass look turns to mush.
+The iOS PNGs are saved as RGBA though opaque; the App Store rejects a 1024 icon
+with an alpha channel, so they were flattened to RGB when copied. Do it again
+if they are ever replaced.
+
+The native splash IS generated: `dart run flutter_native_splash:create` from
+the `flutter_native_splash` block in pubspec. It rewrites `Info.plist` with
+different indentation — revert that file if the diff is whitespace only.
 
 Three layer rules, each of which looks fine in a preview and fails on a device
 if broken:
 
 - **The adaptive foreground is drawn SMALLER in frame than the store icon.**
   Android crops 108dp to 72dp and then masks it, so everything essential sits
-  inside a centred 66dp circle — 626px on a 1024px master. The store icon has
-  no such crop and fills ~74%. That size difference is correct.
+  inside a centred 66dp circle.
 - **`<monochrome>` is a flat white silhouette, not a greyscale icon.** Android
-  13+ throws the color away entirely and tints the alpha with one wallpaper
-  color, so the tubes are solid white with the balls knocked out as holes. A
-  desaturated copy of the color icon renders as a featureless block.
-- **The notification icon is white-on-transparent and simpler still.** Same
-  tinting rule, drawn at 24dp, so it is ONE tube. Pointing
-  `default_notification_icon` at `@mipmap/ic_launcher` is the usual mistake and
-  produces a grey square in the status bar.
+  13+ throws the color away and tints the alpha with one wallpaper color.
+- **The notification icon is white-on-transparent** (`ic_notification`, from
+  the handoff's `ic_stat_pourfect`), tinted with `notification_accent` — tomato,
+  copied from `Toy.tomato`. Pointing `default_notification_icon` at
+  `@mipmap/ic_launcher` is the usual mistake and produces a grey square.
 
-`mipmap-anydpi-v26/ic_launcher.xml` binds all three layers. Verify a build
-actually shipped them rather than trusting Gradle:
+Verify a build actually shipped them rather than trusting Gradle:
 
     aapt2 dump xmltree build/app/outputs/flutter-apk/app-release.apk --file res/<id>.xml
 
