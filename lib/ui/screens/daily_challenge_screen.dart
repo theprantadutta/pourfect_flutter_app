@@ -9,6 +9,8 @@
 /// daily as campaign progress.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,12 +22,11 @@ import '../../state/game_controller.dart';
 import '../../state/hint_controller.dart';
 import '../../state/providers.dart';
 import '../format.dart';
-import '../theme/tokens.dart';
-import '../theme/typography.dart';
+import '../theme/toy.dart';
 import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
 import '../widgets/level_clock.dart';
-import '../widgets/pressable.dart';
+import '../widgets/toy_kit.dart';
 
 class DailyChallengeScreen extends ConsumerStatefulWidget {
   final VoidCallback onExit;
@@ -145,7 +146,6 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
     final daily = ref.watch(dailyProvider);
 
     if (daily.challenge != null) _startIfReady(daily.challenge!);
@@ -155,31 +155,40 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
     // the player is halfway through.
     final playing = _playing;
 
-    return Scaffold(
-      backgroundColor: tokens.surface,
-      body: SafeArea(
-        child: playing == null
-            ? _Unavailable(state: daily, onBack: widget.onExit)
-            : _board(tokens, playing),
-      ),
+    return ToyScaffold(
+      surface: ToySurface.daily,
+      padding: EdgeInsets.zero,
+      child: playing == null
+          ? _Unavailable(state: daily, onBack: widget.onExit)
+          : _board(playing, daily),
     );
   }
 
-  Widget _board(PourfectTokens tokens, DailyChallenge challenge) {
+  Widget _board(DailyChallenge challenge, DailyState daily) {
     final state = ref.watch(gameControllerProvider);
+
+    // Today counts as stamped the moment the board is solved on this device —
+    // nothing the server says afterwards can un-solve it — or when the
+    // challenge arrived already played.
+    final solvedToday =
+        challenge.isPlayed || (state?.isWon ?? false) || _result != null;
+
+    // The only streak this device is ever told is the server's answer to a
+    // submission. It covers today and the unbroken run of days before it.
+    final streak =
+        _result?.dailyStreak ??
+        (challenge.isPlayed ? daily.result?.dailyStreak : null);
 
     return Column(
       children: [
         BoardHud(
           levelId: 0,
-          // The day of the month, under "DAILY". A daily board has no level
-          // id, and heading one "LEVEL 00" reads as a bug.
-          titleLabel: 'DAILY',
-          titleValue: challenge.date.day.toString().padLeft(2, '0'),
-          // The right-hand block carries the move count against the proven
-          // optimum, so the label names that rather than repeating the word
-          // already at the top left.
-          bandName: 'Moves',
+          // "Daily Pour". The HUD capitalizes the label and appends the value;
+          // a daily board has no level id, and "Level 0" reads as a bug.
+          titleLabel: 'Daily',
+          titleValue: 'Pour',
+          titleColor: Colors.white,
+          bandName: _dateLabel(challenge.date),
           movesUsed: state?.movesUsed ?? 0,
           minMoves: challenge.minMoves,
           clock: state == null
@@ -192,17 +201,38 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                       0,
                   parSeconds: state.parSeconds,
                   isRunning: state.isClockRunning,
-                  fontSize: 19,
+                  fontSize: 13,
                 ),
           onExit: widget.onExit,
         ),
 
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: _WeekStrip(
+            today: challenge.date,
+            solvedToday: solvedToday,
+            streak: streak,
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // The white tray the board sits on. Its hard shadow is part of the
+        // layout, so the padding under it leaves room for all 5px of it.
         Expanded(
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: tokens.space4),
-            child: state == null
-                ? const SizedBox.shrink()
-                : BoardView(onTapTube: _onTapTube, onBallLanded: _onBallLanded),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 5),
+            child: ToyBox(
+              radius: Toy.rHero,
+              shadow: 5,
+              padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
+              child: state == null
+                  ? const SizedBox.expand()
+                  : BoardView(
+                      onTapTube: _onTapTube,
+                      onBallLanded: _onBallLanded,
+                    ),
+            ),
           ),
         ),
 
@@ -216,11 +246,14 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
             reminderOn: _reminderOn,
           )
         else
-          BoardControls(
-            onUndo: (state?.canUndo ?? false) ? _onUndo : null,
-            onRestart: _onRestart,
-            onHint: _onHint,
-            hintBusy: state?.hintPending ?? false,
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: BoardControls(
+              onUndo: (state?.canUndo ?? false) ? _onUndo : null,
+              onRestart: _onRestart,
+              onHint: _onHint,
+              hintBusy: state?.hintPending ?? false,
+            ),
           ),
       ],
     );
@@ -279,6 +312,26 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
   }
 }
 
+/// "Sun, Sep 27" — the date the board belongs to, under the title.
+String _dateLabel(DateTime date) {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${days[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
+}
+
 /// What the player sees when there is no board to play.
 class _Unavailable extends StatelessWidget {
   final DailyState state;
@@ -288,8 +341,6 @@ class _Unavailable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
     // Three different reasons, three different sentences. "Something went
     // wrong" would cover all of them and help with none.
     final (title, detail) = state.loading
@@ -305,35 +356,258 @@ class _Unavailable extends StatelessWidget {
                 'reached. The campaign does not need it.',
           );
 
-    return Padding(
-      padding: EdgeInsets.all(tokens.space5),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(title, style: titleStyle(tokens).copyWith(fontSize: 18)),
-          if (detail.isNotEmpty) ...[
-            SizedBox(height: tokens.space2),
-            SizedBox(
-              width: 300,
-              child: Text(
-                detail,
-                textAlign: TextAlign.center,
-                style: bodyStyle(tokens).copyWith(fontSize: 14),
-              ),
-            ),
-          ],
-          SizedBox(height: tokens.space4),
-          Pressable(
-            onPressed: onBack,
-            child: Text(
-              'Back to levels',
-              style: actionStyle(tokens, color: tokens.accent),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          child: Row(children: [ToyBackButton(onPressed: onBack)]),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: Toy.display(26, color: Colors.white, shadow: 2),
+                ),
+                if (detail.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: 300,
+                    child: Text(
+                      detail,
+                      textAlign: TextAlign.center,
+                      style: Toy.ui(15, color: Colors.white),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                ToyButton.secondary(label: 'Back to levels', onPressed: onBack),
+              ],
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The seven stamps of this week, Monday first.
+///
+/// Done days are mint with a tick, today is yellow with the date until it is
+/// solved, and the days still to come are blank. Days before today that the
+/// server's streak does not cover are drawn dashed: this device is never told
+/// which past dailies were played, only how long the unbroken run ending
+/// today is, so "not known to be played" is the honest reading of the rest.
+class _WeekStrip extends StatefulWidget {
+  /// The date of the board being played.
+  final DateTime today;
+  final bool solvedToday;
+
+  /// The server's streak, including today, once it has said. Null before.
+  final int? streak;
+
+  const _WeekStrip({
+    required this.today,
+    required this.solvedToday,
+    required this.streak,
+  });
+
+  @override
+  State<_WeekStrip> createState() => _WeekStripState();
+}
+
+class _WeekStripState extends State<_WeekStrip>
+    with SingleTickerProviderStateMixin {
+  /// Today's stamp landing: scale 1.4 → 1 and −6° → 0 over 260ms. Starts
+  /// settled, so a board that opens already solved shows the stamp at rest.
+  late final AnimationController _stamp = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 260),
+    value: 1,
+  );
+
+  @override
+  void didUpdateWidget(_WeekStrip old) {
+    super.didUpdateWidget(old);
+    // The haptic for this moment is the level-complete thunk the screen
+    // already plays on the same frame; a second buzz would blur the two.
+    if (!old.solvedToday && widget.solvedToday && !Toy.calm(context)) {
+      _stamp.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _stamp.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const letters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final today = DateTime.utc(
+      widget.today.year,
+      widget.today.month,
+      widget.today.day,
+    );
+    final monday = today.subtract(Duration(days: today.weekday - 1));
+    final streak = widget.streak ?? (widget.solvedToday ? 1 : 0);
+
+    return ToyBox(
+      radius: Toy.rControl,
+      shadow: 4,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          for (var i = 0; i < 7; i++)
+            _day(letters[i], monday.add(Duration(days: i)), today, streak),
         ],
       ),
     );
   }
+
+  Widget _day(String letter, DateTime day, DateTime today, int streak) {
+    final ago = today.difference(day).inDays;
+    final isToday = ago == 0;
+    final done = ago >= 0 && ago < streak && (ago > 0 || widget.solvedToday);
+
+    final Widget stamp;
+    final String state;
+    if (done) {
+      state = isToday ? 'played today' : 'played';
+      stamp = _Stamp(
+        color: Toy.mint,
+        child: const ToyIcon(ToyGlyph.check, size: 16),
+      );
+    } else if (isToday) {
+      state = 'today, not played yet';
+      stamp = _Stamp(
+        color: Toy.yellow,
+        child: Text('${day.day}', style: Toy.numbers(14)),
+      );
+    } else if (ago > 0) {
+      state = 'not played';
+      stamp = const _Stamp(dashed: true);
+    } else {
+      state = 'still to come';
+      stamp = const _Stamp(faint: true);
+    }
+
+    final animated = isToday && done
+        ? AnimatedBuilder(
+            animation: _stamp,
+            child: stamp,
+            builder: (context, child) {
+              final t = Curves.easeOutBack.transform(_stamp.value);
+              return Transform.rotate(
+                angle: (1 - t) * -6 * math.pi / 180,
+                child: Transform.scale(scale: 1.4 - 0.4 * t, child: child),
+              );
+            },
+          )
+        : stamp;
+
+    return Semantics(
+      label: '${_weekdayName(day.weekday)}, $state',
+      excludeSemantics: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            letter,
+            style: Toy.ui(10, weight: FontWeight.w800, color: Toy.inkMuted),
+          ),
+          const SizedBox(height: 3),
+          animated,
+        ],
+      ),
+    );
+  }
+
+  static String _weekdayName(int weekday) => const [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ][weekday - 1];
+}
+
+/// One 32px day stamp.
+class _Stamp extends StatelessWidget {
+  final Color color;
+  final Widget? child;
+  final bool dashed;
+  final bool faint;
+
+  const _Stamp({
+    this.color = Toy.card,
+    this.child,
+    this.dashed = false,
+    this.faint = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (dashed) {
+      return const SizedBox.square(
+        dimension: 32,
+        child: CustomPaint(painter: _DashedSquarePainter()),
+      );
+    }
+    return Opacity(
+      opacity: faint ? 0.3 : 1,
+      child: Container(
+        width: 32,
+        height: 32,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(Toy.rChip),
+          border: Border.all(color: Toy.ink, width: Toy.stroke),
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
+/// A dashed 32px rounded square at 45% ink: a day with no stamp on it.
+class _DashedSquarePainter extends CustomPainter {
+  const _DashedSquarePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final outline = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          (Offset.zero & size).deflate(Toy.stroke / 2),
+          const Radius.circular(Toy.rChip - 1),
+        ),
+      );
+    final paint = Paint()
+      ..color = Toy.ink.withValues(alpha: 0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = Toy.stroke;
+    for (final metric in outline.computeMetrics()) {
+      for (var d = 0.0; d < metric.length; d += 9) {
+        canvas.drawPath(
+          metric.extractPath(d, math.min(d + 5, metric.length)),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedSquarePainter old) => false;
 }
 
 /// The result of a submitted board.
@@ -359,86 +633,82 @@ class _Outcome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
     final outcome = result;
 
     return Padding(
-      padding: EdgeInsets.all(tokens.space4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (outcome == null) ...[
-            Text(
-              error ?? '',
-              textAlign: TextAlign.center,
-              style: bodyStyle(tokens).copyWith(fontSize: 14),
-            ),
-            if (onRetry != null) ...[
-              SizedBox(height: tokens.space3),
-              Pressable(
-                onPressed: onRetry,
-                child: Text(
-                  'Try again',
-                  style: actionStyle(tokens, color: tokens.accent),
-                ),
-              ),
-            ],
-          ] else ...[
-            Text(
-              outcome.isPersonalBest ? 'A new best' : 'Solved',
-              style: titleStyle(tokens).copyWith(fontSize: 20),
-            ),
-            SizedBox(height: tokens.space3),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _Figure(value: '${outcome.moves}', label: 'moves'),
-                SizedBox(width: tokens.space5),
-                _Figure(
-                  value: plural(outcome.dailyStreak, 'day'),
-                  label: 'streak',
-                  warm: outcome.dailyStreak > 1,
-                ),
-                SizedBox(width: tokens.space5),
-                // No name means no board, and no rank. Saying "unranked" is
-                // the honest answer rather than a number the leaderboard would
-                // contradict a moment later.
-                _Figure(
-                  value: outcome.rank == null ? '—' : '#${outcome.rank}',
-                  label: outcome.rank == null
-                      ? 'unranked'
-                      : 'of ${outcome.totalPlayers}',
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      child: ToyBox(
+        radius: Toy.rCard,
+        shadow: 4,
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (outcome == null) ...[
+              Text(error ?? '', textAlign: TextAlign.center, style: Toy.ui(14)),
+              if (onRetry != null) ...[
+                const SizedBox(height: 12),
+                ToyButton.secondary(
+                  label: 'Try again',
+                  onPressed: onRetry,
+                  height: 44,
                 ),
               ],
-            ),
-          ],
-          if (reminderOn) ...[
-            SizedBox(height: tokens.space4),
-            Text(
-              'You will get one reminder tomorrow evening.',
-              style: bodyStyle(tokens)
-                  .copyWith(fontSize: 12.5, color: tokens.dimText),
-            ),
-          ] else if (onRemindMe != null) ...[
-            SizedBox(height: tokens.space4),
-            Pressable(
-              onPressed: onRemindMe,
-              child: Text(
-                'Remind me tomorrow',
-                style: actionStyle(tokens, color: tokens.accent),
+            ] else ...[
+              Text(
+                outcome.isPersonalBest ? 'A new best' : 'Solved',
+                style: Toy.display(24),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _Figure(value: '${outcome.moves}', label: 'moves'),
+                  _Figure(
+                    value: plural(outcome.dailyStreak, 'day'),
+                    label: 'streak',
+                    warm: outcome.dailyStreak > 1,
+                  ),
+                  // No name means no board, and no rank. Saying "unranked" is
+                  // the honest answer rather than a number the leaderboard
+                  // would contradict a moment later.
+                  _Figure(
+                    value: outcome.rank == null ? '—' : '#${outcome.rank}',
+                    label: outcome.rank == null
+                        ? 'unranked'
+                        : 'of ${outcome.totalPlayers}',
+                  ),
+                ],
+              ),
+            ],
+            if (reminderOn) ...[
+              const SizedBox(height: 12),
+              Text(
+                'You will get one reminder tomorrow evening.',
+                textAlign: TextAlign.center,
+                style: Toy.ui(12.5, color: Toy.inkMuted),
+              ),
+            ] else if (onRemindMe != null) ...[
+              const SizedBox(height: 12),
+              ToyButton.secondary(
+                label: 'Remind me tomorrow',
+                onPressed: onRemindMe,
+                height: 44,
+              ),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ToyButton(
+                label: 'DONE',
+                onPressed: onDone,
+                height: 50,
+                fontSize: 22,
+                shadow: 4,
               ),
             ),
           ],
-
-          SizedBox(height: tokens.space4),
-          Pressable(
-            onPressed: onDone,
-            child: Text(
-              'Done',
-              style: actionStyle(tokens, color: tokens.textMuted),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -453,20 +723,11 @@ class _Figure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
     return Column(
       children: [
-        Text(
-          value,
-          style: numericStyle(
-            tokens,
-            size: 20,
-            color: warm ? tokens.accentWarm : tokens.textPrimary,
-          ),
-        ),
-        SizedBox(height: tokens.space1),
-        Text(label, style: bodyStyle(tokens).copyWith(fontSize: 12)),
+        Text(value, style: Toy.numbers(20, color: warm ? Toy.tomato : Toy.ink)),
+        const SizedBox(height: 2),
+        Text(label, style: Toy.ui(12, color: Toy.inkMuted)),
       ],
     );
   }
