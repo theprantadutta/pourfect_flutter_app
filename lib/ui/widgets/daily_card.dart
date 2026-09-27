@@ -1,21 +1,27 @@
-/// The way in to today's challenge and the leaderboards.
+/// The way in to today's challenge, with the player's rank stuck on it.
 ///
-/// One quiet row under the Play hero, not a second hero. The redesign's whole
-/// argument was that the board is the hero and everything else is the index;
-/// a daily card competing with the Play button would put a first-time player
-/// back where they started, choosing between two things they do not yet
-/// understand.
+/// The only blue on the hub, because blue is the daily's color everywhere
+/// else — the challenge screen stands on a blue ground, so the card is a
+/// preview of where it goes. It sits UNDER the hero card and is shorter than
+/// it: a daily competing with PLAY would put a first-time player back to
+/// choosing between two things they do not yet understand.
 ///
-/// **It disappears entirely when there is no backend.** A build with no server
-/// configured, or a player with no network on first launch, gets the game they
-/// already had rather than a row that never works.
+/// The clock is on the card rather than behind it. A challenge that is merely
+/// "open" says nothing about whether to play it now; the countdown is the
+/// whole reason a daily works.
+///
+/// **The caller hides it entirely when there is no backend.** A build with no
+/// server configured gets the game it already had rather than a card that
+/// never works. Every other state — loading, played, unreachable — still
+/// draws the card, so the hub does not change shape under the player.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../theme/tokens.dart';
-import '../theme/typography.dart';
-import 'pressable.dart';
+import '../theme/toy.dart';
+import 'toy_kit.dart';
 
 class DailyCard extends StatelessWidget {
   /// Null while today's board is still being fetched.
@@ -24,8 +30,12 @@ class DailyCard extends StatelessWidget {
   /// Stars already earned today, if it has been played.
   final int? stars;
 
-  /// True when the board could not be had at all.
+  /// True when a backend exists but today's board could not be had.
   final bool unavailable;
+
+  /// The player's campaign position, or null for every reason there is none:
+  /// offline, no stars yet, or hidden from the boards by choice.
+  final int? rank;
 
   final VoidCallback onOpenDaily;
   final VoidCallback onOpenLeaderboard;
@@ -35,141 +45,165 @@ class DailyCard extends StatelessWidget {
     required this.played,
     required this.stars,
     required this.unavailable,
+    required this.rank,
     required this.onOpenDaily,
     required this.onOpenLeaderboard,
   });
 
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
+    final white = Toy.ui(13, color: Colors.white);
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        tokens.space4,
-        0,
-        tokens.space4,
-        tokens.space4,
+    // Unavailable still opens the challenge screen, which owns the retry.
+    // A dead card would leave the player no way to ask again.
+    final Widget detail = switch ((unavailable, played)) {
+      (true, _) => Text("can't reach today's board", style: white),
+      (_, true) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('solved', style: white),
+          const SizedBox(width: 6),
+          ToyStars(earned: stars ?? 0, size: 14, spacing: 1),
+          const SizedBox(width: 6),
+          Flexible(
+            child: _Countdown(prefix: 'next in ', style: white),
+          ),
+        ],
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(tokens.panelRadius),
-          border: Border.all(color: tokens.hairline),
-        ),
-        child: Column(
+      // Loading and not-yet-played both have a live clock: it counts to the
+      // server's rollover, not to anything the fetch decides.
+      _ => _Countdown(prefix: 'ends in ', style: white),
+    };
+
+    return Pressable(
+      onPressed: onOpenDaily,
+      semanticLabel: "Today's challenge",
+      child: ToyBox(
+        color: Toy.blue,
+        radius: 22,
+        shadow: 5,
+        padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
+        child: Row(
           children: [
-            Pressable(
-              onPressed: unavailable ? null : onOpenDaily,
-              semanticLabel: 'Today’s challenge',
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: tokens.space4,
-                  vertical: tokens.space3 + 2,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Today’s challenge',
-                        style: bodyStyle(tokens)
-                            .copyWith(fontSize: 14, color: tokens.textPrimary),
-                      ),
-                    ),
-                    _status(tokens),
-                  ],
-                ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // No number after it. The server has no daily index to
+                  // report, and a count invented on the client would disagree
+                  // with the challenge screen the moment either one changed.
+                  Text(
+                    'Daily Pour',
+                    style: Toy.display(21, color: Colors.white, height: 1.1),
+                  ),
+                  const SizedBox(height: 2),
+                  detail,
+                ],
               ),
             ),
-            Divider(height: 1, color: tokens.hairline),
-            Pressable(
-              onPressed: onOpenLeaderboard,
-              semanticLabel: 'Leaderboard',
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: tokens.space4,
-                  vertical: tokens.space3 + 2,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Leaderboard',
-                        style: bodyStyle(tokens)
-                            .copyWith(fontSize: 14, color: tokens.textPrimary),
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 18,
-                      color: tokens.dimText,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            const SizedBox(width: 10),
+            _RankSticker(rank: rank, onPressed: onOpenLeaderboard),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _status(PourfectTokens tokens) {
-    if (unavailable) {
-      return Text(
-        'unavailable',
-        style: bodyStyle(tokens)
-            .copyWith(fontSize: 12.5, color: tokens.dimText),
-      );
-    }
+/// RANK, tilted, and its own tap target: the card opens the challenge and the
+/// sticker opens the boards, as the two figures did on the old hub.
+class _RankSticker extends StatelessWidget {
+  final int? rank;
+  final VoidCallback onPressed;
 
-    if (played == null) {
-      // Loading. A dash rather than a spinner: this is a row on a screen the
-      // player came to play from, and a spinner here would be the busiest
-      // thing on it.
-      return Text(
-        '—',
-        style: numericStyle(tokens, size: 13, color: tokens.dimText),
-      );
-    }
+  const _RankSticker({required this.rank, required this.onPressed});
 
-    if (!played!) {
-      return Row(
+  @override
+  Widget build(BuildContext context) => Pressable(
+    onPressed: onPressed,
+    semanticLabel: rank == null ? 'Leaderboard' : 'Leaderboard, rank $rank',
+    child: ToySticker(
+      color: Toy.yellow,
+      angle: 4,
+      shadow: 0,
+      radius: 14,
+      padding: const EdgeInsets.fromLTRB(12, 5, 12, 6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'not played',
-            style: bodyStyle(tokens)
-                .copyWith(fontSize: 12.5, color: tokens.accent),
-          ),
-          SizedBox(width: tokens.space1),
-          Icon(Icons.chevron_right_rounded, size: 18, color: tokens.accent),
+          Text('RANK', style: Toy.ui(11, weight: FontWeight.w800)),
+          // An em dash is the honest answer to every reason there is no
+          // position, and it keeps the sticker the same size either way.
+          Text(rank == null ? '—' : '#$rank', style: Toy.display(22)),
         ],
-      );
-    }
+      ),
+    ),
+  );
+}
 
-    return Row(
-      children: [
-        for (var i = 0; i < 3; i++)
-          Padding(
-            padding: const EdgeInsets.only(left: 3),
-            child: Transform.rotate(
-              angle: 0.785398,
-              child: Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: i < (stars ?? 0)
-                      ? tokens.accentWarm
-                      : Colors.transparent,
-                  border: i < (stars ?? 0)
-                      ? null
-                      : Border.all(color: tokens.hairlineStrong),
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              ),
-            ),
+/// How long today's board has left, ticking.
+///
+/// Counts to the next UTC midnight, because that is when the SERVER rolls the
+/// board over. A local-midnight countdown would hit zero at the wrong moment
+/// for everybody outside UTC and read as broken.
+///
+/// Its own widget so the per-second rebuild is confined to eight characters
+/// rather than dragging the hub through a frame.
+class _Countdown extends StatefulWidget {
+  final String prefix;
+  final TextStyle style;
+
+  const _Countdown({required this.prefix, required this.style});
+
+  @override
+  State<_Countdown> createState() => _CountdownState();
+}
+
+class _CountdownState extends State<_Countdown> {
+  Timer? _tick;
+  late Duration _left = _remaining();
+
+  static Duration _remaining() {
+    final now = DateTime.now().toUtc();
+    final midnight = DateTime.utc(now.year, now.month, now.day + 1);
+    return midnight.difference(now);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _left = _remaining());
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    final clock =
+        '${two(_left.inHours)}:${two(_left.inMinutes % 60)}'
+        ':${two(_left.inSeconds % 60)}';
+
+    return Text.rich(
+      TextSpan(
+        text: widget.prefix,
+        children: [
+          TextSpan(
+            text: clock,
+            style: Toy.numbers(13, color: widget.style.color ?? Toy.ink),
           ),
-        SizedBox(width: tokens.space2),
-        Icon(Icons.chevron_right_rounded, size: 18, color: tokens.dimText),
-      ],
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: widget.style,
     );
   }
 }

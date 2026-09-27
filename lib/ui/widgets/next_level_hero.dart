@@ -6,139 +6,169 @@
 /// scoreboard of zeros — and had to tap a tube-shaped outline on faith to
 /// discover what the game even was.
 ///
-/// This shows the actual next board at hero scale with one verb under it. The
-/// game's own object does the explaining, which no amount of label copy can.
+/// This shows the actual next board with one verb under it. The game's own
+/// object does the explaining, which no amount of label copy can. It is the
+/// one white hero card on the hub, and PLAY is the only tomato on the screen,
+/// so there is never a question about which button is the game.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
 import '../../engine/board.dart';
-import '../theme/tokens.dart';
-import '../theme/typography.dart';
-import '../widgets/board_preview.dart';
-import '../widgets/pressable.dart';
+import '../theme/toy.dart';
+import '../transitions.dart';
+import 'board_preview.dart';
+import 'toy_kit.dart';
 
 class NextLevelHero extends StatelessWidget {
   final int levelId;
   final Board board;
 
-  /// True until the player has cleared anything.
-  final bool isFirstEver;
+  /// The proven optimum, shown as "par".
+  final int par;
 
-  /// Stars already earned on this level, if it has been played before.
-  final int? earnedStars;
+  /// 1-based campaign band, which the player sees as a world.
+  final int world;
+  final String bandName;
 
   final bool boldGlyphs;
+
+  /// Called with PLAY's global rect, so the level can grow out of the button.
   final void Function(Rect? origin) onPlay;
 
   const NextLevelHero({
     super.key,
     required this.levelId,
     required this.board,
-    required this.isFirstEver,
-    required this.earnedStars,
+    required this.par,
+    required this.world,
+    required this.bandName,
     required this.boldGlyphs,
     required this.onPlay,
   });
 
   @override
   Widget build(BuildContext context) {
-    final tokens = PourfectTokens.of(context);
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        tokens.space4,
-        tokens.space3,
-        tokens.space4,
-        tokens.space4,
-      ),
+    return ToyBox(
+      radius: Toy.rHero,
+      shadow: 5,
+      padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _preview(tokens),
-          SizedBox(height: tokens.space4),
-          Text(
-            'Level $levelId',
-            style: numericStyle(tokens, size: 15, color: tokens.textMuted),
-          ),
-          SizedBox(height: tokens.space2),
-
-          // The one sentence that says what the game is, and only while the
-          // player still needs it. Repeating it forever would be nagging.
-          if (isFirstEver) ...[
-            SizedBox(
-              width: 260,
-              child: Text(
-                'Pour balls between tubes until every color has a tube of '
-                'its own.',
-                textAlign: TextAlign.center,
-                style: bodyStyle(tokens).copyWith(fontSize: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Level $levelId', style: Toy.display(28)),
+                    const SizedBox(height: 2),
+                    Text(
+                      bandName.isEmpty
+                          ? 'World $world'
+                          : 'World $world · $bandName',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Toy.ui(13, color: Toy.inkMuted),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
+              ToyChip.text('par $par'),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Center(
+            child: BoardPreview(board: board, boldGlyphs: boldGlyphs),
+          ),
+          const SizedBox(height: 14),
+          Builder(
+            builder: (context) => ToyButton(
+              label: 'PLAY',
+              semanticLabel: 'Play level $levelId',
+              icon: const _NudgingPlay(),
+              onPressed: () => onPlay(globalRectOf(context)),
             ),
-            SizedBox(height: tokens.space4),
-          ] else
-            SizedBox(height: tokens.space2),
-
-          _playButton(tokens),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _preview(PourfectTokens tokens) => Builder(
-    builder: (context) => Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: tokens.space3,
-        vertical: tokens.space4,
-      ),
-      decoration: BoxDecoration(
-        color: tokens.surfaceRaised,
-        borderRadius: BorderRadius.circular(tokens.panelRadius),
-        border: Border.all(color: tokens.hairline),
-      ),
-      child: BoardPreview(
-        board: board,
-        // Sized so a 3-color tutorial board and an 8-color board both sit
-        // comfortably without the widest case forcing a tiny ball.
-        ballSize: board.tubeCount <= 6 ? 26 : 20,
-        boldGlyphs: boldGlyphs,
-      ),
-    ),
+/// PLAY's white ▶, which leans toward the word every few seconds.
+///
+/// A still screen with one moving mark tells the eye where to go without an
+/// arrow or a coach mark. A Timer rather than a repeating controller, so the
+/// arrow is idle — no ticker, no frames — for the 3.5s it is not moving.
+class _NudgingPlay extends StatefulWidget {
+  const _NudgingPlay();
+
+  @override
+  State<_NudgingPlay> createState() => _NudgingPlayState();
+}
+
+class _NudgingPlayState extends State<_NudgingPlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _nudge = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 450),
+  );
+  Timer? _every;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _every?.cancel();
+    _every = null;
+    if (Toy.calm(context)) return;
+    _every = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) _nudge.forward(from: 0);
+    });
+  }
+
+  @override
+  void dispose() {
+    _every?.cancel();
+    _nudge.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _nudge,
+    builder: (context, child) {
+      // Out and back in one breath: a sine hump, 5px at the crest.
+      final t = _nudge.value;
+      final dx =
+          5 *
+          (t < 0.5
+              ? Curves.easeOut.transform(t * 2)
+              : Curves.easeIn.transform((1 - t) * 2));
+      return Transform.translate(offset: Offset(dx, 0), child: child);
+    },
+    child: const CustomPaint(size: Size(14, 16), painter: _TrianglePainter()),
+  );
+}
+
+class _TrianglePainter extends CustomPainter {
+  const _TrianglePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) => canvas.drawPath(
+    Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, size.height / 2)
+      ..lineTo(0, size.height)
+      ..close(),
+    Paint()..color = Colors.white,
   );
 
-  Widget _playButton(PourfectTokens tokens) => Builder(
-    builder: (context) => Pressable(
-      onPressed: () {
-        final box = context.findRenderObject() as RenderBox?;
-        final origin = box == null
-            ? null
-            : box.localToGlobal(Offset.zero) & box.size;
-        onPlay(origin);
-      },
-      child: Container(
-        width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 320),
-        padding: const EdgeInsets.symmetric(vertical: 17),
-        decoration: BoxDecoration(
-          color: tokens.accent.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(tokens.panelRadius),
-          border: Border.all(color: tokens.accent.withValues(alpha: 0.5)),
-        ),
-        child: Center(
-          child: Text(
-            // The verb changes with what the player is actually doing.
-            // "Play" for somebody who has never started; "Continue" once they
-            // are mid-campaign; "Replay" when the next thing is one they have
-            // already cleared and are coming back to.
-            isFirstEver
-                ? 'Play'
-                : (earnedStars != null ? 'Replay level $levelId' : 'Continue'),
-            style: actionStyle(
-              tokens,
-              color: tokens.accent,
-            ).copyWith(fontSize: 17),
-          ),
-        ),
-      ),
-    ),
-  );
+  @override
+  bool shouldRepaint(_TrianglePainter old) => false;
 }

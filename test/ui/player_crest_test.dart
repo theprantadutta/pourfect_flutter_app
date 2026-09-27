@@ -32,7 +32,7 @@ void main() {
     expect(id, inInclusiveRange(0, kBallPalette.length - 1));
   });
 
-  testWidgets('the rim is the only signed-in signal', (tester) async {
+  testWidgets('the stroke weight is the only signed-in signal', (tester) async {
     // Quiet on purpose: a badge that nags somebody who has chosen not to sign
     // in is worse than no signal at all.
     for (final signedIn in [false, true]) {
@@ -46,14 +46,16 @@ void main() {
       await tester.pump();
 
       final box = tester.widget<Container>(
-        find.descendant(
-          of: find.byType(PlayerCrest),
-          matching: find.byType(Container),
-        ).first,
+        find
+            .descendant(
+              of: find.byType(PlayerCrest),
+              matching: find.byType(Container),
+            )
+            .first,
       );
       final border = (box.decoration! as BoxDecoration).border!.top;
 
-      expect(border.width, signedIn ? 1.5 : 1.0);
+      expect(border.width, signedIn ? 2.0 : 1.5);
     }
   });
 }
