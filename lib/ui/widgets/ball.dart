@@ -7,6 +7,7 @@
 library;
 
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
 
@@ -56,7 +57,10 @@ class Ball extends StatelessWidget {
     final width = size / math.sqrt(s);
     final height = size * s;
 
-    final painted = SizedBox(
+    // Opacity goes to the painter as paint alpha, never through an Opacity
+    // widget: that allocates an offscreen layer per ball, and a held run dims
+    // every ball in every illegal tube at once.
+    return SizedBox(
       width: size,
       height: size,
       // Both bounds pinned: a stretched ball is NARROWER than its slot, and a
@@ -77,17 +81,17 @@ class Ball extends StatelessWidget {
               glow: glow,
               drop: drop,
               bold: boldGlyph,
+              opacity: opacity,
+              spriteSize: size,
             ),
           ),
         ),
       ),
     );
-    return opacity >= 1 ? painted : Opacity(opacity: opacity, child: painted);
   }
 }
 
-/// Paints one toy ball into its size. Public so other painters (the journey
-/// path, confetti) can draw balls without a widget each.
+/// Paints one toy ball into its size, from the sprite cache.
 class BallPainter extends CustomPainter {
   final Color color;
   final Color ink;
@@ -95,6 +99,11 @@ class BallPainter extends CustomPainter {
   final double glow;
   final bool drop;
   final bool bold;
+  final double opacity;
+
+  /// The ball's resting diameter, which keys the sprite. A squashing ball is
+  /// painted into a changing rect but must not mint a new sprite every frame.
+  final double? spriteSize;
 
   const BallPainter({
     required this.color,
@@ -103,20 +112,23 @@ class BallPainter extends CustomPainter {
     this.glow = 0,
     this.drop = false,
     this.bold = false,
+    this.opacity = 1,
+    this.spriteSize,
   });
 
   @override
-  void paint(Canvas canvas, Size size) =>
-      paintToyBall(
-        canvas,
-        Offset.zero & size,
-        color: color,
-        glyph: glyph,
-        glyphInk: ink,
-        glow: glow,
-        drop: drop,
-        bold: bold,
-      );
+  void paint(Canvas canvas, Size size) => drawToyBall(
+    canvas,
+    Offset.zero & size,
+    color: color,
+    glyph: glyph,
+    glyphInk: ink,
+    glow: glow,
+    drop: drop,
+    bold: bold,
+    opacity: opacity,
+    spriteSize: spriteSize,
+  );
 
   @override
   bool shouldRepaint(BallPainter old) =>
@@ -125,11 +137,126 @@ class BallPainter extends CustomPainter {
       old.glyph != glyph ||
       old.glow != glow ||
       old.drop != drop ||
-      old.bold != bold;
+      old.bold != bold ||
+      old.opacity != opacity ||
+      old.spriteSize != spriteSize;
 }
 
-/// Draws a toy ball filling [rect]: fill, bottom shade, top highlight, ink
-/// outline, glyph.
+/// Draws a toy ball into [rect] by stamping a cached sprite.
+///
+/// THIS IS THE ONE TO CALL from painters. [paintToyBall] builds the ball from
+/// vector paths — two path booleans and a clip per ball — which is fine once,
+/// and ruinous on a board of forty balls repainting at 90 Hz: measured on the
+/// A24 it pushed a pour's build p95 to 13.7 ms against an 11.1 ms budget. So
+/// each distinct ball (color, glyph, ink, size, emphasis) is drawn ONCE with
+/// [paintToyBall] into an image at device resolution, and every frame after
+/// that is a single textured quad. Same painter, so the pixels are identical.
+///
+/// The drop shadow and the glow ring are not part of the sprite: they come and
+/// go per ball and are cheap flat shapes.
+void drawToyBall(
+  Canvas canvas,
+  Rect rect, {
+  required Color color,
+  required BallGlyph glyph,
+  Color glyphInk = Toy.ink,
+  double glow = 0,
+  bool drop = false,
+  bool bold = false,
+  double opacity = 1,
+  double? spriteSize,
+}) {
+  final base = spriteSize ?? rect.shortestSide;
+  final k = base / 40;
+
+  if (glow > 0) {
+    canvas.drawOval(
+      rect.inflate(2 * k + 5 * k * glow),
+      Paint()
+        ..color = Toy.yellow.withValues(alpha: 0.9 * glow * opacity)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.5 * k,
+    );
+  }
+  if (drop) {
+    canvas.drawOval(
+      rect.shift(Offset(0, 4 * k)),
+      Paint()..color = Toy.ink.withValues(alpha: opacity),
+    );
+  }
+
+  final sprite = _BallSprites.get(
+    color: color,
+    glyph: glyph,
+    ink: glyphInk,
+    bold: bold,
+    size: base,
+  );
+  canvas.drawImageRect(
+    sprite,
+    Rect.fromLTWH(0, 0, sprite.width.toDouble(), sprite.height.toDouble()),
+    rect,
+    Paint()
+      ..filterQuality = FilterQuality.medium
+      ..color = Color.fromRGBO(0, 0, 0, opacity.clamp(0.0, 1.0)),
+  );
+}
+
+/// Rasterised balls, keyed by everything that changes their pixels.
+///
+/// Bounded, oldest out first. A session touches ten colors at one or two
+/// sizes plus the small preview and icon sizes — well under the cap — so in
+/// practice nothing is ever evicted and nothing is drawn twice.
+abstract final class _BallSprites {
+  static const _cap = 96;
+  static final _cache = <String, ui.Image>{};
+
+  static double get _ratio =>
+      ui.PlatformDispatcher.instance.implicitView?.devicePixelRatio ?? 3;
+
+  static ui.Image get({
+    required Color color,
+    required BallGlyph glyph,
+    required Color ink,
+    required bool bold,
+    required double size,
+  }) {
+    final ratio = _ratio;
+    // Whole logical pixels: a sprite a fraction of a pixel off is invisible,
+    // and a fresh one per fractional size would defeat the cache.
+    final logical = size.roundToDouble().clamp(4.0, 256.0);
+    final px = (logical * ratio).ceil();
+    final key =
+        '${color.toARGB32()}:${glyph.index}:${ink.toARGB32()}:$bold:$px';
+
+    final hit = _cache.remove(key);
+    if (hit != null) return _cache[key] = hit;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder)..scale(px / logical);
+    paintToyBall(
+      canvas,
+      Rect.fromLTWH(0, 0, logical, logical),
+      color: color,
+      glyph: glyph,
+      glyphInk: ink,
+      bold: bold,
+    );
+    final picture = recorder.endRecording();
+    final image = picture.toImageSync(px, px);
+    picture.dispose();
+
+    if (_cache.length >= _cap) {
+      final oldest = _cache.keys.first;
+      _cache.remove(oldest)?.dispose();
+    }
+    return _cache[key] = image;
+  }
+}
+
+/// Builds a toy ball from vector paths into [rect]: fill, bottom shade, top
+/// highlight, ink outline, glyph. Used to rasterise the sprites; painters
+/// should call [drawToyBall], which stamps them.
 ///
 /// Every measurement scales with the diameter against the 40px reference the
 /// mockups were drawn at, so a 22px preview ball and a 58px board ball are the
@@ -237,7 +364,8 @@ void paintBallGlyph(
   Rect r(double l, double t, double w, double h) =>
       Rect.fromLTWH(ox + l * sx, oy + t * sy, w * sx, h * sy);
   Path poly(List<List<double>> pts) {
-    final path = Path()..moveTo(p(pts[0][0], pts[0][1]).dx, p(pts[0][0], pts[0][1]).dy);
+    final path = Path()
+      ..moveTo(p(pts[0][0], pts[0][1]).dx, p(pts[0][0], pts[0][1]).dy);
     for (final pt in pts.skip(1)) {
       path.lineTo(p(pt[0], pt[1]).dx, p(pt[0], pt[1]).dy);
     }

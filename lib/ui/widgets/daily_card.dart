@@ -191,19 +191,23 @@ class _CountdownState extends State<_Countdown> {
         '${two(_left.inHours)}:${two(_left.inMinutes % 60)}'
         ':${two(_left.inSeconds % 60)}';
 
-    return Text.rich(
-      TextSpan(
-        text: widget.prefix,
-        children: [
-          TextSpan(
-            text: clock,
-            style: Toy.numbers(13, color: widget.style.color ?? Toy.ink),
-          ),
-        ],
+    // Its own layer, so a tick once a second repaints eight characters and
+    // not the hub around them.
+    return RepaintBoundary(
+      child: Text.rich(
+        TextSpan(
+          text: widget.prefix,
+          children: [
+            TextSpan(
+              text: clock,
+              style: Toy.numbers(13, color: widget.style.color ?? Toy.ink),
+            ),
+          ],
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: widget.style,
       ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: widget.style,
     );
   }
 }

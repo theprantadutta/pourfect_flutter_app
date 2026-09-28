@@ -68,6 +68,59 @@ class ToyScaffold extends StatelessWidget {
   }
 }
 
+/// A scroll view whose content is shorter than the screen hands the leftover
+/// height to [builder], which gives it to one element that can use it — a
+/// chart that grows, say — instead of leaving a dead band under the last card.
+///
+/// Content taller than the screen scrolls as usual and gets no extra.
+/// Measured after layout, so the first frame is at natural size and the next
+/// has the extra; nothing oscillates, because the natural height does not
+/// depend on the extra.
+class SlackScroll extends StatefulWidget {
+  final Widget Function(BuildContext context, double extra) builder;
+  final EdgeInsets padding;
+
+  const SlackScroll({
+    super.key,
+    required this.builder,
+    this.padding = EdgeInsets.zero,
+  });
+
+  @override
+  State<SlackScroll> createState() => _SlackScrollState();
+}
+
+class _SlackScrollState extends State<SlackScroll> {
+  final _content = GlobalKey();
+  double _extra = 0;
+
+  void _measure(double viewport) {
+    if (!mounted) return;
+    final box = _content.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final natural = box.size.height - _extra;
+    final slack = viewport - widget.padding.vertical - natural;
+    final extra = slack > 0 ? slack : 0.0;
+    if ((extra - _extra).abs() > 1) setState(() => _extra = extra);
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _measure(box.maxHeight),
+      );
+      return SingleChildScrollView(
+        padding: widget.padding,
+        child: KeyedSubtree(
+          key: _content,
+          child: widget.builder(context, _extra),
+        ),
+      );
+    },
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Buttons
 // ---------------------------------------------------------------------------
@@ -682,10 +735,7 @@ class ToyAvatar extends StatelessWidget {
         ? '?'
         : name.trim().characters.first.toUpperCase();
     final fallback = Center(
-      child: Text(
-        initial,
-        style: Toy.display(size * 0.53, color: letterColor),
-      ),
+      child: Text(initial, style: Toy.display(size * 0.53, color: letterColor)),
     );
 
     final url = photoUrl;
@@ -745,7 +795,13 @@ class ToyBall extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox.square(
     dimension: size,
     child: CustomPaint(
-      painter: BallPainter(color: color, glyph: glyph, ink: ink, drop: drop),
+      painter: BallPainter(
+        color: color,
+        glyph: glyph,
+        ink: ink,
+        drop: drop,
+        spriteSize: size,
+      ),
     ),
   );
 }
@@ -784,7 +840,12 @@ class ToyStars extends StatelessWidget {
       children: [
         for (var i = 0; i < total; i++) ...[
           if (i > 0) SizedBox(width: spacing),
-          ToyStar(size: size, filled: i < earned, fill: fill, outlined: outlined),
+          ToyStar(
+            size: size,
+            filled: i < earned,
+            fill: fill,
+            outlined: outlined,
+          ),
         ],
       ],
     ),
@@ -956,8 +1017,16 @@ class ToyGlyphPainter extends CustomPainter {
         tp.paint(canvas, Offset((w - tp.width) / 2, (h - tp.height) / 2));
       case ToyGlyph.close:
         canvas
-          ..drawLine(Offset(w * 0.22, h * 0.22), Offset(w * 0.78, h * 0.78), line)
-          ..drawLine(Offset(w * 0.78, h * 0.22), Offset(w * 0.22, h * 0.78), line);
+          ..drawLine(
+            Offset(w * 0.22, h * 0.22),
+            Offset(w * 0.78, h * 0.78),
+            line,
+          )
+          ..drawLine(
+            Offset(w * 0.78, h * 0.22),
+            Offset(w * 0.22, h * 0.78),
+            line,
+          );
       case ToyGlyph.check:
         canvas.drawPath(
           Path()
@@ -976,8 +1045,16 @@ class ToyGlyphPainter extends CustomPainter {
             false,
             line,
           )
-          ..drawLine(Offset(w * 0.28, h * 0.35), Offset(w * 0.28, h * 0.46), line)
-          ..drawLine(Offset(w * 0.72, h * 0.35), Offset(w * 0.72, h * 0.46), line)
+          ..drawLine(
+            Offset(w * 0.28, h * 0.35),
+            Offset(w * 0.28, h * 0.46),
+            line,
+          )
+          ..drawLine(
+            Offset(w * 0.72, h * 0.35),
+            Offset(w * 0.72, h * 0.46),
+            line,
+          )
           ..drawRRect(
             RRect.fromRectAndRadius(
               Rect.fromLTWH(w * 0.16, h * 0.44, w * 0.68, h * 0.48),
@@ -1025,12 +1102,17 @@ Future<T?> showToyDialog<T>({
     barrierDismissible: barrierDismissible,
     barrierLabel: 'Dismiss',
     barrierColor: Toy.scrim,
-    transitionDuration: calm ? Duration.zero : const Duration(milliseconds: 260),
+    transitionDuration: calm
+        ? Duration.zero
+        : const Duration(milliseconds: 260),
     pageBuilder: (context, _, _) => SafeArea(
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Material(type: MaterialType.transparency, child: builder(context)),
+          child: Material(
+            type: MaterialType.transparency,
+            child: builder(context),
+          ),
         ),
       ),
     ),
@@ -1128,7 +1210,12 @@ Future<bool> showToyConfirm({
           const SizedBox(height: 10),
           Text(
             body,
-            style: Toy.ui(15, weight: FontWeight.w500, color: Toy.inkMuted, height: 1.4),
+            style: Toy.ui(
+              15,
+              weight: FontWeight.w500,
+              color: Toy.inkMuted,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 18),
           Row(

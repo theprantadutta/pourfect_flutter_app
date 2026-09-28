@@ -38,6 +38,12 @@ class NextLevelHero extends StatelessWidget {
   /// Called with PLAY's global rect, so the level can grow out of the button.
   final void Function(Rect? origin) onPlay;
 
+  /// Let the board grow into the height the card is given — as far as the
+  /// board can actually use it — instead of sitting at its compact size. The
+  /// card still sizes to what it draws, so height a wide board cannot use is
+  /// left to the hub to spread out rather than turning into white card.
+  final bool expand;
+
   const NextLevelHero({
     super.key,
     required this.levelId,
@@ -47,6 +53,7 @@ class NextLevelHero extends StatelessWidget {
     required this.bandName,
     required this.boldGlyphs,
     required this.onPlay,
+    this.expand = false,
   });
 
   @override
@@ -83,9 +90,22 @@ class NextLevelHero extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Center(
-            child: BoardPreview(board: board, boldGlyphs: boldGlyphs),
-          ),
+          if (expand)
+            Flexible(
+              child: Center(
+                heightFactor: 1,
+                child: BoardPreview(
+                  board: board,
+                  boldGlyphs: boldGlyphs,
+                  // Grows with the card, to about the playable board's size.
+                  ballSize: 36,
+                ),
+              ),
+            )
+          else
+            Center(
+              child: BoardPreview(board: board, boldGlyphs: boldGlyphs),
+            ),
           const SizedBox(height: 14),
           Builder(
             builder: (context) => ToyButton(
@@ -127,8 +147,14 @@ class _NudgingPlayState extends State<_NudgingPlay>
     _every?.cancel();
     _every = null;
     if (Toy.calm(context)) return;
-    _every = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (mounted) _nudge.forward(from: 0);
+    // Three nudges and it rests. It has made its point by then, and a hub left
+    // open on a table should not redraw every four seconds until the battery
+    // dies.
+    var left = 3;
+    _every = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (!mounted) return;
+      _nudge.forward(from: 0);
+      if (--left == 0) timer.cancel();
     });
   }
 
@@ -139,20 +165,24 @@ class _NudgingPlayState extends State<_NudgingPlay>
     super.dispose();
   }
 
+  // Its own layer: the nudge runs every four seconds for as long as the hub is
+  // up, and without a boundary each of its frames repainted the whole screen.
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _nudge,
-    builder: (context, child) {
-      // Out and back in one breath: a sine hump, 5px at the crest.
-      final t = _nudge.value;
-      final dx =
-          5 *
-          (t < 0.5
-              ? Curves.easeOut.transform(t * 2)
-              : Curves.easeIn.transform((1 - t) * 2));
-      return Transform.translate(offset: Offset(dx, 0), child: child);
-    },
-    child: const CustomPaint(size: Size(14, 16), painter: _TrianglePainter()),
+  Widget build(BuildContext context) => RepaintBoundary(
+    child: AnimatedBuilder(
+      animation: _nudge,
+      builder: (context, child) {
+        // Out and back in one breath: a sine hump, 5px at the crest.
+        final t = _nudge.value;
+        final dx =
+            5 *
+            (t < 0.5
+                ? Curves.easeOut.transform(t * 2)
+                : Curves.easeIn.transform((1 - t) * 2));
+        return Transform.translate(offset: Offset(dx, 0), child: child);
+      },
+      child: const CustomPaint(size: Size(14, 16), painter: _TrianglePainter()),
+    ),
   );
 }
 

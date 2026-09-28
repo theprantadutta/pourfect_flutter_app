@@ -27,8 +27,9 @@ import 'ball.dart';
 import 'toy_kit.dart';
 import 'win_profile.dart';
 
-double _span(double elapsedMs, int at, int length) =>
-    length <= 0 ? (elapsedMs >= at ? 1 : 0) : ((elapsedMs - at) / length).clamp(0.0, 1.0);
+double _span(double elapsedMs, int at, int length) => length <= 0
+    ? (elapsedMs >= at ? 1 : 0)
+    : ((elapsedMs - at) / length).clamp(0.0, 1.0);
 
 /// The title for a result. It does not always say the same thing: the words
 /// are part of the reward, and three stars should read differently from one.
@@ -121,22 +122,35 @@ class _RaysPainter extends CustomPainter {
     required this.angle,
   });
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = center.alongSize(size);
-    final r = size.longestSide * 1.2;
+  /// The fan, built once per radius and rotated with the canvas each frame,
+  /// rather than recomputing 23 triangles 90 times a second.
+  static final _fans = <double, Path>{};
+
+  static Path _fan(double r) => _fans.putIfAbsent(r, () {
     // 8° on, 8° off, as the mockup's conic gradient.
     const step = math.pi / 22.5;
     final path = Path();
     for (var a = 0.0; a < 2 * math.pi; a += step * 2) {
-      final a0 = a + angle;
       path
-        ..moveTo(c.dx, c.dy)
-        ..lineTo(c.dx + r * math.cos(a0), c.dy + r * math.sin(a0))
-        ..lineTo(c.dx + r * math.cos(a0 + step), c.dy + r * math.sin(a0 + step))
+        ..moveTo(0, 0)
+        ..lineTo(r * math.cos(a), r * math.sin(a))
+        ..lineTo(r * math.cos(a + step), r * math.sin(a + step))
         ..close();
     }
-    canvas.drawPath(path, Paint()..color = color);
+    return path;
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = center.alongSize(size);
+    // Far enough to reach every corner from wherever the rays converge.
+    final r = (size.longestSide * 1.2).roundToDouble();
+    canvas
+      ..save()
+      ..translate(c.dx, c.dy)
+      ..rotate(angle)
+      ..drawPath(_fan(r), Paint()..color = color)
+      ..restore();
   }
 
   @override
@@ -207,15 +221,12 @@ class _ConfettiPainter extends CustomPainter {
       final d = 14.0 + rng.nextDouble() * 12;
       final spin = (rng.nextDouble() - 0.5) * 8;
 
-      final p = Offset(
-        x0 + vx * time,
-        y0 + vy * time + 0.5 * g * time * time,
-      );
+      final p = Offset(x0 + vx * time, y0 + vy * time + 0.5 * g * time * time);
       canvas
         ..save()
         ..translate(p.dx, p.dy)
         ..rotate(spin * time);
-      paintToyBall(
+      drawToyBall(
         canvas,
         Rect.fromCircle(center: Offset.zero, radius: d / 2),
         color: Color(0xFF000000 | style.rgb),
@@ -272,8 +283,11 @@ class WinMomentCaption extends StatelessWidget {
             ),
             child: Text(
               '$movesUsed ${movesUsed == 1 ? 'MOVE' : 'MOVES'} · PAR $minMoves',
-              style: Toy.numbers(15, color: Colors.white, weight: FontWeight.w800)
-                  .copyWith(letterSpacing: 1),
+              style: Toy.numbers(
+                15,
+                color: Colors.white,
+                weight: FontWeight.w800,
+              ).copyWith(letterSpacing: 1),
             ),
           ),
         ],
@@ -434,13 +448,15 @@ class _WinResultState extends State<WinResult>
                     const SizedBox(height: 10),
                     _stars(),
                     const SizedBox(height: 14),
-                    _boardCard(),
+                    // The solved board takes whatever height the phone has
+                    // spare. A Spacer here left a dead band of blue above
+                    // NEXT LEVEL on any phone taller than the mockup.
+                    Expanded(child: _boardCard()),
                     const SizedBox(height: 14),
                     _chips(beatPar: beatPar, newFastest: newFastest),
                     const SizedBox(height: 18),
                     _worldBar(),
-                    const Spacer(),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 24),
                     _cta(),
                   ],
                 ),
@@ -495,7 +511,12 @@ class _WinResultState extends State<WinResult>
               child: Text(
                 winTitle(widget.stars),
                 textAlign: TextAlign.center,
-                style: Toy.display(66, color: Toy.yellow, shadow: 4, height: 0.98),
+                style: Toy.display(
+                  66,
+                  color: Toy.yellow,
+                  shadow: 4,
+                  height: 0.98,
+                ),
               ),
             ),
           ),
@@ -533,17 +554,22 @@ class _WinResultState extends State<WinResult>
   }
 
   Widget _boardCard() {
-    final sticker = _s(widget.profile.sticker.at, widget.profile.sticker.length);
+    final sticker = _s(
+      widget.profile.sticker.at,
+      widget.profile.sticker.length,
+    );
     return Stack(
       clipBehavior: Clip.none,
+      fit: StackFit.expand,
       children: [
         ToyBox(
           radius: Toy.rHero,
           shadow: 5,
           padding: const EdgeInsets.all(14),
-          child: SizedBox(
-            height: 150,
-            width: double.infinity,
+          // Its natural height on a short phone, and all the spare height on
+          // a tall one; the painter centres the board in whatever it gets.
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 150),
             child: CustomPaint(painter: _SolvedBoardPainter(widget.board)),
           ),
         ),
@@ -551,7 +577,10 @@ class _WinResultState extends State<WinResult>
           Positioned(
             top: -16,
             right: -6,
-            child: _Slap(t: sticker, child: ToySticker.text('NEW BEST!', angle: 10)),
+            child: _Slap(
+              t: sticker,
+              child: ToySticker.text('NEW BEST!', angle: 10),
+            ),
           ),
       ],
     );
@@ -561,7 +590,9 @@ class _WinResultState extends State<WinResult>
     final p = widget.profile;
     Widget chip(int i, Widget child) {
       final t = _s(p.chips.at + i * p.chipStagger, p.chips.length);
-      final rise = p.chipStagger == 0 ? 0.0 : (1 - Curves.easeOutCubic.transform(t)) * 24;
+      final rise = p.chipStagger == 0
+          ? 0.0
+          : (1 - Curves.easeOutCubic.transform(t)) * 24;
       return Expanded(
         child: Opacity(
           opacity: t,
@@ -607,7 +638,10 @@ class _WinResultState extends State<WinResult>
                       color: Toy.mint,
                       size: 11,
                       angle: -6,
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       radius: 8,
                       shadow: 2,
                     ),
@@ -648,7 +682,11 @@ class _WinResultState extends State<WinResult>
                   'WORLD ${widget.worldNumber} · ${widget.bandName.toUpperCase()}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Toy.ui(13, weight: FontWeight.w800, color: Colors.white),
+                  style: Toy.ui(
+                    13,
+                    weight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               Text(
@@ -761,7 +799,11 @@ class _ResultChip extends StatelessWidget {
         const SizedBox(height: 2),
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: Text(label, maxLines: 1, style: Toy.ui(13, weight: FontWeight.w600)),
+          child: Text(
+            label,
+            maxLines: 1,
+            style: Toy.ui(13, weight: FontWeight.w600),
+          ),
         ),
       ],
     ),
@@ -884,7 +926,7 @@ class _SolvedBoardPainter extends CustomPainter {
             rect.center.dx,
             rect.bottom - pad - ball / 2 - s * ball,
           );
-          paintToyBall(
+          drawToyBall(
             canvas,
             Rect.fromCircle(center: c, radius: ball / 2 * 0.94),
             color: Color(0xFF000000 | style.rgb),

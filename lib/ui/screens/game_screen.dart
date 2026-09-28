@@ -371,7 +371,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
       if (!await _confirmWatchAd(
         title: 'Watch a video for an extra tube?',
-        body: 'One more empty tube for this level. Your stars still depend on '
+        body:
+            'One more empty tube for this level. Your stars still depend on '
             'how many moves you take.',
       )) {
         _game.resumeClock();
@@ -387,8 +388,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       if (outcome != RewardOutcome.earned) {
         if (mounted) {
           _toast(switch (outcome) {
-            RewardOutcome.dismissed =>
-              'No tube — the video was not finished.',
+            RewardOutcome.dismissed => 'No tube — the video was not finished.',
             RewardOutcome.unavailable => 'No video available right now.',
             _ => 'Something went wrong. Nothing was used.',
           });
@@ -421,13 +421,15 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
     // Always rewarded: unlike hints there is no free allowance, so every tube
     // is funded by a video — this one, or one banked earlier.
-    ref.read(analyticsServiceProvider).log(
-      PowerUpUsed(
-        levelId: levelId,
-        kind: PowerUpKind.extraTube,
-        wasRewarded: true,
-      ),
-    );
+    ref
+        .read(analyticsServiceProvider)
+        .log(
+          PowerUpUsed(
+            levelId: levelId,
+            kind: PowerUpKind.extraTube,
+            wasRewarded: true,
+          ),
+        );
   }
 
   /// THE ORDER HERE IS THE WHOLE POINT. The video plays, the reward is
@@ -799,12 +801,18 @@ class _GameScreenState extends ConsumerState<GameScreen>
         return Stack(
           fit: StackFit.expand,
           children: [
-            playfield,
+            // Offstage once the result covers it completely. It used to keep
+            // painting underneath — board, rays and confetti, every frame, all
+            // invisible — which doubled the GPU work for as long as the result
+            // was up. Offstage keeps its state (Replay needs it) and mutes its
+            // tickers too.
+            Offstage(offstage: settled >= 1, child: playfield),
             if (result != null && _profile.confetti != null)
               WinConfetti(
-                t: ((elapsed - _profile.confetti!.at) /
-                        _profile.confetti!.length)
-                    .clamp(0.0, 1.0),
+                t:
+                    ((elapsed - _profile.confetti!.at) /
+                            _profile.confetti!.length)
+                        .clamp(0.0, 1.0),
                 seed: state.level.id,
               ),
             if (result != null && settled > 0)
@@ -891,7 +899,10 @@ class _StuckBanner extends StatelessWidget {
               child: ToyBox(
                 radius: Toy.rChip,
                 shadow: 2,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 child: Text('Undo', style: Toy.ui(14, weight: FontWeight.w800)),
               ),
             ),
@@ -908,7 +919,10 @@ class _Loading extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ToyScaffold(
     child: Center(
-      child: Text('Pourfect', style: Toy.display(40, color: Toy.tomato, shadow: 3)),
+      child: Text(
+        'Pourfect',
+        style: Toy.display(40, color: Toy.tomato, shadow: 3),
+      ),
     ),
   );
 }

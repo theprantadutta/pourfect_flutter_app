@@ -92,13 +92,16 @@ class _LevelClockState extends State<LevelClock> {
 
     return Semantics(
       label: 'Time ${formatSpan(_seconds)}',
+      // Its own layer: a tick once a second must not repaint the board.
       child: ExcludeSemantics(
-        child: Text(
-          formatClock(_seconds),
-          style: Toy.numbers(
-            widget.fontSize,
-            weight: FontWeight.w700,
-            color: overPar ? Toy.tomato : (base ?? Toy.inkMuted),
+        child: RepaintBoundary(
+          child: Text(
+            formatClock(_seconds),
+            style: Toy.numbers(
+              widget.fontSize,
+              weight: FontWeight.w700,
+              color: overPar ? Toy.tomato : (base ?? Toy.inkMuted),
+            ),
           ),
         ),
       ),

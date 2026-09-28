@@ -67,7 +67,18 @@ class HomeScreen extends ConsumerWidget {
     final bands = campaignBands();
     final band = bands.where((b) => b.contains(current)).firstOrNull;
 
-    final head = <Widget>[
+    Widget hero({required bool expand}) => NextLevelHero(
+      levelId: current,
+      board: level!.board,
+      par: level.minMoves,
+      world: (band?.index ?? 0) + 1,
+      bandName: band?.name ?? '',
+      boldGlyphs: ref.watch(settingsProvider).boldSymbols,
+      onPlay: (origin) => onOpenLevel(current, origin),
+      expand: expand,
+    );
+
+    final top = <Widget>[
       _TopRow(onOpenAccount: onOpenAccount, onOpenSettings: onOpenSettings),
       const SizedBox(height: 16),
       const _Wordmark(),
@@ -79,23 +90,11 @@ class HomeScreen extends ConsumerWidget {
         onOpenStatistics: onOpenStatistics,
       ),
       const SizedBox(height: 14),
-      // Absent only for the few frames before the bundled campaign has
-      // decoded. The card would otherwise flash a board-less shell.
-      if (level != null) ...[
-        NextLevelHero(
-          levelId: current,
-          board: level.board,
-          par: level.minMoves,
-          world: (band?.index ?? 0) + 1,
-          bandName: band?.name ?? '',
-          boldGlyphs: ref.watch(settingsProvider).boldSymbols,
-          onPlay: (origin) => onOpenLevel(current, origin),
-        ),
-        const SizedBox(height: 14),
-      ],
-      _Daily(onOpenDaily: onOpenDaily, onOpenLeaderboard: onOpenLeaderboard),
     ];
-
+    final daily = _Daily(
+      onOpenDaily: onOpenDaily,
+      onOpenLeaderboard: onOpenLeaderboard,
+    );
     final foot = <Widget>[
       const SizedBox(height: 14),
       _Dock(
@@ -110,41 +109,95 @@ class HomeScreen extends ConsumerWidget {
 
     return ToyScaffold(
       padding: EdgeInsets.zero,
-      // Fits a 360×780 phone without moving. Anything shorter scrolls rather
-      // than squeezing, because a squeezed toy stops looking like a toy and
-      // an overflow stripe is worse than either.
       child: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: math.max(0, constraints.maxHeight - 20),
+        builder: (context, constraints) {
+          // A TALL PHONE fills its height: the hero card takes every spare
+          // pixel and grows the board into it. Stacking the content at the top
+          // and pinning the dock to the floor left a dead band of cream above
+          // the dock that read as a layout bug — measured at ~100dp on the
+          // A24, and more on taller phones.
+          //
+          // Below [_fillFrom] the content is laid out at its natural size and
+          // scrolls, because a squeezed toy stops looking like a toy and an
+          // overflow stripe is worse than either.
+          if (level != null && constraints.maxHeight >= _fillFrom) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+              // The hero grows its board into the spare height as far as the
+              // board can use it; whatever is still left is shared equally
+              // between the sections, so nothing collects in one dead band.
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: top.sublist(0, top.length - 1),
+                  ),
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: hero(expand: true),
+                    ),
+                  ),
+                  daily,
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: foot,
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: math.max(0, constraints.maxHeight - 20),
+              ),
+              // spaceBetween on an unbounded Column sizes it to the larger of
+              // its content and minHeight, so the dock sits on the floor and
+              // follows the content on a short phone.
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ...top,
+                      // Absent only for the few frames before the bundled
+                      // campaign has decoded; the card would otherwise flash
+                      // a board-less shell.
+                      if (level != null) ...[
+                        hero(expand: false),
+                        const SizedBox(height: 14),
+                      ],
+                      daily,
+                    ],
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: foot,
+                  ),
+                ],
+              ),
             ),
-            // spaceBetween on an unbounded Column sizes it to the larger of
-            // its content and minHeight, so the dock sits on the floor of a
-            // tall phone and simply follows the content on a short one. No
-            // IntrinsicHeight: the board preview measures its own width.
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: head,
-                ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: foot,
-                ),
-              ],
-            ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
+
+  /// The height at which the hub stops scrolling and fills the screen. The
+  /// natural layout needs about 700dp with the board preview at its smallest,
+  /// so anything taller has room for the board to grow.
+  static const double _fillFrom = 700;
 }
 
 class _TopRow extends ConsumerWidget {

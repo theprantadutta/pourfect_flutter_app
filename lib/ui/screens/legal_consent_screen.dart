@@ -87,16 +87,28 @@ class _LegalConsentScreenState extends State<LegalConsentScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Centred in the room above the button rather than pinned to the
+            // top: on a tall phone the top-aligned card left a third of the
+            // screen empty between it and LET'S POUR!. Still scrolls when the
+            // text is large or the phone is short.
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(top: 30, bottom: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const _Wordmark(),
-                    const SizedBox(height: 28),
-                    _card(),
-                  ],
+              child: LayoutBuilder(
+                builder: (context, box) => SingleChildScrollView(
+                  padding: const EdgeInsets.only(top: 30, bottom: 12),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: (box.maxHeight - 42).clamp(0, double.infinity),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const _Wordmark(),
+                        const SizedBox(height: 28),
+                        _card(),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

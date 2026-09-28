@@ -48,28 +48,63 @@ class BoardPreview extends StatelessWidget {
   static const _spacing = 8 / 22;
   static const _stroke = Toy.strokeThin;
 
+  /// Gap between two rows of tubes, as a fraction of the ball.
+  static const _rowGap = 12 / 22;
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final n = board.tubeCount;
-      var ball = ballSize;
-      if (constraints.hasBoundedWidth && n > 0) {
-        // width = n * (ball * (1 + 2*pad) + 2*stroke) + (n - 1) * ball * spacing
-        final fit =
-            (constraints.maxWidth - n * _stroke * 2) /
-            (n * (1 + 2 * _pad) + (n - 1) * _spacing);
-        ball = math.min(ballSize, fit.floorToDouble());
-      }
-      ball = math.max(ball, 8);
+      if (n == 0) return const SizedBox.shrink();
+      final cap = board.capacity;
 
-      return Row(
+      // The ball that fits [perRow] tubes across the width.
+      double byWidth(int perRow) => !constraints.hasBoundedWidth
+          ? double.infinity
+          : (constraints.maxWidth - perRow * _stroke * 2) /
+                (perRow * (1 + 2 * _pad) + (perRow - 1) * _spacing);
+
+      // The ball that fits [rows] rows of tubes into the height, when the
+      // parent gives the preview a height to fill (the hub on a tall phone).
+      double byHeight(int rows) => !constraints.hasBoundedHeight
+          ? double.infinity
+          : (constraints.maxHeight - rows * _stroke * 2) /
+                (rows * (cap + (cap - 1) * _between + 2 * _pad) +
+                    (rows - 1) * _rowGap);
+
+      // One row, or two when the board is wide and there is height to spare:
+      // a nine-tube board squeezed into one row gets 19px balls, and in two
+      // rows it can use the room a tall phone leaves under it.
+      var rows = 1;
+      var ball = math.min(byWidth(n), byHeight(1));
+      if (n >= 6 && constraints.hasBoundedHeight) {
+        final two = math.min(byWidth((n / 2).ceil()), byHeight(2));
+        if (two > ball + 2) {
+          rows = 2;
+          ball = two;
+        }
+      }
+      ball = math.max(math.min(ballSize, ball).floorToDouble(), 8);
+
+      final perRow = (n / rows).ceil();
+      Widget row(int from) => Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          for (var i = 0; i < n; i++) ...[
-            if (i > 0) SizedBox(width: ball * _spacing),
+          for (var i = from; i < math.min(from + perRow, n); i++) ...[
+            if (i > from) SizedBox(width: ball * _spacing),
             _Tube(tube: board.tubes[i], ball: ball, bold: boldGlyphs),
           ],
+        ],
+      );
+
+      if (rows == 1) return row(0);
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          row(0),
+          SizedBox(height: ball * _rowGap),
+          row(perRow),
         ],
       );
     },

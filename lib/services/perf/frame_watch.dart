@@ -20,12 +20,24 @@
 /// overdraw — which is why `BackdropFilter` is banned in this codebase.
 library;
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
-/// One frame's budget at 60Hz. A frame whose build OR raster exceeds this is
-/// a dropped frame as far as the player's eye is concerned.
+/// One frame's budget at 60Hz — the fallback when the display cannot say.
+/// A frame whose build OR raster exceeds the budget is a dropped frame as far
+/// as the player's eye is concerned.
 const Duration kFrameBudget = Duration(microseconds: 16667);
+
+/// The budget at the display's CURRENT rate. At 90 Hz a frame has 11.1ms, not
+/// 16.7ms, and judging a high-refresh session against the 60 Hz budget hides
+/// exactly the frames that stutter.
+int frameBudgetMicros() {
+  final hz =
+      ui.PlatformDispatcher.instance.implicitView?.display.refreshRate ?? 60;
+  return hz > 0 ? (1000000 / hz).round() : kFrameBudget.inMicroseconds;
+}
 
 /// Whether to report at all. OFF unless asked for:
 ///
@@ -84,7 +96,7 @@ class FrameWatch {
 
     final build = [..._build]..sort();
     final raster = [..._raster]..sort();
-    final budget = kFrameBudget.inMicroseconds;
+    final budget = frameBudgetMicros();
 
     int pct(List<int> xs, double q) => xs[(q * (xs.length - 1)).round()];
     String ms(int micros) => (micros / 1000).toStringAsFixed(2);
@@ -96,7 +108,7 @@ class FrameWatch {
     }.length;
 
     debugPrint(
-      '[frames] n=${build.length}  '
+      '[frames] n=${build.length} @${(1000000 / budget).round()}Hz  '
       'build p50 ${ms(pct(build, .5))}ms p95 ${ms(pct(build, .95))}ms '
       'max ${ms(build.last)}ms over=${over(build)}  |  '
       'raster p50 ${ms(pct(raster, .5))}ms p95 ${ms(pct(raster, .95))}ms '

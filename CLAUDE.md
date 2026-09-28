@@ -643,6 +643,54 @@ Report BOTH halves when investigating: build is Dart work (too much per-frame
 recomputation), raster is GPU work (shaders, saveLayers, overdraw — which is why
 `BackdropFilter` is banned here).
 
+### Measured again at 90 Hz, 2026-09-28 (Toybox, A24)
+
+`FrameWatch` now judges each frame against the display's CURRENT rate (11.1ms
+at 90 Hz), not a fixed 16.7ms — at 60 Hz budgets a 90 Hz session looks clean
+while it stutters.
+
+| Flow | Before | After |
+|---|---|---|
+| Pouring, level 54 | build p95 13.8ms, jank 1.6–3.8% | build p95 4.7–5.5ms, jank 0.4–1.2% |
+| Win sequence (window) | raster max 42.7ms, 16 janky | raster max 33ms, 8 janky |
+| Idle hub | redrew continuously (PLAY nudge + countdown) | one layer, nudge rests after 3 |
+| Journey / Stats scroll | 0–0.4% | unchanged |
+
+What did it:
+
+- **Balls are sprites.** `drawToyBall` stamps a cached image; the vector
+  build (`paintToyBall`: two path booleans + a clip) runs once per distinct
+  ball. Opacity is paint alpha, never an `Opacity` widget per ball.
+- **The finished board goes `Offstage` under the result screen.** It kept
+  painting — board, rays, confetti — invisibly behind an opaque page.
+- **Rays are one cached fan rotated by the canvas**, not 23 triangles rebuilt
+  per frame.
+- **Tickers live in their own `RepaintBoundary`**: the level clock, the daily
+  countdown, the PLAY nudge.
+
+## Smooth motion (refresh rate)
+
+Flutter never asks Android for more than the default mode, so a 90/120 Hz
+phone ran Pourfect at 60. `refresh_rate` (2.x) makes the calls; it sits behind
+`DisplayRateService` like audio and haptics. Settings → Feel → Smooth motion:
+
+- **Auto (default)** asks for the panel's top rate, then `FramePaceJudge`
+  watches real frame timings; two consecutive 180-frame windows with >8% of
+  frames over the budget step it down to 60 and the verdict is stored
+  (`pourfect.display.auto_stepdown.v1`). A fast panel says nothing about the
+  chip behind it, and a steady 60 beats a stuttering 120. Choosing Auto again
+  forgets the verdict.
+- **60 Hz** asks for EXACTLY 60 (`matchContent(60)`), not `preferDefault()` —
+  the default only withdraws our vote, and a phone already at 90 stays there.
+- **Max** is the panel's top rate, always — 120, 144, whatever it offers.
+
+The phone can overrule all three. Samsung's Motion smoothness = High
+(`settings get secure refresh_rate_mode` → 2) pins the A24 at 90 whatever the
+app votes; verified in `dumpsys SurfaceFlinger` (our layer votes 60, panel
+stays 90). The Settings detail line reports what the screen is ACTUALLY doing,
+so it never claims a rate it is not at. Re-applied on resume, because some
+Android builds drop a window's preferred mode in the background.
+
 ## APK budget
 
 Measure PER-ABI, the way Play delivers it — never the universal APK.
@@ -1264,6 +1312,15 @@ card holding the next board and one big PLAY; the blue daily card with a tilted
 rank sticker; and a dock for Journey, Rankings and Stats. That dock replaced
 the old chevron on the stats row and the path slice — each of the three is one
 tap away.
+
+**No dead bands on tall phones.** The mockups are 360×780; anything taller
+used to collect its spare height in one empty stripe (≈100dp above the dock on
+the A24). The rule now, everywhere: spare height goes to something that can use
+it, and only what nothing can use is spread out evenly. The hub's board preview
+grows (two rows for a wide board when that makes bigger balls), the win
+result's solved-board card grows, the Stats chart grows (`SlackScroll`), and
+short content — Rankings with nobody on it, the legal card — is centred rather
+than pinned to the top. Short phones still scroll at natural size.
 
 **The daily has no number.** The mockup says "Daily Pour #17"; nothing on the
 server or the client numbers dailies, so the card says "Daily Pour" rather than

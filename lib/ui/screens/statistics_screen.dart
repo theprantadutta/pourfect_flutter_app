@@ -189,31 +189,36 @@ class _Overview extends StatelessWidget {
   Widget build(BuildContext context) {
     final moves = progress.values.fold(0, (sum, p) => sum + p.bestMoves);
 
-    return ListView(
-      // Top room for the tilted blocks' corners, bottom room for the last
-      // card's hard shadow: the viewport clips both.
+    // Top room for the tilted blocks' corners, bottom room for the last
+    // card's hard shadow: the viewport clips both. Height the cards do not
+    // need goes to the activity chart, which on a tall phone otherwise left a
+    // band of empty cream under it.
+    return SlackScroll(
       padding: const EdgeInsets.only(top: 14, bottom: 28),
-      children: [
-        _Trophies(
-          solved: progress.length,
-          stars: controller.totalStars,
-          points: controller.totalPoints,
-          seconds: history.totalSeconds,
-        ),
-        const SizedBox(height: 12),
-        _FactStrip(
-          furthest: controller.furthestUnlocked,
-          bestSolveMoves: moves,
-        ),
-        const SizedBox(height: 14),
-        _AgainstTheClock(
-          progress: progress,
-          controller: controller,
-          levels: levels,
-        ),
-        const SizedBox(height: 14),
-        _Activity(history: history),
-      ],
+      builder: (context, extra) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Trophies(
+            solved: progress.length,
+            stars: controller.totalStars,
+            points: controller.totalPoints,
+            seconds: history.totalSeconds,
+          ),
+          const SizedBox(height: 12),
+          _FactStrip(
+            furthest: controller.furthestUnlocked,
+            bestSolveMoves: moves,
+          ),
+          const SizedBox(height: 14),
+          _AgainstTheClock(
+            progress: progress,
+            controller: controller,
+            levels: levels,
+          ),
+          const SizedBox(height: 14),
+          _Activity(history: history, extraHeight: extra),
+        ],
+      ),
     );
   }
 }
@@ -225,7 +230,11 @@ class _RunUp extends StatelessWidget {
   final String Function(int) format;
   final TextStyle style;
 
-  const _RunUp({required this.value, required this.format, required this.style});
+  const _RunUp({
+    required this.value,
+    required this.format,
+    required this.style,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -271,7 +280,11 @@ class _Trophies extends StatelessWidget {
               child: _Block(
                 color: Toy.yellow,
                 label: 'levels solved',
-                value: _RunUp(value: solved, format: formatCount, style: number),
+                value: _RunUp(
+                  value: solved,
+                  format: formatCount,
+                  style: number,
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -300,7 +313,11 @@ class _Trophies extends StatelessWidget {
                 color: Toy.mint,
                 angle: -1,
                 label: 'points',
-                value: _RunUp(value: points, format: formatCount, style: number),
+                value: _RunUp(
+                  value: points,
+                  format: formatCount,
+                  style: number,
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -308,7 +325,11 @@ class _Trophies extends StatelessWidget {
               child: _Block(
                 color: Toy.lilac,
                 label: 'played',
-                value: _RunUp(value: seconds, format: formatSpan, style: number),
+                value: _RunUp(
+                  value: seconds,
+                  format: formatSpan,
+                  style: number,
+                ),
               ),
             ),
           ],
@@ -529,11 +550,7 @@ class _ClockLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final valueText = Text(
-      value,
-      maxLines: 1,
-      style: Toy.numbers(13),
-    );
+    final valueText = Text(value, maxLines: 1, style: Toy.numbers(13));
     return Row(
       children: [
         Text(label, style: Toy.ui(13)),
@@ -664,7 +681,10 @@ class _DonutPainter extends CustomPainter {
 class _Activity extends StatelessWidget {
   final PlayHistoryController history;
 
-  const _Activity({required this.history});
+  /// Spare screen height the chart may grow into.
+  final double extraHeight;
+
+  const _Activity({required this.history, this.extraHeight = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -706,10 +726,7 @@ class _Activity extends StatelessWidget {
                     horizontal: 8,
                     vertical: 2,
                   ),
-                  child: Text(
-                    '$streak day streak',
-                    style: Toy.numbers(12),
-                  ),
+                  child: Text('$streak day streak', style: Toy.numbers(12)),
                 )
               else
                 ToyChip(
@@ -726,7 +743,12 @@ class _Activity extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          _ActivityChart(days: days),
+          // Taller bars read better, up to a point: past ~3x the compact
+          // chart they stop saying anything more.
+          _ActivityChart(
+            days: days,
+            height: 70 + extraHeight.clamp(0.0, 150.0),
+          ),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -761,9 +783,10 @@ class _Activity extends StatelessWidget {
 class _ActivityChart extends StatelessWidget {
   final List<DayRecord> days;
 
-  const _ActivityChart({required this.days});
+  final double height;
 
-  static const _height = 70.0;
+  const _ActivityChart({required this.days, this.height = 70});
+
   static const _stub = 3.0;
 
   /// Played days never draw shorter than this, so a one-level day is not
@@ -775,9 +798,11 @@ class _ActivityChart extends StatelessWidget {
     final peak = days.fold(0, (max, d) => d.solved > max ? d.solved : max);
 
     return Container(
-      height: _height,
+      height: height,
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Toy.ink, width: Toy.stroke)),
+        border: Border(
+          bottom: BorderSide(color: Toy.ink, width: Toy.stroke),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -791,7 +816,7 @@ class _ActivityChart extends StatelessWidget {
                     ? _stub
                     : math.max(
                         _minPlayed,
-                        days[i].solved / peak * (_height - Toy.stroke - 2),
+                        days[i].solved / peak * (height - Toy.stroke - 2),
                       ),
               ),
             ),
@@ -809,8 +834,18 @@ class _Bar extends StatelessWidget {
   const _Bar({required this.day, required this.isToday, required this.height});
 
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   String get _dayLabel {
@@ -840,7 +875,7 @@ class _Bar extends StatelessWidget {
       textStyle: Toy.ui(12, weight: FontWeight.w700, color: Colors.white),
       // The hit target is the whole column, not the thin bar.
       child: Container(
-        height: 70,
+        height: double.infinity,
         color: Colors.transparent,
         alignment: Alignment.bottomCenter,
         padding: const EdgeInsets.symmetric(horizontal: 1.5),
@@ -1106,13 +1141,22 @@ class _TableHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(width: _colLevel, child: Text('LVL', style: style)),
+          SizedBox(
+            width: _colLevel,
+            child: Text('LVL', style: style),
+          ),
           const SizedBox(width: _colGap),
-          SizedBox(width: _colStars, child: Text('STARS', style: style)),
+          SizedBox(
+            width: _colStars,
+            child: Text('STARS', style: style),
+          ),
           const SizedBox(width: _colGap),
           Expanded(child: Text('MOVES', style: style)),
           const SizedBox(width: _colGap),
-          SizedBox(width: _colTime, child: Text('TIME', style: style)),
+          SizedBox(
+            width: _colTime,
+            child: Text('TIME', style: style),
+          ),
           const SizedBox(width: _colGap),
           SizedBox(
             width: _colPoints,

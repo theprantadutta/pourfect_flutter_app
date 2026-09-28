@@ -199,11 +199,25 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       color: Toy.tomato,
       backgroundColor: Toy.card,
       onRefresh: () => _load(quiet: true),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        // The bottom inset leaves room for the last card's hard shadow.
-        padding: const EdgeInsets.only(bottom: 28),
-        children: children,
+      // A board shorter than the screen — nobody yet, or a handful of
+      // players — sits in the middle rather than leaving the bottom half of
+      // the screen empty. A long one scrolls as a list always did.
+      child: LayoutBuilder(
+        builder: (context, box) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          // The bottom inset leaves room for the last card's hard shadow.
+          padding: const EdgeInsets.only(bottom: 28),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: (box.maxHeight - 28).clamp(0, double.infinity),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -617,10 +631,7 @@ class _Row extends StatelessWidget {
                   style: Toy.ui(14, weight: FontWeight.w700),
                 ),
                 if (tie != null)
-                  Text(
-                    tie,
-                    style: Toy.ui(11, color: Toy.inkMuted),
-                  ),
+                  Text(tie, style: Toy.ui(11, color: Toy.inkMuted)),
               ],
             ),
           ),
