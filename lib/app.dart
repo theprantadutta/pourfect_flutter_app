@@ -77,7 +77,11 @@ class PourfectApp extends StatelessWidget {
       snackBarTheme: SnackBarThemeData(
         backgroundColor: Toy.ink,
         behavior: SnackBarBehavior.floating,
-        contentTextStyle: Toy.ui(14, weight: FontWeight.w700, color: Colors.white),
+        contentTextStyle: Toy.ui(
+          14,
+          weight: FontWeight.w700,
+          color: Colors.white,
+        ),
         actionTextColor: Toy.yellow,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Toy.rButton),
@@ -134,6 +138,8 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _resolveLegalGate();
+    // Building the controller is what asks the display for its fast mode.
+    ref.read(displayRateProvider);
     // Generating the sound bank takes a few milliseconds and opening the mixer
     // can take longer, so it happens off the first frame. A device with no
     // usable audio still reaches the level map.
@@ -217,6 +223,9 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // Midnight UTC may have passed while the app was in a pocket, in which
       // case yesterday's board is the wrong one to be offering.
       ref.read(dailyProvider.notifier).refresh();
+      // Some Android builds drop a window's preferred display mode while it
+      // is in the background, which would quietly leave us at 60 Hz.
+      ref.read(displayRateProvider.notifier).reapply();
     }
   }
 
@@ -277,24 +286,25 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
   }
 
   void _openLevel(int levelId, Rect? origin) {
-    Navigator.of(context).push(
-      PourfectPageRoute<void>(
-        origin: origin,
-        settings: RouteSettings(name: '/level/$levelId'),
-        builder: (context) => GameScreen(
-          levelId: levelId,
-          onExit: () => Navigator.of(context).maybePop(),
-        ),
-      ),
-    )
+    Navigator.of(context)
+        .push(
+          PourfectPageRoute<void>(
+            origin: origin,
+            settings: RouteSettings(name: '/level/$levelId'),
+            builder: (context) => GameScreen(
+              levelId: levelId,
+              onExit: () => Navigator.of(context).maybePop(),
+            ),
+          ),
+        )
         // Completes when the level route has POPPED, so the hub is back and
         // the player is between things. That is the only moment in this app
         // worth asking for a rating in — everywhere else they are mid-puzzle,
         // mid-animation, or mid-decision.
         .then((_) {
-      if (!mounted) return;
-      ref.read(reviewPrompterProvider.notifier).maybeAsk();
-    });
+          if (!mounted) return;
+          ref.read(reviewPrompterProvider.notifier).maybeAsk();
+        });
   }
 
   void _openDaily() {
@@ -359,8 +369,7 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     Navigator.of(context).push(
       PourfectPageRoute<void>(
         settings: const RouteSettings(name: '/account'),
-        builder: (context) =>
-            AccountScreen(onOpenStatistics: _openStatistics),
+        builder: (context) => AccountScreen(onOpenStatistics: _openStatistics),
       ),
     );
   }

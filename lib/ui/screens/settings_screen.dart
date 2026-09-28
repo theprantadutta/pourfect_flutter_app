@@ -231,9 +231,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _openAccount() async {
-    await Navigator.of(context).push(
-      PourfectPageRoute<void>(builder: (_) => const AccountScreen()),
-    );
+    await Navigator.of(context)
+        .push(PourfectPageRoute<void>(builder: (_) => const AccountScreen()));
   }
 
   Future<void> _confirmSignOut() async {
@@ -394,6 +393,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         value: settings.hapticsEnabled,
                         onChanged: controller.setHaptics,
                       ),
+                      ChoiceRow<SmoothMotion>(
+                        icon: const Icon(Icons.speed_rounded),
+                        iconColor: Toy.mint,
+                        title: 'Smooth motion',
+                        detail: _smoothMotionDetail(
+                          ref.watch(displayRateProvider),
+                          settings.smoothMotion,
+                        ),
+                        options: const [
+                          (SmoothMotion.auto, 'Auto'),
+                          (SmoothMotion.standard, '60 Hz'),
+                          (SmoothMotion.max, 'Max'),
+                        ],
+                        value: settings.smoothMotion,
+                        onChanged: (mode) {
+                          controller.setSmoothMotion(mode);
+                          // Picking Auto again is asking for another try at
+                          // the fast rate, so an old step-down is forgotten.
+                          if (mode == SmoothMotion.auto) {
+                            ref.read(displayRateProvider.notifier).retryAuto();
+                          }
+                        },
+                      ),
                     ],
                   ),
 
@@ -443,7 +465,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         icon: const Icon(Icons.contrast_rounded),
                         iconColor: kRowMoss,
                         title: 'Show me on leaderboards',
-                        detail: 'Off hides your name and rank. Stars still '
+                        detail:
+                            'Off hides your name and rank. Stars still '
                             'count.',
                         value: account.showOnLeaderboards,
                         onChanged: _setLeaderboardVisibility,
@@ -563,8 +586,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Text(
                     [
                       'Pourfect ${_version.isEmpty ? '—' : _version}',
-                      if (boards != null) 'made with $boards proven-solvable '
-                          'boards',
+                      if (boards != null)
+                        'made with $boards proven-solvable '
+                            'boards',
                     ].join(' · '),
                     textAlign: TextAlign.center,
                     style: Toy.ui(12, color: Toy.inkMuted),
@@ -617,7 +641,10 @@ class _RemoveAdsRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Remove ads', style: Toy.ui(15, weight: FontWeight.w700)),
+                  Text(
+                    'Remove ads',
+                    style: Toy.ui(15, weight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 1),
                   Text(
                     // Says what it does NOT do as well, so nobody buys it
@@ -763,10 +790,7 @@ class _MiniStat extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text('$value', style: Toy.numbers(14)),
-        Text(
-          label,
-          style: Toy.ui(9, weight: FontWeight.w800, height: 1.1),
-        ),
+        Text(label, style: Toy.ui(9, weight: FontWeight.w800, height: 1.1)),
       ],
     ),
   );
@@ -808,4 +832,35 @@ class _SymbolPreview extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The Smooth motion row's detail: what the screen is actually doing, so a
+/// choice that cannot change anything on this phone says why instead of
+/// looking broken.
+String _smoothMotionDetail(DisplayRateState display, SmoothMotion mode) {
+  final rate = display.rate;
+  String hz(double v) =>
+      v % 1 == 0 ? '${v.toInt()} Hz' : '${v.toStringAsFixed(1)} Hz';
+  if (!rate.isKnown) {
+    return 'Auto uses your screen\'s fastest rate if this phone keeps up';
+  }
+  if (!rate.canGoHigh) return 'This screen only runs at ${hz(rate.max)}';
+  if (mode != SmoothMotion.standard && rate.lowPower) {
+    return 'Battery Saver is holding it at ${hz(rate.current)}';
+  }
+  return switch (mode) {
+    SmoothMotion.auto when display.autoStepdown =>
+      'Running at ${hz(rate.current)} · this phone stuttered at '
+          '${hz(rate.max)}',
+    SmoothMotion.auto =>
+      'Running at ${hz(rate.current)} · drops to 60 Hz if it stutters',
+    // Some phones (Samsung's "High" motion smoothness) hold the panel at its
+    // top rate whatever an app asks. Say so, rather than claim 60.
+    SmoothMotion.standard when rate.current > 61 =>
+      "Your phone's display setting keeps it at ${hz(rate.current)}",
+    SmoothMotion.standard =>
+      'Running at ${hz(rate.current)} · this screen can do ${hz(rate.max)}',
+    SmoothMotion.max =>
+      'Running at ${hz(rate.current)}, the fastest this screen goes',
+  };
 }

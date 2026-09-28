@@ -39,10 +39,7 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(top: 18, bottom: 2),
-    child: ToySectionLabel(
-      label,
-      color: danger ? Toy.tomato : Toy.inkMuted,
-    ),
+    child: ToySectionLabel(label, color: danger ? Toy.tomato : Toy.inkMuted),
   );
 }
 
@@ -248,6 +245,62 @@ class ToggleRow extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// A setting with a few named options: the usual row, with a segmented choice
+/// underneath it. For a choice a switch cannot express — Smooth motion's
+/// Auto / 60 Hz / Max.
+class ChoiceRow<T> extends StatelessWidget {
+  final Widget icon;
+  final Color iconColor;
+  final Color iconInk;
+  final String title;
+  final String detail;
+  final List<(T, String)> options;
+  final T value;
+  final ValueChanged<T> onChanged;
+
+  const ChoiceRow({
+    super.key,
+    required this.icon,
+    required this.iconColor,
+    this.iconInk = Toy.ink,
+    required this.title,
+    required this.detail,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final index = options.indexWhere((o) => o.$1 == value);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _RowBody(
+          icon: RowIcon(icon: icon, color: iconColor, ink: iconInk),
+          title: title,
+          detail: detail,
+          detailLines: null,
+          trailing: const SizedBox.shrink(),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+          child: ToyTabs(
+            labels: [for (final o in options) o.$2],
+            index: index < 0 ? 0 : index,
+            onChanged: (i) => onChanged(options[i].$1),
+            // Ink, not tomato: this switches a preference, it is not the
+            // primary action on the screen.
+            selectedColor: Toy.ink,
+            height: 34,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class ActionRow extends StatelessWidget {

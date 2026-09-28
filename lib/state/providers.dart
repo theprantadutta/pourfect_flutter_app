@@ -8,7 +8,10 @@ library;
 
 import 'dart:convert';
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,10 +28,12 @@ import '../services/api/auth_service.dart';
 import '../services/api/identity.dart';
 import '../services/api/api_result.dart';
 import 'account_controller.dart';
+import 'frame_pace.dart';
 import '../services/api/leaderboard_api.dart';
 import '../services/review/play_review_service.dart';
 import '../services/review/review_service.dart';
 import '../services/api/push_service.dart';
+import '../services/display/display_rate_service.dart';
 import '../services/haptics/haptics_service.dart';
 import 'game_controller.dart';
 import 'game_state.dart';
@@ -50,33 +55,61 @@ class Settings {
   /// work should not have to squint at a design decision.
   final bool boldSymbols;
 
+  /// How fast the display is asked to run. See [SmoothMotion].
+  ///
+  /// Stored with the other settings on this device, not on the account —
+  /// whether smooth motion is worth it depends on the phone in your hand.
+  final SmoothMotion smoothMotion;
+
   const Settings({
     this.hapticsEnabled = true,
     this.soundEnabled = true,
     this.boldSymbols = false,
+    this.smoothMotion = SmoothMotion.auto,
   });
 
   Settings copyWith({
     bool? hapticsEnabled,
     bool? soundEnabled,
     bool? boldSymbols,
+    SmoothMotion? smoothMotion,
   }) => Settings(
     hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
     soundEnabled: soundEnabled ?? this.soundEnabled,
     boldSymbols: boldSymbols ?? this.boldSymbols,
+    smoothMotion: smoothMotion ?? this.smoothMotion,
   );
 
   Map<String, Object?> toJson() => {
     'haptics': hapticsEnabled,
     'sound': soundEnabled,
     'bold_symbols': boldSymbols,
+    'smooth_motion': smoothMotion.name,
   };
 
   factory Settings.fromJson(Map<String, Object?> json) => Settings(
     hapticsEnabled: json['haptics'] as bool? ?? true,
     soundEnabled: json['sound'] as bool? ?? true,
     boldSymbols: json['bold_symbols'] as bool? ?? false,
+    // Absent on every settings blob written before this existed: Auto.
+    smoothMotion:
+        SmoothMotion.values.asNameMap()[json['smooth_motion']] ??
+        SmoothMotion.auto,
   );
+}
+
+/// The Smooth motion choice.
+enum SmoothMotion {
+  /// Ask for the panel's top rate, and step down to the system's standard
+  /// rate if this phone turns out unable to draw frames that fast. The
+  /// default: a fast panel says nothing about the chip driving it.
+  auto,
+
+  /// The system's standard rate — 60 Hz on almost every phone.
+  standard,
+
+  /// The panel's top rate, always, whatever it costs.
+  max,
 }
 
 class SettingsController extends Notifier<Settings> {
@@ -120,11 +153,162 @@ class SettingsController extends Notifier<Settings> {
     state = state.copyWith(boldSymbols: value);
     _persist();
   }
+
+  void setSmoothMotion(SmoothMotion value) {
+    state = state.copyWith(smoothMotion: value);
+    _persist();
+  }
 }
 
 final settingsProvider = NotifierProvider<SettingsController, Settings>(
   SettingsController.new,
 );
+
+final displayRateServiceProvider = Provider<DisplayRateService>(
+  (ref) => const PluginDisplayRateService(),
+);
+
+/// What the display is asked for and what it is doing, for the Settings row.
+@immutable
+class DisplayRateState {
+  final DisplayRate rate;
+
+  /// Auto tried the fast rate on this phone and it could not keep up.
+  final bool autoStepdown;
+
+  const DisplayRateState({required this.rate, this.autoStepdown = false});
+
+  static const initial = DisplayRateState(rate: DisplayRate.unknown);
+}
+
+/// Keeps the display rate in step with the Smooth motion setting.
+///
+/// Watching the setting is what applies it: a change in Settings, or the
+/// stored choice arriving after the async restore, rebuilds this and re-asks
+/// the platform. [reapply] exists for resume — some Android builds drop a
+/// window's preferred mode while the app is in the background.
+///
+/// AUTO watches every frame the app draws while it is at the fast rate. If
+/// [FramePaceJudge] finds this phone missing the shorter budget, the rate
+/// steps down and the verdict is remembered for this install, so it is not
+/// relearned by stuttering on every launch. Choosing Auto again in Settings
+/// forgets the verdict and gives the phone another try.
+class DisplayRateController extends Notifier<DisplayRateState> {
+  static const _stepdownKey = 'pourfect.display.auto_stepdown.v1';
+
+  DisplayRateState _last = DisplayRateState.initial;
+  bool _stepdown = false;
+  bool _stepdownRestored = false;
+  TimingsCallback? _timings;
+
+  @override
+  DisplayRateState build() {
+    final mode = ref.watch(settingsProvider.select((s) => s.smoothMotion));
+    ref.onDispose(_stopWatching);
+    _applyFor(mode);
+    return _last;
+  }
+
+  Future<void> _applyFor(SmoothMotion mode) async {
+    if (!_stepdownRestored) {
+      _stepdownRestored = true;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        _stepdown = prefs.getBool(_stepdownKey) ?? false;
+      } catch (_) {}
+      if (!ref.mounted) return;
+    }
+
+    final high = switch (mode) {
+      SmoothMotion.max => true,
+      SmoothMotion.standard => false,
+      SmoothMotion.auto => !_stepdown,
+    };
+    final rate = await ref.read(displayRateServiceProvider).apply(high: high);
+    if (!ref.mounted) return;
+
+    _last = DisplayRateState(
+      rate: rate,
+      autoStepdown: mode == SmoothMotion.auto && _stepdown,
+    );
+    state = _last;
+
+    // Only Auto, and only while actually above the standard rate: there is
+    // nothing to learn from a phone that is already at 60.
+    if (mode == SmoothMotion.auto && high && rate.current > 61) {
+      _startWatching();
+    } else {
+      _stopWatching();
+    }
+  }
+
+  void _startWatching() {
+    if (_timings != null) return;
+    final judge = FramePaceJudge();
+    void onTimings(List<FrameTiming> frames) {
+      final hz =
+          ui.PlatformDispatcher.instance.implicitView?.display.refreshRate ??
+          60;
+      if (hz <= 61) return;
+      final budget = (1000000 / hz).round();
+      for (final f in frames) {
+        final tipped = judge.add(
+          buildMicros: f.buildDuration.inMicroseconds,
+          rasterMicros: f.rasterDuration.inMicroseconds,
+          budgetMicros: budget,
+        );
+        if (tipped) {
+          _stepDown(hz);
+          return;
+        }
+      }
+    }
+
+    _timings = onTimings;
+    SchedulerBinding.instance.addTimingsCallback(onTimings);
+  }
+
+  void _stopWatching() {
+    final t = _timings;
+    if (t == null) return;
+    SchedulerBinding.instance.removeTimingsCallback(t);
+    _timings = null;
+  }
+
+  Future<void> _stepDown(double hz) async {
+    _stopWatching();
+    _stepdown = true;
+    debugPrint(
+      '[display] auto: frames miss the ${hz.round()} Hz budget; '
+      'stepping down to the standard rate',
+    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_stepdownKey, true);
+    } catch (_) {}
+    if (!ref.mounted) return;
+    await _applyFor(ref.read(settingsProvider).smoothMotion);
+  }
+
+  /// Auto chosen again in Settings: forget the old verdict and let the phone
+  /// try the fast rate once more.
+  Future<void> retryAuto() async {
+    _stepdown = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_stepdownKey);
+    } catch (_) {}
+    if (!ref.mounted) return;
+    await _applyFor(ref.read(settingsProvider).smoothMotion);
+  }
+
+  Future<void> reapply() => _applyFor(ref.read(settingsProvider).smoothMotion);
+}
+
+final displayRateProvider =
+    NotifierProvider<DisplayRateController, DisplayRateState>(
+      DisplayRateController.new,
+    );
 
 /// Where analytics events go.
 ///

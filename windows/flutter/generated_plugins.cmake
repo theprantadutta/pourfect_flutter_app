@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   firebase_auth
   firebase_core
+  refresh_rate
   url_launcher_windows
 )
 

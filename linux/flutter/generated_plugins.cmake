@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  refresh_rate
   url_launcher_linux
 )
 

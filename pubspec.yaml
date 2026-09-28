@@ -79,6 +79,7 @@ dependencies:
   flutter_local_notifications: ^22.3.1
   timezone: ^0.11.1
   in_app_update: ^5.0.0
+  refresh_rate: ^2.0.1
 
 dev_dependencies:
   flutter_test:
