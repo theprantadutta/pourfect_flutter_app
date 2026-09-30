@@ -24,7 +24,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/account_controller.dart';
 import '../../state/daily_controller.dart';
-import '../../state/level_repository.dart';
 import '../../state/onboarding.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
@@ -67,7 +66,7 @@ class HomeScreen extends ConsumerWidget {
 
     final current = progressOps.furthestUnlocked;
     final level = levelSet?.byId(current)?.level;
-    final bands = campaignBands();
+    final bands = ref.watch(campaignBandsProvider);
     final band = bands.where((b) => b.contains(current)).firstOrNull;
 
     Widget hero({required bool expand}) => NextLevelHero(

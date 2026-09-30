@@ -78,7 +78,14 @@ final class LevelSet {
   CampaignLevel operator [](int index) => levels[index];
 
   /// Looks up by 1-based campaign id.
+  ///
+  /// Ids are contiguous from 1, so the level is normally at `id - 1` and this
+  /// is constant time. The campaign grows past 150 with downloaded worlds and
+  /// some screens look up every level, so a scan here would go quadratic.
   CampaignLevel? byId(int id) {
+    if (id >= 1 && id <= levels.length && levels[id - 1].id == id) {
+      return levels[id - 1];
+    }
     for (final l in levels) {
       if (l.id == id) return l;
     }

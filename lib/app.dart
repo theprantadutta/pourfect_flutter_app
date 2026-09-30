@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'state/campaign_worlds.dart';
 import 'state/legal_acceptance.dart';
 import 'state/monetization_controller.dart';
 import 'services/notifications/notification_service.dart';
@@ -165,6 +166,10 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // handshake with a server they do not know exists.
       ref.read(syncControllerProvider.notifier).syncNow();
 
+      // More levels, if the player is within a world of the end of what this
+      // phone holds. Returns at once for everybody else.
+      ref.read(campaignWorldsProvider.notifier).maybeFetch();
+
       // And Play's update check, last and least urgent of the lot. Flexible by
       // default, so the download happens while the player plays.
       //
@@ -226,6 +231,9 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // Some Android builds drop a window's preferred display mode while it
       // is in the background, which would quietly leave us at 60 Hz.
       ref.read(displayRateProvider.notifier).reapply();
+      // The network may have come back while the app was away, so the quiet
+      // period after a failed download is skipped.
+      ref.read(campaignWorldsProvider.notifier).maybeFetch(force: true);
     }
   }
 

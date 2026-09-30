@@ -86,7 +86,9 @@ class SyncController extends Notifier<SyncState> {
   /// True until a full push has succeeded in this install.
   ///
   /// The first sync of a session sends EVERYTHING rather than only what
-  /// changed. It is at most 150 rows of five integers, it is what reconciles a
+  /// changed. It is one small row per cleared level (the server takes up to
+  /// 2000 in a batch, so this must be chunked before any player gets near
+  /// that), it is what reconciles a
   /// device that has been offline for a week, and it is the only thing that
   /// can recover a phone whose dirty set was lost with the process.
   bool _needsFullPush = true;
@@ -428,7 +430,6 @@ class SyncController extends Notifier<SyncState> {
       await prefs.setInt(_keyFor(_resetGenerationKey, owner), generation);
     } catch (_) {}
   }
-
 
   /// Loads the reset metadata belonging to [accountId].
   ///

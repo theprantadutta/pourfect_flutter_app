@@ -161,6 +161,44 @@ level (a band should hand off at its peak). A breather must score 25-40% below
 the running average of the five levels before it — both bounds matter, since a
 ceiling alone produced a level scoring 19 where 57 was allowed.
 
+## Past level 150: worlds the server generates
+
+The APK carries levels 1-150 and always will. Past that, the backend
+generates **worlds of 50 levels** (world index 4 is 151-200) and this app
+downloads them in the background. Owner's plan, 2026-09-30.
+
+- **The same worlds for everybody.** Stars, sync, the anti-cheat floor and the
+  leaderboards are keyed on level id, so level 151 is one board for every
+  player. Worlds belong to the INSTALL, not the account: signing out never
+  touches them.
+- **Fetched within one world of the end** (`kPrefetchWithin`): at start-up, on
+  every progress change, and on resume (which skips the ten-minute quiet
+  period after a failure, since the network may be back). Several rounds per
+  call, so a new phone restoring a player at 290 catches all the way up. The
+  server keeps three worlds published ahead of the furthest player.
+- **Nothing is appended unchecked** (`worldProblem`): the next world must start
+  at `heldThrough + 1`, bring exactly its levels, use at most ten colors, fill
+  every tube with exactly one color's worth, stay within twelve tubes and a
+  capacity this build draws, and need no mechanic outside
+  `kSupportedMechanics`. The first bad world stops the download there: the
+  one after it would start past a hole. Re-checked on restore, so a downgrade
+  cannot load worlds it cannot play.
+- **Stored with `LevelSetCodec`**, base64 in preferences: ~60 bytes a level.
+- **`campaignProvider` is a Provider of an AsyncValue now, not a
+  FutureProvider.** A world lands while the hub may be on screen, and a
+  FutureProvider would pass through loading to absorb it, blinking every
+  board that reads `asData`. `bundledCampaignProvider` is the asset alone.
+  Bands likewise: read `campaignBandsProvider`, never `campaignBands()`, or
+  level 151 has no world and `firstWhere` throws.
+- **Mechanics gate old builds.** The server serves worlds in order and stops at
+  the first one whose mechanics this build did not list, answering
+  `update_required`. Add to `kSupportedMechanics` only in the change that
+  teaches the board the mechanic.
+
+**Sync sends every cleared level at session start**, and the server's batch
+cap went from 200 to 2000 for this. Chunk `_run` before any player gets near
+2000 levels.
+
 **Daily challenges are NOT generated here.** The backend generates them at
 runtime, seeded from the date plus a salt that exists only in that private
 repo. They used to be baked into `generated/daily_pool.json` by the tool
@@ -759,6 +797,12 @@ Audio costs ~5.4 MB: SoLoud ships native libs for all three ABIs regardless of
 splits them per device.
 
 ## Known gaps
+
+- **Generated worlds have not been seen end to end on a device.** Both sides are
+  tested (the server against Postgres, the app against a scripted server) but
+  the backend with `/campaign/worlds` was not deployed when this was built.
+  Deploy it, let `level-world-generate` publish 151-300, then play past 150 on
+  the A24.
 
 - **No Sign in with Apple.** Android-only for now, so it costs nothing yet — but
   it blocks the first iOS submission, because Apple requires it alongside any

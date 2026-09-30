@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/services.dart' show rootBundle;
 
+import '../engine/board.dart';
 import '../engine/level_curve.dart';
 import '../engine/level_set.dart';
 
@@ -74,16 +75,24 @@ List<BandInfo> campaignBands() => [
     ),
 ];
 
-String _shapeLabel(CampaignBand band) {
-  final colors = band.tiers.map((t) => t.colorCount).toList()..sort();
-  final low = colors.first;
-  final high = colors.last;
-  final spare = band.tiers
-      .map((t) => t.emptyTubeCount)
-      .reduce((a, b) => a < b ? a : b);
-  final maxSpare = band.tiers
-      .map((t) => t.emptyTubeCount)
-      .reduce((a, b) => a > b ? a : b);
+String _shapeLabel(CampaignBand band) => _label(
+  colors: [for (final t in band.tiers) t.colorCount],
+  spares: [for (final t in band.tiers) t.emptyTubeCount],
+);
+
+/// The same label for a downloaded world, read off its boards. Breathers are
+/// included, so the range is what the player will actually meet.
+String shapeLabelFor(List<Board> boards) => _label(
+  colors: [for (final b in boards) b.colors.length],
+  spares: [for (final b in boards) b.tubes.where((t) => t.isEmpty).length],
+);
+
+String _label({required List<int> colors, required List<int> spares}) {
+  if (colors.isEmpty) return '';
+  final low = colors.reduce((a, b) => a < b ? a : b);
+  final high = colors.reduce((a, b) => a > b ? a : b);
+  final spare = spares.reduce((a, b) => a < b ? a : b);
+  final maxSpare = spares.reduce((a, b) => a > b ? a : b);
 
   final colorPart = low == high ? '$low colors' : '$low\u2013$high colors';
   final sparePart = spare == maxSpare

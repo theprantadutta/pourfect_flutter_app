@@ -83,6 +83,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                       key: const PageStorageKey('stats-levels'),
                       progress: progress,
                       levels: levels,
+                      bands: ref.watch(campaignBandsProvider),
                     ),
             ),
           ],
@@ -900,13 +901,18 @@ class _Bar extends StatelessWidget {
 class _Levels extends StatelessWidget {
   final Map<int, LevelProgress> progress;
   final LevelSet? levels;
+  final List<BandInfo> bands;
 
-  const _Levels({super.key, required this.progress, required this.levels});
+  const _Levels({
+    super.key,
+    required this.progress,
+    required this.levels,
+    required this.bands,
+  });
 
   @override
   Widget build(BuildContext context) {
     final set = levels;
-    final bands = campaignBands();
 
     return CustomScrollView(
       slivers: [

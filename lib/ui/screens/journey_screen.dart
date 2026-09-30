@@ -127,7 +127,10 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen>
 
   int _bandOf(int levelId) {
     final i = _bands.indexWhere((b) => b.contains(levelId));
-    return i < 0 ? 0 : i;
+    if (i >= 0) return i;
+    // Past everything this phone holds (a player who has cleared the lot)
+    // belongs with the last world, not back at the first.
+    return levelId > 1 && _bands.isNotEmpty ? _bands.length - 1 : 0;
   }
 
   void _trackViewedBand() {
@@ -209,7 +212,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen>
     final count = levelSet.levels.length;
     final current = progressOps.furthestUnlocked;
     _count = count;
-    _bands = campaignBands();
+    _bands = ref.watch(campaignBandsProvider);
     if (_viewedBand.value < 0) _viewedBand.value = _bandOf(current);
 
     final levels = [
