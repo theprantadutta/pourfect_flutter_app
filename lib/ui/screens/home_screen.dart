@@ -24,7 +24,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/account_controller.dart';
 import '../../state/daily_controller.dart';
-import '../../state/level_repository.dart';
 import '../../state/onboarding.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
@@ -34,6 +33,7 @@ import '../theme/toy.dart';
 import '../widgets/daily_card.dart';
 import '../widgets/next_level_hero.dart';
 import '../widgets/player_crest.dart';
+import '../widgets/more_levels_card.dart';
 import '../widgets/toy_kit.dart';
 import '../widgets/tutorial.dart';
 
@@ -67,7 +67,7 @@ class HomeScreen extends ConsumerWidget {
 
     final current = progressOps.furthestUnlocked;
     final level = levelSet?.byId(current)?.level;
-    final bands = campaignBands();
+    final bands = ref.watch(campaignBandsProvider);
     final band = bands.where((b) => b.contains(current)).firstOrNull;
 
     Widget hero({required bool expand}) => NextLevelHero(
@@ -180,6 +180,10 @@ class HomeScreen extends ConsumerWidget {
                           // a board-less shell.
                           if (level != null) ...[
                             hero(expand: false),
+                            const SizedBox(height: 14),
+                          ] else if (levelSet != null) ...[
+                            // Everything on this phone is cleared.
+                            const MoreLevelsCard(),
                             const SizedBox(height: 14),
                           ],
                           daily,

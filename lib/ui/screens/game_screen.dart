@@ -13,7 +13,6 @@ import '../../engine/move.dart';
 import '../../state/game_controller.dart';
 import '../../state/game_state.dart';
 import '../../state/hint_controller.dart';
-import '../../state/level_repository.dart';
 import '../../state/monetization_controller.dart';
 import '../../state/onboarding.dart';
 import '../../state/play_history.dart';
@@ -411,7 +410,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final profile = WinProfile.forOutcome(
       stars: result.stars,
       isNewBest: result.isNewBest,
-      isBandFinal: isBandFinalLevel(levelId),
+      isBandFinal: ref
+          .read(campaignBandsProvider)
+          .any((band) => band.lastLevel == levelId),
     );
 
     setState(() {
@@ -845,7 +846,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         final elapsed = _win.value * _profile.total;
         final result = _result;
         final progress = ref.read(progressProvider.notifier);
-        final bands = campaignBands();
+        final bands = ref.watch(campaignBandsProvider);
         final band = bands.firstWhere((b) => b.contains(state.level.id));
         final clearedNow = progress.clearedIn(band.firstLevel, band.lastLevel);
 

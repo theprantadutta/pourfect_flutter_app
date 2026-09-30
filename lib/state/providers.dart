@@ -28,6 +28,7 @@ import '../services/api/auth_service.dart';
 import '../services/api/identity.dart';
 import '../services/api/api_result.dart';
 import 'account_controller.dart';
+import 'campaign_worlds.dart';
 import 'frame_pace.dart';
 import '../services/api/leaderboard_api.dart';
 import '../services/review/play_review_service.dart';
@@ -432,10 +433,51 @@ final levelRepositoryProvider = Provider<LevelRepository>(
   (ref) => LevelRepository(),
 );
 
-/// The decoded campaign. ~7.8 KB, loaded once.
-final campaignProvider = FutureProvider<LevelSet>(
+/// The campaign bundled in the APK: levels 1-150. ~7.8 KB, loaded once.
+final bundledCampaignProvider = FutureProvider<LevelSet>(
   (ref) => ref.read(levelRepositoryProvider).load(),
 );
+
+/// The campaign this phone can play: the bundled 150 plus every world
+/// downloaded since (see `campaign_worlds.dart`).
+///
+/// A plain Provider of an AsyncValue rather than a FutureProvider, and that is
+/// deliberate. A world lands in the background, often while the hub is on
+/// screen; a FutureProvider would pass through loading to absorb it, and every
+/// screen reading `asData` would blink its board out for a frame. Merging
+/// synchronously means the campaign simply gets longer.
+final campaignProvider = Provider<AsyncValue<LevelSet>>((ref) {
+  final worlds = ref.watch(campaignWorldsProvider).worlds;
+  return ref
+      .watch(bundledCampaignProvider)
+      .whenData(
+        (bundled) => worlds.isEmpty
+            ? bundled
+            : LevelSet(
+                levelSetVersion: bundled.levelSetVersion,
+                levels: [
+                  ...bundled.levels,
+                  for (final world in worlds) ...world.levels,
+                ],
+              ),
+      );
+});
+
+/// Every world in campaign order, bundled bands first.
+final campaignBandsProvider = Provider<List<BandInfo>>((ref) {
+  final worlds = ref.watch(campaignWorldsProvider).worlds;
+  return [
+    ...campaignBands(),
+    for (final world in worlds)
+      BandInfo(
+        index: world.index,
+        name: world.name,
+        firstLevel: world.firstLevel,
+        lastLevel: world.lastLevel,
+        shape: shapeLabelFor([for (final l in world.levels) l.level.board]),
+      ),
+  ];
+});
 
 /// The level currently being played.
 final gameControllerProvider = NotifierProvider<GameController, GameState?>(
