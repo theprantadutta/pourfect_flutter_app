@@ -16,6 +16,7 @@
 ///     used to fill the bottom of the hub lives on Journey now, one tap away.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -24,6 +25,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/account_controller.dart';
 import '../../state/daily_controller.dart';
 import '../../state/level_repository.dart';
+import '../../state/onboarding.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
@@ -33,6 +35,7 @@ import '../widgets/daily_card.dart';
 import '../widgets/next_level_hero.dart';
 import '../widgets/player_crest.dart';
 import '../widgets/toy_kit.dart';
+import '../widgets/tutorial.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({
@@ -109,87 +112,94 @@ class HomeScreen extends ConsumerWidget {
 
     return ToyScaffold(
       padding: EdgeInsets.zero,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // A TALL PHONE fills its height: the hero card takes every spare
-          // pixel and grows the board into it. Stacking the content at the top
-          // and pinning the dock to the floor left a dead band of cream above
-          // the dock that read as a layout bug — measured at ~100dp on the
-          // A24, and more on taller phones.
-          //
-          // Below [_fillFrom] the content is laid out at its natural size and
-          // scrolls, because a squeezed toy stops looking like a toy and an
-          // overflow stripe is worse than either.
-          if (level != null && constraints.maxHeight >= _fillFrom) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-              // The hero grows its board into the spare height as far as the
-              // board can use it; whatever is still left is shared equally
-              // between the sections, so nothing collects in one dead band.
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: top.sublist(0, top.length - 1),
-                  ),
-                  Flexible(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      child: hero(expand: true),
-                    ),
-                  ),
-                  daily,
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: foot,
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: math.max(0, constraints.maxHeight - 20),
-              ),
-              // spaceBetween on an unbounded Column sizes it to the larger of
-              // its content and minHeight, so the dock sits on the floor and
-              // follows the content on a short phone.
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
+      child: Stack(
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // A TALL PHONE fills its height: the hero card takes every spare
+              // pixel and grows the board into it. Stacking the content at the top
+              // and pinning the dock to the floor left a dead band of cream above
+              // the dock that read as a layout bug — measured at ~100dp on the
+              // A24, and more on taller phones.
+              //
+              // Below [_fillFrom] the content is laid out at its natural size and
+              // scrolls, because a squeezed toy stops looking like a toy and an
+              // overflow stripe is worse than either.
+              if (level != null && constraints.maxHeight >= _fillFrom) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+                  // The hero grows its board into the spare height as far as the
+                  // board can use it; whatever is still left is shared equally
+                  // between the sections, so nothing collects in one dead band.
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      ...top,
-                      // Absent only for the few frames before the bundled
-                      // campaign has decoded; the card would otherwise flash
-                      // a board-less shell.
-                      if (level != null) ...[
-                        hero(expand: false),
-                        const SizedBox(height: 14),
-                      ],
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: top.sublist(0, top.length - 1),
+                      ),
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: hero(expand: true),
+                        ),
+                      ),
                       daily,
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: foot,
+                      ),
                     ],
                   ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: foot,
+                );
+              }
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: math.max(0, constraints.maxHeight - 20),
                   ),
-                ],
-              ),
-            ),
-          );
-        },
+                  // spaceBetween on an unbounded Column sizes it to the larger of
+                  // its content and minHeight, so the dock sits on the floor and
+                  // follows the content on a short phone.
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ...top,
+                          // Absent only for the few frames before the bundled
+                          // campaign has decoded; the card would otherwise flash
+                          // a board-less shell.
+                          if (level != null) ...[
+                            hero(expand: false),
+                            const SizedBox(height: 14),
+                          ],
+                          daily,
+                        ],
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: foot,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          // Over the layout, not in it: a one-time bubble must not shove the
+          // hub around when it appears and again when it goes.
+          const Positioned(left: 20, right: 20, bottom: 96, child: _HubTip()),
+        ],
       ),
     );
   }
@@ -550,13 +560,19 @@ class _Dock extends StatelessWidget {
           height: 66,
           radius: Toy.rControl,
           shadow: 4,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ToyBall(color: color, glyph: glyph, size: 26),
-              const SizedBox(height: 4),
-              Text(label, style: Toy.ui(13, weight: FontWeight.w800)),
-            ],
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          // Scales down rather than overflowing the fixed height when the
+          // system font is set large.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ToyBall(color: color, glyph: glyph, size: 26),
+                const SizedBox(height: 4),
+                Text(label, style: Toy.ui(13, weight: FontWeight.w800)),
+              ],
+            ),
           ),
         ),
       ),
@@ -570,6 +586,71 @@ class _Dock extends StatelessWidget {
         const SizedBox(width: 10),
         button('Stats', Toy.pink, BallGlyph.bar, onOpenStatistics),
       ],
+    );
+  }
+}
+
+/// The one-time hub bubble after the first win: where the rest of the game is.
+///
+/// Only for a genuinely new player (one to three levels cleared). Somebody
+/// updating with fifty levels behind them knows where Journey is.
+class _HubTip extends ConsumerStatefulWidget {
+  const _HubTip();
+
+  @override
+  ConsumerState<_HubTip> createState() => _HubTipState();
+}
+
+class _HubTipState extends ConsumerState<_HubTip> {
+  bool _asked = false;
+  bool _showing = false;
+  Timer? _hide;
+
+  @override
+  void dispose() {
+    _hide?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _claim() async {
+    if (!await ref.read(onboardingProvider.notifier).claim(Tip.hub)) return;
+    if (!mounted) return;
+    setState(() => _showing = true);
+    _hide = Timer(const Duration(seconds: 9), _dismiss);
+  }
+
+  void _dismiss() {
+    _hide?.cancel();
+    if (mounted) setState(() => _showing = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onboarding = ref.watch(onboardingProvider);
+    final solved = ref.watch(progressProvider).length;
+    if (!_asked &&
+        onboarding.loaded &&
+        !onboarding.hasSeen(Tip.hub) &&
+        solved >= 1 &&
+        solved <= 3) {
+      _asked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _claim());
+    }
+
+    return IgnorePointer(
+      ignoring: !_showing,
+      child: AnimatedOpacity(
+        duration: Toy.calm(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 220),
+        opacity: _showing ? 1 : 0,
+        child: TipBubble(
+          text:
+              'Nice! Journey maps every level, and there\'s a new '
+              'Daily Pour to play each day.',
+          onDismiss: _dismiss,
+        ),
+      ),
     );
   }
 }

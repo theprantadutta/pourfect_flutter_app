@@ -2,15 +2,20 @@
 /// win moment on the board, then the blue result screen.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/ads/ad_service.dart';
 import '../../services/analytics/analytics_service.dart';
+import '../../engine/move.dart';
 import '../../state/game_controller.dart';
+import '../../state/game_state.dart';
 import '../../state/hint_controller.dart';
 import '../../state/level_repository.dart';
 import '../../state/monetization_controller.dart';
+import '../../state/onboarding.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
@@ -21,6 +26,7 @@ import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
 import '../widgets/level_clock.dart';
 import '../widgets/toy_kit.dart';
+import '../widgets/tutorial.dart';
 import '../widgets/win_overlay.dart';
 import '../widgets/win_profile.dart';
 
@@ -30,7 +36,16 @@ class GameScreen extends ConsumerStatefulWidget {
   /// Returns to the level map.
   final VoidCallback onExit;
 
-  const GameScreen({super.key, required this.levelId, required this.onExit});
+  /// Run level 1 as the guided tutorial even if it was done before — the
+  /// "How to play" replay in Settings.
+  final bool tutorial;
+
+  const GameScreen({
+    super.key,
+    required this.levelId,
+    required this.onExit,
+    this.tutorial = false,
+  });
 
   @override
   ConsumerState<GameScreen> createState() => _GameScreenState();
@@ -78,6 +93,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
     // reports success, and is charged for a hint nobody ever saw.
     _game.endSession();
     _win.dispose();
+    _guideIdleTimer?.cancel();
+    _tipTimer?.cancel();
+    _hintTipTimer?.cancel();
     super.dispose();
   }
 
@@ -105,7 +123,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
         // suppressed level_complete for the rest of the run and the funnel
         // lost every success that had been interrupted.
         ref.read(gameControllerProvider.notifier).reportResumed();
-        ref.read(gameControllerProvider.notifier).resumeClock();
+        final current = ref.read(gameControllerProvider);
+        // The guided level is untimed; coming back must not start its clock.
+        if (current == null || !_guideActive(current)) {
+          ref.read(gameControllerProvider.notifier).resumeClock();
+        }
 
         // A failed initial ad load used to last the whole session. Somebody
         // who launches offline and reconnects should not be stuck without
@@ -176,6 +198,121 @@ class _GameScreenState extends ConsumerState<GameScreen>
     ref
         .read(gameControllerProvider.notifier)
         .startLevel(level.level, levelSetVersion: campaign.levelSetVersion);
+
+    _tip = null;
+    _tipTimer?.cancel();
+    _hintTipTimer?.cancel();
+    // A restart during the guided level starts its script over too.
+    _guideSteps = 0;
+    _guideBoard = null;
+    _restartGuideIdle();
+
+    // Level 2, the first level after the guided one: what the par meter says.
+    if (id == 2 && !ref.read(progressProvider).containsKey(2)) {
+      _showTip(
+        Tip.par,
+        'Finish within par for three stars. The bar shows how much you\'ve used.',
+      );
+    }
+    // Level 4 onward, a while in without finishing: hints exist.
+    if (id >= 4) {
+      final session = _game.sessionId;
+      _hintTipTimer = Timer(const Duration(seconds: 40), () {
+        if (!mounted || !_game.isCurrentSession(session)) return;
+        if (ref.read(gameControllerProvider)?.isWon ?? true) return;
+        _showTip(Tip.hint, 'Stuck? Hint shows you a good next move.');
+      });
+    }
+  }
+
+  /// Shows [tip] once in the life of the install, for a few seconds.
+  Future<void> _showTip(Tip tip, String text) async {
+    // Never while the guided level holds the slot: the tip would be marked
+    // seen without ever being on screen, and so would never show at all.
+    final current = ref.read(gameControllerProvider);
+    if (current != null && _guideActive(current)) return;
+    if (!await ref.read(onboardingProvider.notifier).claim(tip)) return;
+    if (!mounted) return;
+    setState(() => _tip = text);
+    _tipTimer?.cancel();
+    _tipTimer = Timer(const Duration(seconds: 6), () {
+      if (mounted) setState(() => _tip = null);
+    });
+  }
+
+  // ---- the guided first level ----------------------------------------------
+
+  /// Whether this board is the guided tutorial right now.
+  bool _guideActive(GameState state) {
+    if (_guideEnded || _result != null || state.level.id != 1) return false;
+    if (widget.tutorial) return true;
+    // Read, not watched: this also runs from the win path, outside build.
+    // build() watches the provider so the flags arriving still rebuilds.
+    final onboarding = ref.read(onboardingProvider);
+    // Not before the flags are read, and never for somebody who already
+    // cleared level 1 — an update must not ambush existing players.
+    return onboarding.loaded &&
+        !onboarding.tutorialDone &&
+        !ref.read(progressProvider).containsKey(1);
+  }
+
+  /// The move to point at, solved once per board rather than per frame.
+  Move? _guidance(GameState state) {
+    if (!identical(_guideBoard, state.board)) {
+      _guideBoard = state.board;
+      _guideMove = guidedMove(state.board);
+    }
+    return _guideMove;
+  }
+
+  void _restartGuideIdle() {
+    _guideIdleTimer?.cancel();
+    if (_guideIdle) setState(() => _guideIdle = false);
+    // Only the guided level has a hand to bring back.
+    if (ref.read(gameControllerProvider)?.level.id != 1) return;
+    _guideIdleTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _guideIdle = true);
+    });
+  }
+
+  void _skipGuide() {
+    _logTutorial(TutorialOutcome.skip);
+    ref.read(onboardingProvider.notifier).finishTutorial();
+    setState(() => _guideEnded = true);
+    // From here it is an ordinary level, clock and all.
+    _game.resumeClock();
+  }
+
+  void _logTutorial(TutorialOutcome outcome) {
+    ref
+        .read(analyticsServiceProvider)
+        .log(
+          TutorialEvent(
+            outcome: outcome,
+            step: _guideSteps,
+            isReplay: widget.tutorial,
+          ),
+        );
+  }
+
+  /// What the guide says, given where the player is.
+  String _guideCaption(GameState state, Move? move) {
+    final holding = state.selectedTube;
+    if (state.board.tubes.any((t) => t.isComplete) &&
+        _guideSteps >= 2 &&
+        holding == null) {
+      return 'Sorted! Now make every tube a single color.';
+    }
+    if (holding != null) {
+      return holding == move?.from
+          ? 'Now tap where they go: onto the same color, or an empty tube.'
+          : 'Tap the tube the hand points at to pick those up instead.';
+    }
+    return switch (_guideSteps) {
+      0 => 'Tap a tube to pick up the balls on top.',
+      1 => 'That\'s a pour! Keep going.',
+      _ => 'Keep going: one color per tube.',
+    };
   }
 
   void _onBallLanded(double fill, bool completedTube) {
@@ -191,7 +328,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
   }
 
   void _onTapTube(int tube) {
+    final movesBefore = ref.read(gameControllerProvider)?.movesUsed ?? 0;
     final outcome = ref.read(gameControllerProvider.notifier).tapTube(tube);
+    _restartGuideIdle();
     if (outcome == TapOutcome.selected ||
         outcome == TapOutcome.deselected ||
         outcome == TapOutcome.reselected) {
@@ -199,6 +338,17 @@ class _GameScreenState extends ConsumerState<GameScreen>
     }
 
     final state = ref.read(gameControllerProvider);
+    if (state != null && state.movesUsed > movesBefore) {
+      _guideSteps++;
+      if (_tip != null && state.level.id == 2) setState(() => _tip = null);
+      // The first time a run goes past par, and only then: undo is free.
+      if (state.movesUsed == state.level.minMoves + 1 && !state.isWon) {
+        _showTip(
+          Tip.undo,
+          'Past par? Undo is free — step back as far as you like.',
+        );
+      }
+    }
     if (state != null && state.isWon && _result == null) {
       _beginWinSequence(state.level.id, state.movesUsed);
     }
@@ -209,6 +359,14 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final campaign = ref.read(campaignProvider).value;
     final state = ref.read(gameControllerProvider);
     if (campaign == null || state == null) return;
+
+    if (_guideActive(state)) {
+      _logTutorial(TutorialOutcome.complete);
+      ref.read(onboardingProvider.notifier).finishTutorial();
+      _guideEnded = true;
+    }
+    _tip = null;
+    _hintTipTimer?.cancel();
 
     // The controller stopped the clock on the winning move, so this reads the
     // settled time rather than however long the win animation has been up.
@@ -636,6 +794,33 @@ class _GameScreenState extends ConsumerState<GameScreen>
   /// What the coaching toast last said, kept so it can fade out intact.
   ({int color, int count})? _coach;
 
+  // ---- the guided first level ----------------------------------------------
+
+  /// The guided level was finished or skipped on this screen.
+  bool _guideEnded = false;
+
+  /// tutorial_begin has been logged for this screen.
+  bool _guideLogged = false;
+
+  /// Pours the guide has seen, for the analytics step and the captions.
+  int _guideSteps = 0;
+
+  /// The board the cached guidance move was solved for, and the move.
+  Object? _guideBoard;
+  Move? _guideMove;
+
+  /// Past the first two pours the hand only comes back when the player stops
+  /// for a few seconds: shown every move, level 1 would play itself.
+  bool _guideIdle = false;
+  Timer? _guideIdleTimer;
+
+  // ---- one-time tips -------------------------------------------------------
+
+  /// A tip on screen, in the coaching slot, and the timer that clears it.
+  String? _tip;
+  Timer? _tipTimer;
+  Timer? _hintTipTimer;
+
   @override
   Widget build(BuildContext context) {
     final campaign = ref.watch(campaignProvider);
@@ -678,9 +863,39 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 1.0,
               );
 
+        ref.watch(onboardingProvider);
+        final guided = _guideActive(state);
+        final guideMove = guided ? _guidance(state) : null;
+        // The guided level is UNTIMED. A new player reading captions on their
+        // very first board was watching the clock go red past par and losing
+        // most of the level's points for it. It records as time 0, which the
+        // whole app already treats as "unknown", never as instant.
+        if (guided && state.isClockRunning) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _game.pauseClock(),
+          );
+        }
+        if (guided && !_guideLogged) {
+          _guideLogged = true;
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _logTutorial(TutorialOutcome.begin),
+          );
+        }
+        // The hand: every step of the first two pours, then only when the
+        // player pauses.
+        final guideTube = !guided || guideMove == null
+            ? null
+            : (_guideSteps >= 2 && !_guideIdle)
+            ? null
+            : state.selectedTube == guideMove.from
+            ? guideMove.to
+            : guideMove.from;
+
         final selected = state.selectedTube;
         final coaching =
             result == null &&
+            !guided &&
+            _tip == null &&
             selected != null &&
             state.board[selected].isNotEmpty &&
             state.level.id <= _coachUntilLevel;
@@ -709,40 +924,52 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   movesUsed: state.movesUsed,
                   minMoves: state.level.minMoves,
                   showParMeter: !_winActive,
-                  clock: LevelClock(
-                    // Read through the notifier rather than closing over
-                    // `state`: the ticker outlives this build, and a captured
-                    // snapshot would freeze at the time of the last move.
-                    elapsedSeconds: () =>
-                        ref
-                            .read(gameControllerProvider)
-                            ?.elapsedSecondsAt(DateTime.now()) ??
-                        0,
-                    parSeconds: state.parSeconds,
-                    isRunning: state.isClockRunning,
-                  ),
+                  clock: guided
+                      ? null
+                      : LevelClock(
+                          // Read through the notifier rather than closing over
+                          // `state`: the ticker outlives this build, and a captured
+                          // snapshot would freeze at the time of the last move.
+                          elapsedSeconds: () =>
+                              ref
+                                  .read(gameControllerProvider)
+                                  ?.elapsedSecondsAt(DateTime.now()) ??
+                              0,
+                          parSeconds: state.parSeconds,
+                          isRunning: state.isClockRunning,
+                        ),
                   onExit: _exit,
                 ),
               ),
               SizedBox(
-                height: 58,
+                // Two lines for the caption and tips; one for the coaching toast.
+                height: guided || (_tip != null && result == null) ? 84 : 58,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  // One toast that fades, holding its last words while it
-                  // does, rather than a switcher: deselecting and reselecting
-                  // the same tube would hand a switcher two identical keys.
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 160),
-                    opacity: coaching ? 1 : 0,
-                    child: _coach == null
-                        ? const SizedBox.shrink()
-                        : ToyToast(
-                            leading: ToyBall.id(_coach!.color, size: 22),
-                            text:
-                                'Holding ${_coach!.count}'
-                                ' · drop into a bouncing tube',
-                          ),
-                  ),
+                  // One slot, three voices in priority order: the guided
+                  // level's caption, a one-time tip, the coaching toast.
+                  child: guided
+                      ? GuideCaption(
+                          text: _guideCaption(state, guideMove),
+                          onSkip: _skipGuide,
+                        )
+                      : _tip != null && result == null
+                      ? ToyToast(text: _tip!)
+                      // One toast that fades, holding its last words while it
+                      // does, rather than a switcher: deselecting and reselecting
+                      // the same tube would hand a switcher two identical keys.
+                      : AnimatedOpacity(
+                          duration: const Duration(milliseconds: 160),
+                          opacity: coaching ? 1 : 0,
+                          child: _coach == null
+                              ? const SizedBox.shrink()
+                              : ToyToast(
+                                  leading: ToyBall.id(_coach!.color, size: 22),
+                                  text:
+                                      'Holding ${_coach!.count}'
+                                      ' · drop into a bouncing tube',
+                                ),
+                        ),
                 ),
               ),
               Expanded(
@@ -751,6 +978,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   child: BoardView(
                     onTapTube: _onTapTube,
                     onBallLanded: _onBallLanded,
+                    guideTube: guideTube,
                     win: result == null
                         ? null
                         : WinPhase(

@@ -418,7 +418,9 @@ class _WinResultState extends State<WinResult>
   Widget build(BuildContext context) {
     final p = widget.profile;
     final beatPar =
-        widget.parSeconds > 0 && widget.elapsedSeconds <= widget.parSeconds;
+        widget.parSeconds > 0 &&
+        widget.elapsedSeconds > 0 &&
+        widget.elapsedSeconds <= widget.parSeconds;
     final newFastest =
         widget.previousFastest != null &&
         widget.elapsedSeconds > 0 &&
@@ -625,8 +627,16 @@ class _WinResultState extends State<WinResult>
             alignment: Alignment.topCenter,
             children: [
               _ResultChip(
-                value: formatClock(widget.elapsedSeconds),
-                label: newFastest ? 'fastest yet!' : 'time',
+                // Zero is an untimed run — the guided first level — and the
+                // app reads 0 as "unknown" everywhere, never as instant.
+                value: widget.elapsedSeconds > 0
+                    ? formatClock(widget.elapsedSeconds)
+                    : '—',
+                label: widget.elapsedSeconds <= 0
+                    ? 'untimed'
+                    : newFastest
+                    ? 'fastest yet!'
+                    : 'time',
               ),
               if (beatPar && sticker > 0)
                 Positioned(

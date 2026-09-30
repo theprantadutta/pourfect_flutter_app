@@ -69,11 +69,16 @@ class BoardView extends ConsumerStatefulWidget {
   /// and haptics.
   final void Function(double fill, bool completed)? onBallLanded;
 
+  /// The tube the guided first level wants tapped next. A hand under it bobs
+  /// toward it. Null draws nothing.
+  final int? guideTube;
+
   const BoardView({
     super.key,
     required this.onTapTube,
     this.win,
     this.onBallLanded,
+    this.guideTube,
   });
 
   @override
@@ -98,6 +103,9 @@ class _BoardViewState extends ConsumerState<BoardView>
   /// the hint pulse, it only runs while there is something to point at.
   late final AnimationController _bob;
 
+  /// Drives the guiding hand. Runs only while there is a tube to point at.
+  late final AnimationController _guide;
+
   PourEvent? _active;
   int? _glowTube;
 
@@ -121,6 +129,10 @@ class _BoardViewState extends ConsumerState<BoardView>
       duration: const Duration(milliseconds: 1100),
     );
     _bob = AnimationController(vsync: this, duration: _bobDuration);
+    _guide = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
   }
 
   @override
@@ -129,6 +141,7 @@ class _BoardViewState extends ConsumerState<BoardView>
     _flourish.dispose();
     _hintPulse.dispose();
     _bob.dispose();
+    _guide.dispose();
     super.dispose();
   }
 
@@ -222,6 +235,7 @@ class _BoardViewState extends ConsumerState<BoardView>
                     ..._buildFlyingBalls(state, geometry, tokens),
                     ..._buildLegalArrows(state, geometry),
                     ..._buildSortedStickers(state, geometry),
+                    ..._buildGuide(geometry),
                   ],
                 ),
               ),
@@ -359,6 +373,47 @@ class _BoardViewState extends ConsumerState<BoardView>
     final t = _flourish.value;
     if (t == 0 || t == 1) return 0;
     return 1 - Curves.easeIn.transform(t);
+  }
+
+  // ---- the guiding hand -----------------------------------------------------
+
+  /// A hand under the tube the guided level wants tapped, nudging up at it.
+  ///
+  /// Under the tube, not over it: above is where a lifted run and the legal
+  /// arrows live, and a hand there would sit on top of the very thing it is
+  /// pointing at.
+  List<Widget> _buildGuide(BoardGeometry geometry) {
+    final tube = widget.guideTube;
+    final show = tube != null && widget.win == null;
+    if (show && !_guide.isAnimating && !Toy.calm(context)) {
+      _guide.repeat(reverse: true);
+    } else if (!show && _guide.isAnimating) {
+      _guide
+        ..stop()
+        ..value = 0;
+    }
+    if (!show || tube >= geometry.tubeRects.length) return const [];
+
+    final rect = geometry.tubeRects[tube];
+    const size = 46.0;
+    return [
+      Positioned(
+        left: rect.center.dx - size / 2,
+        top: rect.bottom + 10,
+        width: size,
+        height: size,
+        child: IgnorePointer(
+          child: AnimatedBuilder(
+            animation: _guide,
+            builder: (context, child) => Transform.translate(
+              offset: Offset(0, 8 * Curves.easeInOut.transform(_guide.value)),
+              child: child,
+            ),
+            child: const _GuideHand(),
+          ),
+        ),
+      ),
+    ];
   }
 
   // ---- markers over tubes --------------------------------------------------
@@ -773,4 +828,22 @@ class _ArrowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ArrowPainter old) => old.color != color;
+}
+
+/// The tutorial's pointing hand: a white finger on a tomato button, in the
+/// toy outline, so it reads as part of the game rather than an OS overlay.
+class _GuideHand extends StatelessWidget {
+  const _GuideHand();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: Toy.tomato,
+      shape: BoxShape.circle,
+      border: Border.all(color: Toy.ink, width: Toy.stroke),
+      boxShadow: Toy.hard(3),
+    ),
+    alignment: Alignment.center,
+    child: const Icon(Icons.touch_app_rounded, color: Colors.white, size: 26),
+  );
 }

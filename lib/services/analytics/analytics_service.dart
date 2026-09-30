@@ -288,6 +288,37 @@ final class AdCompleted extends AnalyticsEvent {
   };
 }
 
+/// How the guided first level ended, or that it began.
+enum TutorialOutcome { begin, complete, skip }
+
+/// The guided first level. `tutorial_begin` and `tutorial_complete` are GA4's
+/// recommended names, so Firebase draws the funnel without configuration; a
+/// skip carries the step it happened at, which is the part worth tuning.
+final class TutorialEvent extends AnalyticsEvent {
+  final TutorialOutcome outcome;
+
+  /// Guidance steps shown so far (pours pointed at).
+  final int step;
+
+  /// Replayed from Settings rather than a first run.
+  final bool isReplay;
+
+  const TutorialEvent({
+    required this.outcome,
+    required this.step,
+    required this.isReplay,
+  });
+
+  @override
+  String get name => 'tutorial_${outcome.name}';
+
+  @override
+  Map<String, Object> get parameters => {
+    'step': step,
+    'is_replay': isReplay ? 1 : 0,
+  };
+}
+
 final class IapViewed extends AnalyticsEvent {
   final String productId;
   final String placement;

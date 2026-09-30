@@ -338,6 +338,7 @@ an app installed from Play, so `requestReview()` silently no-ops on a debug
 APK. `[review] asking` in logcat is the only signal that the rules let it
 through; see it on the internal testing track.
 
+
 ## Notifications
 
 `PushService` owns permission and the FCM token — who we may notify and where
@@ -408,6 +409,33 @@ Solved on a background isolate via `Isolate.run`. Three rules, all enforced in
 2. **`HintOutcome.resolved` is the only outcome that may consume a reward.**
 3. **A hint for a position the player has left is discarded** (`stale`), and
    tapping Hint again while one is solving cancels it.
+
+## Onboarding — teach by playing
+
+No slides. Level 1 IS the tutorial (`state/onboarding.dart`,
+`ui/widgets/tutorial.dart`): a tomato hand under the tube to tap and one
+caption with an always-visible Skip. The hand points at `guidedMove(board)` —
+the first step of an optimal solution FROM THE LIVE BOARD — so wandering off
+script is never "wrong"; it is simply guided from where the player is. It shows
+for the first two pours, then only after 4s idle, or level 1 plays itself.
+
+Rules, each learned on the A24:
+
+- **The guided level is untimed.** A new player reading captions watched the
+  clock turn red and lost most of the level's points. The clock is hidden and
+  paused; the run records time 0, which the app already reads as unknown.
+- **Only for genuinely new players.** Never shown if level 1 is already
+  cleared, so an update cannot ambush existing players. Settings → How to play
+  replays it and resets every tip.
+- **Tips are one-time and in context** (`Tip`: par on level 2, undo the first
+  time past par, hint after 40s stuck from level 4, the hub bubble after the
+  first win for players with 1–3 clears). A tip is CLAIMED only when it can
+  actually show — claiming one under the guided caption marked it seen without
+  it ever appearing.
+- **`claim` awaits the stored flags** (the lazy-provider trap again).
+
+Analytics: `tutorial_begin` / `tutorial_complete` (GA4 recommended names, so
+the funnel builds itself) and `tutorial_skip` with the step it happened at.
 
 ## The win moment
 

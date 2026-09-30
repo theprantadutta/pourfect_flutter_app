@@ -20,6 +20,7 @@ import '../../services/analytics/analytics_service.dart';
 import '../../services/iap/billing_service.dart';
 import '../../state/account_controller.dart';
 import '../../state/monetization_controller.dart';
+import '../../state/onboarding.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
@@ -32,6 +33,7 @@ import '../widgets/rename_dialog.dart';
 import '../widgets/settings_rows.dart';
 import '../widgets/toy_kit.dart';
 import 'account_screen.dart';
+import 'game_screen.dart';
 
 /// The hosted legal documents. Confirmed live, and the same host Snake
 /// Classic uses.
@@ -140,6 +142,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     };
     if (message == null) return;
     showRowMessage(context, message);
+  }
+
+  /// Replays the guided level, with every one-time tip reset to show again.
+  Future<void> _howToPlay() async {
+    await ref.read(onboardingProvider.notifier).reset();
+    if (!mounted) return;
+    Navigator.of(context).push(
+      PourfectPageRoute<void>(
+        builder: (route) => GameScreen(
+          levelId: 1,
+          tutorial: true,
+          onExit: () => Navigator.of(route).pop(),
+        ),
+      ),
+    );
   }
 
   Future<void> _restore() async {
@@ -477,6 +494,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SectionHeader(label: 'Support'),
                   Group(
                     children: [
+                      ActionRow(
+                        icon: const Icon(Icons.school_rounded),
+                        iconColor: Toy.yellow,
+                        title: 'How to play',
+                        detail: 'Replay the guided first level',
+                        onTap: _howToPlay,
+                      ),
                       _RemoveAdsRow(
                         adsRemoved: money.adsRemoved,
                         price: ref
