@@ -195,6 +195,12 @@ downloads them in the background. Owner's plan, 2026-09-30.
   `update_required`. Add to `kSupportedMechanics` only in the change that
   teaches the board the mechanic.
 
+**The hub after the last held level shows `MoreLevelsCard`.** Before this the
+next-level card simply vanished after 150, leaving a hole in the hub at the
+moment a player had been most loyal. It says where more levels come from
+(online, in the background), offers "Check again" after a failed download, and
+says "update" when that is the truth.
+
 **Sync sends every cleared level at session start**, and the server's batch
 cap went from 200 to 2000 for this. Chunk `_run` before any player gets near
 2000 levels.

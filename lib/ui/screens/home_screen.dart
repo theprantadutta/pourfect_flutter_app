@@ -33,6 +33,7 @@ import '../theme/toy.dart';
 import '../widgets/daily_card.dart';
 import '../widgets/next_level_hero.dart';
 import '../widgets/player_crest.dart';
+import '../widgets/more_levels_card.dart';
 import '../widgets/toy_kit.dart';
 import '../widgets/tutorial.dart';
 
@@ -179,6 +180,10 @@ class HomeScreen extends ConsumerWidget {
                           // a board-less shell.
                           if (level != null) ...[
                             hero(expand: false),
+                            const SizedBox(height: 14),
+                          ] else if (levelSet != null) ...[
+                            // Everything on this phone is cleared.
+                            const MoreLevelsCard(),
                             const SizedBox(height: 14),
                           ],
                           daily,
