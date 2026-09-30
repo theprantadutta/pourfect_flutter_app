@@ -34,4 +34,12 @@ abstract class ReviewService {
   /// Returns when the flow is over. Never throws, and never reports whether the
   /// player actually rated — Play does not say.
   Future<void> request();
+
+  /// Opens the game's store listing, for a player who ASKED to rate it.
+  ///
+  /// Not [request]: Play's quota may silently show nothing, and a button that
+  /// sometimes does nothing reads as broken. Google's own guidance is to send
+  /// a call-to-action to the listing instead. Returns false when no store
+  /// could be opened. Never throws.
+  Future<bool> openStoreListing();
 }

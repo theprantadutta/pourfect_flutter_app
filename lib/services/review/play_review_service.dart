@@ -37,6 +37,19 @@ class PlayReviewService implements ReviewService {
       debugPrint('[review] request failed: $error');
     }
   }
+
+  @override
+  Future<bool> openStoreListing() async {
+    try {
+      // No appStoreId: Android finds the listing from the package name. iOS
+      // needs one and has no listing yet, so it lands in the catch below.
+      await _review.openStoreListing();
+      return true;
+    } catch (error) {
+      debugPrint('[review] could not open the store listing: $error');
+      return false;
+    }
+  }
 }
 
 /// Used where there is no store: tests, and any desktop build.
@@ -48,4 +61,7 @@ class NoopReviewService implements ReviewService {
 
   @override
   Future<void> request() async {}
+
+  @override
+  Future<bool> openStoreListing() async => false;
 }

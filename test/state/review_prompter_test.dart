@@ -27,6 +27,9 @@ class FakeReview implements ReviewService {
 
   @override
   Future<void> request() async => requests++;
+
+  @override
+  Future<bool> openStoreListing() async => true;
 }
 
 /// A review service that throws, the way a device with a broken Play Services
@@ -37,6 +40,9 @@ class BrokenReview implements ReviewService {
 
   @override
   Future<void> request() async => throw StateError('no play services');
+
+  @override
+  Future<bool> openStoreListing() async => throw StateError('no play services');
 }
 
 void main() {
@@ -201,22 +207,24 @@ void main() {
       await expectLater(prompter.maybeAsk(), completes);
     });
 
-    test('an ask is recorded even though Play never says what happened',
-        () async {
-      // Play returns success whether or not a card appeared, deliberately, so
-      // apps cannot detect and retry. The record is therefore of the ATTEMPT,
-      // written before the call — anything that interrupts a system overlay
-      // would otherwise lose it and ask again next time.
-      final built = harness();
-      final prompter = built.container.read(reviewPrompterProvider.notifier);
+    test(
+      'an ask is recorded even though Play never says what happened',
+      () async {
+        // Play returns success whether or not a card appeared, deliberately, so
+        // apps cannot detect and retry. The record is therefore of the ATTEMPT,
+        // written before the call — anything that interrupts a system overlay
+        // would otherwise lose it and ask again next time.
+        final built = harness();
+        final prompter = built.container.read(reviewPrompterProvider.notifier);
 
-      prompter.noteDelight();
-      await prompter.maybeAsk();
+        prompter.noteDelight();
+        await prompter.maybeAsk();
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('pourfect.review.ask_count'), 1);
-      expect(prefs.getString('pourfect.review.last_asked'), isNotNull);
-    });
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getInt('pourfect.review.ask_count'), 1);
+        expect(prefs.getString('pourfect.review.last_asked'), isNotNull);
+      },
+    );
   });
 }
 
@@ -228,12 +236,12 @@ class _StubProgress extends ProgressController {
 
   @override
   Map<int, LevelProgress> build() => {
-        for (var id = 1; id <= solved; id++)
-          id: LevelProgress(
-            levelId: id,
-            stars: 3,
-            bestMoves: 10,
-            levelSetVersion: 1,
-          ),
-      };
+    for (var id = 1; id <= solved; id++)
+      id: LevelProgress(
+        levelId: id,
+        stars: 3,
+        bestMoves: 10,
+        levelSetVersion: 1,
+      ),
+  };
 }

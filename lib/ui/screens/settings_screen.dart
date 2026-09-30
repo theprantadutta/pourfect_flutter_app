@@ -159,6 +159,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  /// The store listing, for somebody who came looking for a way to rate.
+  ///
+  /// The listing rather than the in-app card: Play may silently refuse the
+  /// card on quota, and a row that sometimes does nothing reads as broken.
+  /// The card stays where `ReviewPrompter` puts it — after a good win.
+  Future<void> _rate() async {
+    final opened = await ref.read(reviewServiceProvider).openStoreListing();
+    if (!opened && mounted) {
+      showRowMessage(context, 'Could not open the store.');
+    }
+  }
+
   Future<void> _restore() async {
     await ref.read(billingServiceProvider).restorePurchases();
     if (!mounted) return;
@@ -500,6 +512,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         title: 'How to play',
                         detail: 'Replay the guided first level',
                         onTap: _howToPlay,
+                      ),
+                      ActionRow(
+                        icon: const Icon(Icons.star_rounded),
+                        iconColor: Toy.pink,
+                        title: 'Rate Pourfect',
+                        detail: 'Tell other players what you think',
+                        onTap: _rate,
                       ),
                       _RemoveAdsRow(
                         adsRemoved: money.adsRemoved,

@@ -338,6 +338,11 @@ an app installed from Play, so `requestReview()` silently no-ops on a debug
 APK. `[review] asking` in logcat is the only signal that the rules let it
 through; see it on the internal testing track.
 
+**Settings → Rate Pourfect opens the store LISTING, not the card.** Asked for
+by the 1.0.0 testers. The card is quota-bound and may silently not appear,
+which from a button somebody pressed on purpose reads as a broken button —
+Google's guidance is to send a call-to-action to the listing. It never touches
+`ReviewPrompter`'s caps: a player who went looking for the row is not an ask.
 
 ## Notifications
 
