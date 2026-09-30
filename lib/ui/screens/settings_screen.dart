@@ -33,6 +33,7 @@ import '../widgets/rename_dialog.dart';
 import '../widgets/settings_rows.dart';
 import '../widgets/toy_kit.dart';
 import 'account_screen.dart';
+import 'faq_screen.dart';
 import 'game_screen.dart';
 
 /// The hosted legal documents. Confirmed live, and the same host Snake
@@ -155,6 +156,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           tutorial: true,
           onExit: () => Navigator.of(route).pop(),
         ),
+      ),
+    );
+  }
+
+  void _openQuestions() {
+    Navigator.of(context).push(
+      PourfectPageRoute<void>(
+        builder: (route) => FaqScreen(onClose: () => Navigator.of(route).pop()),
       ),
     );
   }
@@ -512,6 +521,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         title: 'How to play',
                         detail: 'Replay the guided first level',
                         onTap: _howToPlay,
+                      ),
+                      ActionRow(
+                        icon: const Icon(Icons.help_rounded),
+                        iconColor: Toy.lilac,
+                        iconInk: Colors.white,
+                        title: 'Questions',
+                        detail: 'Stars, hints, the clock and more',
+                        onTap: _openQuestions,
                       ),
                       ActionRow(
                         icon: const Icon(Icons.star_rounded),

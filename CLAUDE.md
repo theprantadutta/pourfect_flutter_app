@@ -439,6 +439,12 @@ Rules, each learned on the A24:
   it ever appearing.
 - **`claim` awaits the stored flags** (the lazy-provider trap again).
 
+**Settings → Questions** (`faq_screen.dart`) answers the rest in words. Every
+answer is a rule the code enforces — stars from `starsFor`, `kFreeHints`, the
+clock moving points only, the tube once par is spent — and
+`test/ui/faq_screen_test.dart` pins the copy to those constants. There is no
+contact address on it, because none is confirmed.
+
 Analytics: `tutorial_begin` / `tutorial_complete` (GA4 recommended names, so
 the funnel builds itself) and `tutorial_skip` with the step it happened at.
 
