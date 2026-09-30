@@ -1085,6 +1085,16 @@ user with an unknown provider was stored as `Anonymous` — so an account with a
 real email would have been recorded as anonymous while `IsAnonymous` said
 otherwise.
 
+**The password field has an eye.** Testers on 1.0.0 had no way to check a
+password typed blind. Showing it does NOT re-enable keyboard suggestions —
+`enableSuggestions` keys on the field being secret, not on it being hidden
+right now. Creating an account shows the 8-character rule up front as helper
+text, rather than only as an error after the attempt.
+
+**A sign-in that worked says so.** The screen used to pop without a word, and
+testers could not tell success from a flow that had quietly given up. The
+messenger is taken BEFORE the pop, so the bar lands on the screen underneath.
+
 **Password reset never reveals whether an address is registered.** The screen
 says the same sentence either way; only the log distinguishes them. "No account
 with that address" is exactly what somebody probing for registered emails wants.

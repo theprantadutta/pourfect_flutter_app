@@ -71,7 +71,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   /// their puzzle progress.
   /// [solved] is how many levels this device has, because the honest wording
   /// of one of these outcomes depends entirely on it.
-  static String? _explain(IdentityOutcome outcome, int solved) => switch (outcome) {
+  static String? _explain(
+    IdentityOutcome outcome,
+    int solved,
+  ) => switch (outcome) {
     IdentityOutcome.ok => null,
     // Backing out of the Google sheet is a decision, not a failure.
     IdentityOutcome.cancelled => null,
@@ -87,16 +90,18 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     //
     // The confirmation dialog has always branched on this. The inline message
     // now agrees with it rather than contradicting it a step earlier.
-    IdentityOutcome.credentialBelongsToAnotherAccount => solved == 0
-        ? 'You already have an account with that email. Sign in to it and '
-              'this phone will load the stars saved to it.'
-        : 'You already have an account with that email. This phone has '
-              '$solved solved ${solved == 1 ? "level" : "levels"} that are '
-              'not on it, and the two cannot be merged — signing in replaces '
-              'them with whatever that account holds.',
+    IdentityOutcome.credentialBelongsToAnotherAccount =>
+      solved == 0
+          ? 'You already have an account with that email. Sign in to it and '
+                'this phone will load the stars saved to it.'
+          : 'You already have an account with that email. This phone has '
+                '$solved solved ${solved == 1 ? "level" : "levels"} that are '
+                'not on it, and the two cannot be merged — signing in replaces '
+                'them with whatever that account holds.',
     IdentityOutcome.emailAlreadyInUse =>
       'There is already an account with that email. Try signing in instead.',
-    IdentityOutcome.emailMalformed => 'That does not look like an email address.',
+    IdentityOutcome.emailMalformed =>
+      'That does not look like an email address.',
     IdentityOutcome.passwordTooWeak =>
       'That password is too easy to guess. Try a longer one.',
     IdentityOutcome.wrongPassword => 'That email and password do not match.',
@@ -120,7 +125,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
   Future<void> _google() async {
     setState(() => _problem = null);
-    final result = await ref.read(accountProvider.notifier).continueWithGoogle();
+    final result = await ref
+        .read(accountProvider.notifier)
+        .continueWithGoogle();
 
     if (result.outcome == IdentityOutcome.credentialBelongsToAnotherAccount) {
       // ASKED RIGHT HERE, because it is what almost everybody wants.
@@ -240,11 +247,23 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (!mounted) return;
 
     if (result.isOk) {
+      // SAID OUT LOUD. The screen used to close without a word, and testers
+      // could not tell a sign-in that worked from one that had quietly given
+      // up. Taken before the pop, while this context still has an ancestor.
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).maybePop();
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          rowMessageBar('Signed in. Your stars now follow you to a new phone.'),
+        );
       return;
     }
     setState(
-      () => _problem = _explain(result.outcome, ref.read(progressProvider).length),
+      () => _problem = _explain(
+        result.outcome,
+        ref.read(progressProvider).length,
+      ),
     );
   }
 
@@ -261,7 +280,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     // The same message whether or not that address has an account. Saying
     // otherwise would let a stranger test which emails are registered.
     setState(
-      () => _problem = 'If that email has an account, a reset link is on its way.',
+      () => _problem =
+          'If that email has an account, a reset link is on its way.',
     );
   }
 
@@ -426,7 +446,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     // the point: a control that looks like it worked on a request that did not
     // tells somebody they are hidden while they are still listed.
     if (!ok && mounted) {
-      showRowMessage(context, 'Could not reach the server, so nothing changed.');
+      showRowMessage(
+        context,
+        'Could not reach the server, so nothing changed.',
+      );
     }
   }
 
@@ -529,6 +552,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                       controller: _password,
                       label: 'Password',
                       obscure: true,
+                      helper: _registering ? 'At least 8 characters' : null,
                       autofillHints: [
                         _registering
                             ? AutofillHints.newPassword
@@ -893,10 +917,7 @@ class _SyncRow extends StatelessWidget {
         'Waiting to sync',
         'Your latest levels go up next',
       ),
-      _ => (
-        _synced(sync.lastSucceededAt),
-        'Progress saved to your account',
-      ),
+      _ => (_synced(sync.lastSucceededAt), 'Progress saved to your account'),
     };
     return ActionRow(
       icon: const Icon(Icons.swap_vert_rounded),
@@ -948,13 +969,21 @@ class _SignOutCard extends StatelessWidget {
                 children: [
                   Text(
                     'Sign out',
-                    style: Toy.ui(15, weight: FontWeight.w800, color: kDestructive),
+                    style: Toy.ui(
+                      15,
+                      weight: FontWeight.w800,
+                      color: kDestructive,
+                    ),
                   ),
                   const SizedBox(height: 1),
                   Text(
                     // States what it does NOT do, because that is the fear.
                     'Your progress stays on this phone',
-                    style: Toy.ui(12, weight: FontWeight.w500, color: Toy.inkMuted),
+                    style: Toy.ui(
+                      12,
+                      weight: FontWeight.w500,
+                      color: Toy.inkMuted,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -968,12 +997,13 @@ class _SignOutCard extends StatelessWidget {
   );
 }
 
-class _Field extends StatelessWidget {
+class _Field extends StatefulWidget {
   const _Field({
     required this.controller,
     required this.label,
     required this.validator,
     this.obscure = false,
+    this.helper,
     this.keyboardType,
     this.autofillHints,
   });
@@ -981,9 +1011,25 @@ class _Field extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final String? Function(String?) validator;
+
+  /// A secret field: hidden by default, with an eye to show it.
   final bool obscure;
+
+  /// The rule the field will be held to, shown BEFORE it is broken.
+  final String? helper;
   final TextInputType? keyboardType;
   final List<String>? autofillHints;
+
+  @override
+  State<_Field> createState() => _FieldState();
+}
+
+class _FieldState extends State<_Field> {
+  /// Whether a secret field is currently hidden.
+  ///
+  /// Testers reported typing a password blind with no way to check it — on a
+  /// phone keyboard, a typo is the usual reason a sign-in fails.
+  late bool _hidden = widget.obscure;
 
   @override
   Widget build(BuildContext context) {
@@ -993,23 +1039,42 @@ class _Field extends StatelessWidget {
     );
 
     return TextFormField(
-      controller: controller,
-      obscureText: obscure,
-      keyboardType: keyboardType,
-      autofillHints: autofillHints,
+      controller: widget.controller,
+      obscureText: _hidden,
+      keyboardType: widget.keyboardType,
+      autofillHints: widget.autofillHints,
       autocorrect: false,
-      enableSuggestions: !obscure,
+      // Keyed on the FIELD, not on whether it is hidden right now: showing a
+      // password must not start feeding it to the keyboard's suggestions.
+      enableSuggestions: !widget.obscure,
       style: Toy.ui(16),
       cursorColor: Toy.tomato,
-      validator: validator,
+      validator: widget.validator,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: widget.label,
         labelStyle: Toy.ui(14, weight: FontWeight.w600, color: Toy.inkMuted),
         floatingLabelStyle: Toy.ui(14, weight: FontWeight.w700),
+        helperText: widget.helper,
+        helperStyle: Toy.ui(12, color: Toy.inkMuted),
+        suffixIcon: !widget.obscure
+            ? null
+            : Pressable(
+                onPressed: () => setState(() => _hidden = !_hidden),
+                semanticLabel: _hidden ? 'Show password' : 'Hide password',
+                child: Icon(
+                  _hidden
+                      ? Icons.visibility_rounded
+                      : Icons.visibility_off_rounded,
+                  color: Toy.ink,
+                ),
+              ),
         errorStyle: Toy.ui(12, color: kDestructive),
         filled: true,
         fillColor: Toy.cream,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         enabledBorder: border(Toy.ink),
         focusedBorder: border(Toy.tomato),
         errorBorder: border(kDestructive),

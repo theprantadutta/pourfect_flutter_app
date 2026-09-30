@@ -387,22 +387,24 @@ class BarsGlyph extends StatelessWidget {
 void showRowMessage(BuildContext context, String message) {
   ScaffoldMessenger.of(context)
     ..clearSnackBars()
-    ..showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Toy.ink,
-        elevation: 0,
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Toy.rControl),
-        ),
-        content: Text(
-          message,
-          style: Toy.ui(14, weight: FontWeight.w700, color: Colors.white),
-        ),
-      ),
-    );
+    ..showSnackBar(rowMessageBar(message));
 }
+
+/// The bar [showRowMessage] shows, for a caller that has to hold the
+/// messenger itself — one about to pop its own route, say.
+SnackBar rowMessageBar(String message) => SnackBar(
+  behavior: SnackBarBehavior.floating,
+  backgroundColor: Toy.ink,
+  elevation: 0,
+  margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(Toy.rControl),
+  ),
+  content: Text(
+    message,
+    style: Toy.ui(14, weight: FontWeight.w700, color: Colors.white),
+  ),
+);
 
 /// Masks the local part of an email for display: `pranta•••@gmail.com`.
 ///

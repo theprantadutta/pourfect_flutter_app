@@ -87,7 +87,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  Future<StubIdentity> pump(WidgetTester tester, {StubIdentity? identity}) async {
+  Future<StubIdentity> pump(
+    WidgetTester tester, {
+    StubIdentity? identity,
+  }) async {
     final stub = identity ?? StubIdentity();
 
     await tester.pumpWidget(
@@ -102,8 +105,9 @@ void main() {
     return stub;
   }
 
-  testWidgets('a signed-in player is NOT asked to sign in again',
-      (tester) async {
+  testWidgets('a signed-in player is NOT asked to sign in again', (
+    tester,
+  ) async {
     // Reported from a device: Settings showed the email correctly, but tapping
     // the crest on the home screen opened this screen still offering "Continue
     // with Google". Settings only ever got it right because ITS entry point is
@@ -159,8 +163,9 @@ void main() {
     );
   });
 
-  testWidgets('a short password is refused before Firebase sees it',
-      (tester) async {
+  testWidgets('a short password is refused before Firebase sees it', (
+    tester,
+  ) async {
     final stub = await pump(tester);
 
     await tester.enterText(find.byType(TextFormField).first, 'a@b.com');
@@ -172,8 +177,9 @@ void main() {
     expect(stub.calls, isEmpty);
   });
 
-  testWidgets('the length rule applies to CREATING a password, not using one',
-      (tester) async {
+  testWidgets('the length rule applies to CREATING a password, not using one', (
+    tester,
+  ) async {
     // Enforcing it at sign-in would lock out anybody whose existing password
     // is shorter than a rule invented after they chose it.
     final stub = await pump(tester);
@@ -190,36 +196,96 @@ void main() {
     expect(stub.calls, contains('signIn:a@b.com'));
   });
 
-  testWidgets('a switched-off sign-in method is not reported as a network fault',
-      (tester) async {
-    // Email/Password is OFF by default on a new Firebase project, and Firebase
-    // says `operation-not-allowed`. That used to fall through to the catch-all
-    // and read "could not reach the server" — which is wrong twice over: the
-    // network is fine, and retrying can never help. It also sends whoever is
-    // debugging a fresh environment at the wrong layer entirely.
-    final stub = StubIdentity(
-      result: const IdentityResult(
-        IdentityOutcome.methodNotEnabled,
-        message: 'This operation is not allowed.',
-      ),
-    );
-    await pump(tester, identity: stub);
+  testWidgets('the password can be shown, and hidden again', (tester) async {
+    // Tester feedback on 1.0.0: no way to check a password typed blind.
+    await pump(tester);
 
-    await tester.enterText(find.byType(TextFormField).first, 'a@b.com');
-    await tester.enterText(find.byType(TextFormField).last, 'longenoughpw');
-    await tester.tap(find.text('Create account'));
-    await tester.pumpAndSettle();
+    TextField password() =>
+        tester.widget<TextField>(find.byType(TextField).last);
 
-    expect(
-      find.textContaining('Could not reach the server'),
-      findsNothing,
-      reason: 'blamed the network for a console setting',
-    );
-    expect(find.textContaining('not available right now'), findsOneWidget);
+    expect(password().obscureText, isTrue);
+
+    await tester.tap(find.bySemanticsLabel('Show password'));
+    await tester.pump();
+    expect(password().obscureText, isFalse);
+    // Visible is not the same as ordinary text: it still must not reach the
+    // keyboard's suggestion strip.
+    expect(password().enableSuggestions, isFalse);
+
+    await tester.tap(find.bySemanticsLabel('Hide password'));
+    await tester.pump();
+    expect(password().obscureText, isTrue);
   });
 
-  testWidgets('a wrong password is explained in the app\'s own words',
-      (tester) async {
+  testWidgets('a sign-in that worked SAYS it worked', (tester) async {
+    // The screen used to close without a word, and testers could not tell a
+    // sign-in that succeeded from one that had silently given up.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          identityProvider.overrideWithValue(StubIdentity()),
+          accountProvider.overrideWith(_GoogleWorks.new),
+        ],
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const AccountScreen(),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Continue with Google'));
+    await tester.pumpAndSettle();
+
+    // Back where they came from, told so on the screen they landed on.
+    expect(find.byType(AccountScreen), findsNothing);
+    expect(find.textContaining('Signed in.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'a switched-off sign-in method is not reported as a network fault',
+    (tester) async {
+      // Email/Password is OFF by default on a new Firebase project, and Firebase
+      // says `operation-not-allowed`. That used to fall through to the catch-all
+      // and read "could not reach the server" — which is wrong twice over: the
+      // network is fine, and retrying can never help. It also sends whoever is
+      // debugging a fresh environment at the wrong layer entirely.
+      final stub = StubIdentity(
+        result: const IdentityResult(
+          IdentityOutcome.methodNotEnabled,
+          message: 'This operation is not allowed.',
+        ),
+      );
+      await pump(tester, identity: stub);
+
+      await tester.enterText(find.byType(TextFormField).first, 'a@b.com');
+      await tester.enterText(find.byType(TextFormField).last, 'longenoughpw');
+      await tester.tap(find.text('Create account'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Could not reach the server'),
+        findsNothing,
+        reason: 'blamed the network for a console setting',
+      );
+      expect(find.textContaining('not available right now'), findsOneWidget);
+    },
+  );
+
+  testWidgets('a wrong password is explained in the app\'s own words', (
+    tester,
+  ) async {
     final stub = StubIdentity(
       result: const IdentityResult(
         IdentityOutcome.wrongPassword,
@@ -240,7 +306,9 @@ void main() {
     expect(find.textContaining('FIREBASE_INTERNAL'), findsNothing);
   });
 
-  testWidgets('a taken credential names the cost in the dialog', (tester) async {
+  testWidgets('a taken credential names the cost in the dialog', (
+    tester,
+  ) async {
     // There is no merge -- Firebase cannot combine two uids -- so continuing
     // abandons the progress on this device. The player has to be told, and the
     // three cleared levels seeded here are what make the warning apply.
@@ -275,7 +343,10 @@ void main() {
 
     await tester.tap(find.text('Already have an account? Sign in'));
     await tester.pump();
-    await tester.enterText(find.byType(TextFormField).first, 'nobody@example.com');
+    await tester.enterText(
+      find.byType(TextFormField).first,
+      'nobody@example.com',
+    );
     await tester.tap(find.text('Forgot your password?'));
     await tester.pumpAndSettle();
 
@@ -286,8 +357,9 @@ void main() {
   });
 
   group('the account that already exists', () {
-    testWidgets('is offered straight away, without hunting for a button',
-        (tester) async {
+    testWidgets('is offered straight away, without hunting for a button', (
+      tester,
+    ) async {
       // It used to raise a button further down the screen. With the error text
       // present that button fell below the fold on a phone, so the action
       // almost everybody wants was the one you had to scroll to find.
@@ -306,8 +378,9 @@ void main() {
       expect(find.text('Use that account'), findsOneWidget);
     });
 
-    testWidgets('a fresh device is NOT warned about losing anything',
-        (tester) async {
+    testWidgets('a fresh device is NOT warned about losing anything', (
+      tester,
+    ) async {
       // THE REINSTALL CASE. Nothing on this phone to lose -- that is the whole
       // reason they are here -- so a sentence about leaving progress behind
       // describes a loss that cannot happen, and talks somebody out of
@@ -363,8 +436,9 @@ void main() {
       expect(stub.calls, isNot(contains('existingGoogle')));
     });
 
-    testWidgets('the EMAIL path reuses the password already typed',
-        (tester) async {
+    testWidgets('the EMAIL path reuses the password already typed', (
+      tester,
+    ) async {
       // They typed the password for the account they want before pressing the
       // wrong button. Making them type it again would be the whole point of
       // the dialog, missed.
@@ -408,17 +482,22 @@ class _SignedInAccount extends AccountController {
   );
 }
 
+/// A guest whose Google sign-in goes through, server and all.
+class _GoogleWorks extends AccountController {
+  @override
+  AccountState build() => const AccountState(available: true);
+
+  @override
+  Future<IdentityResult> continueWithGoogle() async =>
+      const IdentityResult.ok();
+}
+
 /// A device with three cleared levels, so the "you would lose this" branch has
 /// something to be about.
 class _ThreeSolved extends ProgressController {
   @override
   Map<int, LevelProgress> build() => {
     for (var i = 1; i <= 3; i++)
-      i: LevelProgress(
-        levelId: i,
-        levelSetVersion: 1,
-        stars: 3,
-        bestMoves: 5,
-      ),
+      i: LevelProgress(levelId: i, levelSetVersion: 1, stars: 3, bestMoves: 5),
   };
 }
