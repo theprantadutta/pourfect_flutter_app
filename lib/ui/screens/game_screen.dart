@@ -213,6 +213,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
         'Finish within par for three stars. The bar shows how much you\'ve used.',
       );
     }
+    // The first board with five-ball tubes. Nothing else announces the change,
+    // and a player counting four to a tube would misread their first pour.
+    if (level.level.board.capacity > 4) {
+      _showTip(Tip.tallTubes, 'Taller tubes! Each one holds five balls now.');
+    }
     // Level 4 onward, a while in without finishing: hints exist.
     if (id >= 4) {
       final session = _game.sessionId;

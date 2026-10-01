@@ -30,6 +30,9 @@ enum Tip {
 
   /// The hub after the first win: Journey and the daily.
   hub,
+
+  /// The first level with five-ball tubes.
+  tallTubes,
 }
 
 @immutable

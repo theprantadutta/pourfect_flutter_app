@@ -195,6 +195,29 @@ downloads them in the background. Owner's plan, 2026-09-30.
   `update_required`. Add to `kSupportedMechanics` only in the change that
   teaches the board the mechanic.
 
+**Tall tubes (`tall_tubes`) are the first new mechanic**: five balls a tube,
+from world 7 (levels 301-350) and every third world after. The board,
+`BoardGeometry`, the preview and both solvers were already capacity-generic,
+so this build only accepts such a world (`kSupportedMechanics`), checks every
+board's capacity against what its world declares (`capacityFor`), and shows
+`Tip.tallTubes` on the first five-ball board.
+
+**Hints must resolve from move one.** The server rejects any generated board
+needing more than 150k solver nodes from its opening position, half of
+`kHintNodeCap`: tall boards with nine colors measured up to 580k, which would
+have answered "no hint available" to a stuck player. `test/engine/
+tall_tubes_test.dart` runs the phone's own solver over a whole server-built tall
+world (fixture) and pins both that every level resolves inside the cap and that
+the two solvers agree on every optimum.
+
+**Seen end to end on the A24, 2026-10-01**, against a local backend on
+throwaway Postgres and Redis: the dev build (`POURFECT_UNLOCK_ALL`, which also
+makes `shouldFetchWorlds` always true) downloaded worlds 4-7 in two rounds,
+Journey showed "World 8 of 8 · Still Waters", level 350 drew nine five-ball
+tubes in two rows with the tip, a hint resolved from move one
+(`hint_used {resolved: 1}`), and the hinted pour landed. The phone's
+preferences were restored afterwards.
+
 **The hub after the last held level shows `MoreLevelsCard`.** Before this the
 next-level card simply vanished after 150, leaving a hole in the hub at the
 moment a player had been most loyal. It says where more levels come from
@@ -804,11 +827,9 @@ splits them per device.
 
 ## Known gaps
 
-- **Generated worlds have not been seen end to end on a device.** Both sides are
-  tested (the server against Postgres, the app against a scripted server) but
-  the backend with `/campaign/worlds` was not deployed when this was built.
-  Deploy it, let `level-world-generate` publish 151-300, then play past 150 on
-  the A24.
+- **Generated worlds have been seen on a device only against a LOCAL
+  backend.** Not yet against production: deploy, let `level-world-generate`
+  publish, then play past 150 on the A24 from the store build.
 
 - **No Sign in with Apple.** Android-only for now, so it costs nothing yet — but
   it blocks the first iOS submission, because Apple requires it alongside any

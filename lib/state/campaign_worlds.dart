@@ -26,14 +26,22 @@ import '../services/api/campaign_api.dart';
 import 'progress_repository.dart';
 import 'providers.dart';
 
+/// Five balls a tube. The board, geometry and solver are all capacity-generic
+/// already; what this build adds is accepting such a world, and a tip the
+/// first time one is played.
+const String kTallTubes = 'tall_tubes';
+
 /// Mechanics beyond the classic rules that THIS build can play. The server
 /// never sends a world needing anything missing from this list; it says
 /// "update required" instead. Add to it only in the same change that teaches
 /// the board to play the new mechanic.
-const List<String> kSupportedMechanics = <String>[];
+const List<String> kSupportedMechanics = <String>[kTallTubes];
 
-/// Tube capacities this build can draw.
-const Set<int> kSupportedCapacities = {4};
+/// The tube capacity a world's boards must have, from what it declares. A
+/// classic world carrying a five-ball tube is a server fault, not a surprise
+/// to draw.
+int capacityFor(List<String> mechanics) =>
+    mechanics.contains(kTallTubes) ? 5 : 4;
 
 /// The most tubes a board may have. The bundled campaign peaks at twelve, and
 /// that is what `BoardGeometry` has been proven against on a phone.
@@ -49,10 +57,14 @@ const int kPrefetchWithin = 50;
 const Duration kWorldsRetryAfter = Duration(minutes: 10);
 
 /// True when the phone should go looking for more levels.
+///
+/// Always, in a dev build with every level unlocked: that build exists to
+/// verify the late campaign without playing to it, and the worlds past 150
+/// are the late campaign.
 bool shouldFetchWorlds({
   required int furthestUnlocked,
   required int heldThrough,
-}) => heldThrough - furthestUnlocked < kPrefetchWithin;
+}) => kDevUnlockAll || heldThrough - furthestUnlocked < kPrefetchWithin;
 
 /// Why [world] cannot be added after level [heldThrough], or null if it can.
 ///
@@ -87,8 +99,9 @@ String? worldProblem(CampaignWorld world, {required int heldThrough}) {
       return 'level $id is in the wrong world';
     }
     if (level.minMoves <= 0) return 'level $id has no par';
-    if (!kSupportedCapacities.contains(board.capacity)) {
-      return 'level $id has tubes of ${board.capacity}';
+    if (board.capacity != capacityFor(world.mechanics)) {
+      return 'level $id has tubes of ${board.capacity}, its world declares '
+          '${capacityFor(world.mechanics)}';
     }
     if (board.tubeCount > kMaxTubes) {
       return 'level $id has ${board.tubeCount} tubes';

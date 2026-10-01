@@ -212,11 +212,71 @@ void main() {
     test('never a mechanic this build cannot play', () {
       final parsed = CampaignApi.parse({
         'worlds': [
-          _worldJson(4, mechanics: ['tall_tubes']),
+          _worldJson(4, mechanics: ['hidden_balls']),
         ],
       });
       final world = (parsed as ApiOk<CampaignWorlds>).value.worlds.single;
-      expect(worldProblem(world, heldThrough: 150), contains('tall_tubes'));
+      expect(worldProblem(world, heldThrough: 150), contains('hidden_balls'));
+    });
+
+    group('tall tubes', () {
+      const tall = [
+        [0, 1, 2, 3, 0],
+        [1, 2, 3, 0, 1],
+        [2, 3, 0, 1, 2],
+        [3, 0, 1, 2, 3],
+        <int>[],
+        <int>[],
+      ];
+
+      CampaignWorld tallWorld({
+        required List<String> mechanics,
+        required List<List<int>> tubes,
+        required int capacity,
+      }) {
+        final parsed = CampaignApi.parse({
+          'worlds': [
+            _worldJson(
+              4,
+              mechanics: mechanics,
+              level: (id) => {
+                ..._levelJson(id, tubes: tubes),
+                'capacity': capacity,
+              },
+            ),
+          ],
+        });
+        return (parsed as ApiOk<CampaignWorlds>).value.worlds.single;
+      }
+
+      test('this build plays them', () {
+        expect(kSupportedMechanics, contains(kTallTubes));
+        final world = tallWorld(
+          mechanics: [kTallTubes],
+          tubes: tall,
+          capacity: 5,
+        );
+        expect(worldProblem(world, heldThrough: 150), isNull);
+        expect(world.levels.first.level.board.capacity, 5);
+      });
+
+      test('but only where the world declares them', () {
+        // The declaration is all the server checks before serving a world,
+        // so a five-ball board in a classic world would have reached an app
+        // that cannot draw one.
+        final undeclared = tallWorld(mechanics: [], tubes: tall, capacity: 5);
+        expect(
+          worldProblem(undeclared, heldThrough: 150),
+          contains('declares 4'),
+        );
+
+        final short = tallWorld(
+          mechanics: [kTallTubes],
+          tubes: _tubes,
+          capacity: 4,
+        );
+        expect(worldProblem(short, heldThrough: 150), contains('declares 5'));
+      });
     });
   });
 
