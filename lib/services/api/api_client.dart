@@ -56,6 +56,11 @@ class ApiClient {
     Map<String, String>? query,
   }) => _send('GET', path, query: query);
 
+  /// A GET that needs no session: the app-release policy, which an old build
+  /// that can no longer sign in is exactly the one that needs to read.
+  Future<ApiResult<Map<String, Object?>>> getAnonymous(String path) =>
+      _send('GET', path, authenticated: false);
+
   Future<ApiResult<Map<String, Object?>>> post(
     String path,
     Map<String, Object?> body,

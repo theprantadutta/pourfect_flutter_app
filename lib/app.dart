@@ -3,6 +3,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +13,7 @@ import 'state/legal_acceptance.dart';
 import 'state/monetization_controller.dart';
 import 'services/notifications/notification_service.dart';
 import 'services/updates/app_updater.dart';
+import 'services/updates/release_policy.dart';
 import 'state/review_prompter.dart';
 import 'state/providers.dart';
 import 'state/daily_controller.dart';
@@ -181,7 +183,7 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // can raise it immediately when an earlier run already downloaded one.
       _updater.readyToInstall.addListener(_offerRestart);
       _updater.updateAvailable.addListener(_offerUpdate);
-      unawaited(_updater.check());
+      unawaited(_checkForUpdate());
 
       // And today's board, so the home card knows whether it has been played
       // before the player looks at it. Off the first frame like everything
@@ -238,11 +240,29 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       ref.read(campaignWorldsProvider.notifier).maybeFetch(force: true);
       // An update interrupted by leaving the app is resumed here, and a
       // player who was away for a day may have a newer build waiting.
-      unawaited(_updater.check());
+      unawaited(_checkForUpdate());
     }
   }
 
   bool _updatePromptOpen = false;
+
+  /// Reads the supported-minimum policy, then asks Play.
+  ///
+  /// The policy (App Releases in the admin dashboard) only decides whether
+  /// the prompt may offer Not now; Play still decides whether there is
+  /// anything to update to. No policy, an unreadable one, or no network all
+  /// mean an ordinary, dismissible prompt: nobody is locked out by a request
+  /// that failed.
+  Future<void> _checkForUpdate() async {
+    final policy = await fetchReleasePolicy(
+      ref.read(apiClientProvider),
+      defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
+    );
+    if (!mounted) return;
+    _updater.mandatory =
+        policy?.requiresUpdate(ref.read(appVersionProvider)) ?? false;
+    await _updater.check();
+  }
 
   /// Asks about an available update, but only on the hub.
   ///

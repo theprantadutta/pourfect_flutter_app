@@ -700,8 +700,13 @@ player's explicit choice, so doing it for them is the point.
   be a double prompt.
 - **An older build's flexible download still gets its Restart bar**, so no
   update already on a device is stranded.
-- **`mandatory`** removes Not now, the barrier tap and back. It is for a
-  build below the supported minimum, which the backend decides (App Releases).
+- **`mandatory`** removes Not now, the barrier tap and back. Before every
+  check the app reads `GET /api/v1/app-release/{platform}` (anonymous; edited
+  in the admin dashboard's App releases) and sets it when this build is below
+  the minimum supported version (`release_policy.dart`). No policy, an
+  unreadable one, an unparseable version or no network all mean NOT
+  mandatory: nobody is locked out by a request that failed. Play still decides
+  whether there is anything to update to.
 
 It does nothing unless the app came from Play: `checkForUpdate` throws
 otherwise, which is every debug build, so it is logged and shrugged off. The
