@@ -27,6 +27,7 @@ import '../theme/toy.dart';
 import '../widgets/rename_dialog.dart';
 import '../widgets/settings_rows.dart';
 import '../widgets/toy_kit.dart';
+import '../widgets/pour_loader.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key, this.onOpenStatistics});
@@ -596,15 +597,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 label: _registering ? 'Create account' : 'Sign in',
                 height: 56,
                 fontSize: 22,
-                icon: account.busy
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
-                      )
-                    : null,
+                icon: account.busy ? const BounceDots() : null,
                 onPressed: account.busy ? null : _submit,
               ),
             ],

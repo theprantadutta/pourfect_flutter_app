@@ -28,6 +28,7 @@ import '../widgets/toy_kit.dart';
 import '../widgets/tutorial.dart';
 import '../widgets/win_overlay.dart';
 import '../widgets/win_profile.dart';
+import '../widgets/pour_loader.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   final int levelId;
@@ -1151,14 +1152,8 @@ class _Loading extends StatelessWidget {
   const _Loading();
 
   @override
-  Widget build(BuildContext context) => ToyScaffold(
-    child: Center(
-      child: Text(
-        'Pourfect',
-        style: Toy.display(40, color: Toy.tomato, shadow: 3),
-      ),
-    ),
-  );
+  Widget build(BuildContext context) =>
+      const ToyScaffold(child: Center(child: PourLoader(ballSize: 30)));
 }
 
 class _LoadFailed extends StatelessWidget {

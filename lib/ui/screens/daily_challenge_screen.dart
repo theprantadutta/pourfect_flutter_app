@@ -28,6 +28,7 @@ import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
 import '../widgets/level_clock.dart';
 import '../widgets/toy_kit.dart';
+import '../widgets/pour_loader.dart';
 
 class DailyChallengeScreen extends ConsumerStatefulWidget {
   final VoidCallback onExit;
@@ -383,12 +384,33 @@ class _Unavailable extends StatelessWidget {
                 'reached. The campaign does not need it.',
           );
 
+    final back = Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: Row(children: [ToyBackButton(onPressed: onBack)]),
+    );
+
+    // While the board is on its way, the pour plays rather than a sentence
+    // saying it is loading.
+    if (state.loading) {
+      return Column(
+        children: [
+          back,
+          const Expanded(
+            child: Center(
+              child: PourLoader(
+                ballSize: 30,
+                caption: 'Pouring today’s board…',
+                captionColor: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-          child: Row(children: [ToyBackButton(onPressed: onBack)]),
-        ),
+        back,
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(24),

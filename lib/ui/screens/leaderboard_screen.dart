@@ -22,6 +22,7 @@ import '../../state/providers.dart';
 import '../format.dart';
 import '../theme/toy.dart';
 import '../widgets/toy_kit.dart';
+import '../widgets/pour_loader.dart';
 
 enum LeaderboardTab { daily, campaign }
 
@@ -130,15 +131,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   Widget _body() {
     if (_loading) {
       return const Center(
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: CircularProgressIndicator(
-            strokeWidth: 3.5,
-            color: Toy.tomato,
-            backgroundColor: Toy.track,
-          ),
-        ),
+        child: PourLoader(ballSize: 22, caption: 'Fetching the leaderboard…'),
       );
     }
 

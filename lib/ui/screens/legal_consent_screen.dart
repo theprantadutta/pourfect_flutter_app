@@ -24,6 +24,7 @@ import 'package:flutter/services.dart';
 import '../../state/legal_acceptance.dart';
 import '../theme/toy.dart';
 import '../widgets/toy_kit.dart';
+import '../widgets/pour_loader.dart';
 
 class LegalConsentScreen extends StatefulWidget {
   /// Called once the player has accepted.
@@ -36,7 +37,10 @@ class LegalConsentScreen extends StatefulWidget {
 }
 
 class _LegalConsentScreenState extends State<LegalConsentScreen> {
-  static const _privacy = _Document('Privacy Policy', 'assets/legal/privacy.md');
+  static const _privacy = _Document(
+    'Privacy Policy',
+    'assets/legal/privacy.md',
+  );
   static const _terms = _Document('Terms of Service', 'assets/legal/terms.md');
   static const _refund = _Document('Refund Policy', 'assets/legal/refund.md');
   static const _documents = <_Document>[_privacy, _terms, _refund];
@@ -195,7 +199,10 @@ class _LegalConsentScreenState extends State<LegalConsentScreen> {
     await showToyDialog<void>(
       context: context,
       builder: (context) {
-        final height = math.min(MediaQuery.sizeOf(context).height * 0.55, 480.0);
+        final height = math.min(
+          MediaQuery.sizeOf(context).height * 0.55,
+          480.0,
+        );
         return ToyDialogCard(
           headerColor: Toy.blue,
           header: Text(
@@ -209,15 +216,7 @@ class _LegalConsentScreenState extends State<LegalConsentScreen> {
               SizedBox(
                 height: height,
                 child: body == null
-                    ? const Center(
-                        child: SizedBox.square(
-                          dimension: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Toy.tomato,
-                          ),
-                        ),
-                      )
+                    ? const Center(child: PourLoader(ballSize: 18))
                     : Scrollbar(
                         child: SingleChildScrollView(
                           padding: const EdgeInsets.only(right: 8),
@@ -429,9 +428,7 @@ class _CheckRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(9),
                   border: Border.all(color: Toy.ink, width: Toy.stroke),
                 ),
-                child: checked
-                    ? const ToyIcon(ToyGlyph.check, size: 18)
-                    : null,
+                child: checked ? const ToyIcon(ToyGlyph.check, size: 18) : null,
               ),
               const SizedBox(width: 12),
               Expanded(

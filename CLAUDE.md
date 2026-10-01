@@ -612,6 +612,12 @@ confession that the curve is engineered. They work because they are felt.
   overshoot (`showToyDialog`).
 - **Numbers animate.** Counts run up with a decelerating curve so they settle
   rather than appear. Static digits are what make a screen feel like a form.
+- **Waiting looks like the game, not a spinner.** `PourLoader`
+  (`ui/widgets/pour_loader.dart`) is one tube pouring itself sorted, built from
+  the real `Ball`, on one controller. It covers the level load, the leaderboard,
+  the legal gate and the daily's fetch; `BounceDots` sits inside a busy button.
+  The dashboard's `components/loaders.tsx` is the same animation in CSS. Keep
+  their beats in step.
 - **Every repeating animation runs only while it has something to show** — the
   hint pulse, the legal-target bob, the NEXT LEVEL breath. A permanently
   repeating controller rebuilds the board every frame for the whole session.
