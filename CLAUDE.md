@@ -667,47 +667,46 @@ the app will call" are different questions. `AppEnv.apiUrlRefusal` carries the
 reason, because an empty URL alone reads as "not configured" and sends somebody
 to the wrong file.
 
-## Staying current — flexible, never blocking
+## Staying current — asked on the hub, then Play does the rest
 
-`AppUpdater` uses Play's in-app update API, and **flexible is the default for
-the same reason the backend is optional**: the campaign needs no network, so a
-blocking update screen on launch is exactly the interruption that rule exists
-to prevent. The download happens while the player plays; the only prompt is an
-offer to restart once it has landed. `forceImmediate` exists for the build
-where that trade genuinely flips.
+`AppUpdater` asks first and lets Play's IMMEDIATE flow do the work. When Play
+has an update, the hub shows our own Toybox prompt (`update_prompt.dart`): *A
+new Pourfect is ready*, **Update now** / **Not now**. Update now runs
+`performImmediateUpdate`: Play's full-screen download with real progress, then
+it installs and reopens the game. Nothing for the player to find afterwards.
 
-It does nothing unless the app came from Play — `checkForUpdate` throws
-otherwise, which is every debug build — so it is logged and shrugged off. Same
-shape as the review prompter, and unverifiable for the same reason.
+**This replaced flexible-by-default (2026-10-01, owner's call).** The flexible
+flow downloaded in the background and then offered a ten-second Restart bar,
+and most players missed it, so updates sat on the device unused. The old rule
+was "the install is never automatic, because a restart mid-board is worse than
+being a version behind". It still holds in the form that mattered: the prompt
+appears only on the hub, waits for a level route to POP rather than
+interrupting one, never sits over the legal gate, and takes the rating ask's
+slot on that return rather than stacking two dialogs. The restart is now the
+player's explicit choice, so doing it for them is the point.
 
-**A flexible update does NOT install itself, and the first version of this
-shipped without the half that does.** `startFlexibleUpdate` fetches the bytes
-and stops; `completeFlexibleUpdate` installs them and restarts the app. Nothing
-called it, so Play's dialog appeared, the player accepted, the download ran to
-completion, and then nothing happened — for ever. Reported from production as
-"I clicked update and the popup just vanished".
+- **Not now quiets that version for a day** (`kUpdateSnooze`), and a NEWER
+  version is always asked about. Backing out of Play's own screen counts as
+  Not now.
+- **Flexible is only a fallback** (Play may refuse immediate), and after Update
+  now it is completed as soon as it lands, since the player already said yes.
+- **An interrupted immediate update is RESUMED.** Leaving mid-download leaves
+  it `developerTriggeredUpdateInProgress`, which is also what a finished
+  flexible download reports, so they are told apart by what this app
+  remembers starting (`UpdateMemory`, persisted before Play takes over), not
+  by guessing. The check runs on start-up AND on resume for this reason.
+- **A check while Play's screen is up starts nothing** (`_busy`). The app
+  resumes as that screen closes, and a second flow on top of the first would
+  be a double prompt.
+- **An older build's flexible download still gets its Restart bar**, so no
+  update already on a device is stranded.
+- **`mandatory`** removes Not now, the barrier tap and back. It is for a
+  build below the supported minimum, which the backend decides (App Releases).
 
-**The second launch was worse.** An update that is downloaded and not installed
-reports `developerTriggeredUpdateInProgress`, not `updateAvailable`, so a check
-that only looks for the latter goes silent about an update already sitting on
-the device. `installStatus == InstallStatus.downloaded` says the same thing.
-Both are handled now, and both raise `readyToInstall`.
-
-**`startFlexibleUpdate` returns whether the player accepted**, and that result
-was being discarded by a seam declared `Future<void>`. Declining therefore
-looked identical to a completed download, and the app would offer a restart for
-bytes it never fetched.
-
-**The install is never automatic.** Completing restarts the process, and doing
-that unasked closes the game on somebody mid-board. `readyToInstall` is a
-`ValueNotifier` because the download finishes minutes after the check, so the
-offer has to arrive then rather than having been asked at launch — the shell
-listens and shows a bar with a Restart action.
-
-**The test that passed while the feature was broken is the lesson.** It drove
-`completeDownloadedUpdate` directly and asserted the plugin call, so it was
-green while nothing in the app reached that method. Every path now asserts
-`readyToInstall`, which is the signal the app actually consumes.
+It does nothing unless the app came from Play: `checkForUpdate` throws
+otherwise, which is every debug build, so it is logged and shrugged off. The
+prompt and the flows can only be seen on a Play install: use internal app
+sharing or the internal testing track.
 
 ## Frame timing
 

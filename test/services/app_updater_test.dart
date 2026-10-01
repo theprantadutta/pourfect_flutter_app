@@ -1,17 +1,16 @@
-// Keeping players current without taking the game off them.
+// Keeping players current: ask on the hub, then let Play do the rest.
 //
-// The rules here are a product decision rather than a technical one, so they
-// are what is worth pinning: flexible by default, because a blocking update
-// screen is exactly what the offline-first rule exists to prevent; the install
-// never automatic, because it restarts the process; and never, under any
-// circumstance, an exception escaping onto the launch path.
+// The rules worth pinning are the product ones. An available update is ASKED
+// about, never started unasked. Update now runs Play's immediate flow, so the
+// player never has to find a restart. Not now is honored for a day, for that
+// version only. An update interrupted by leaving the app is resumed. A
+// flexible download from an older build is still installed rather than
+// stranded. And nothing ever escapes onto the launch path.
 //
-// The first version of this file tested `completeDownloadedUpdate` in
-// isolation and passed, while NOTHING in the app called it. So Play's dialog
-// appeared, the player accepted, the download completed, and the update was
-// never installed. A test that drives a method the product never reaches is
-// not evidence about the product — hence `readyToInstall`, which is the signal
-// the app actually consumes, being asserted on every path below.
+// History worth keeping: the first version of the flexible flow had a test
+// that drove the install method directly and passed while nothing in the app
+// called it. Every path below asserts the notifier the shell actually listens
+// to.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_update/in_app_update.dart';
@@ -22,13 +21,14 @@ AppUpdateInfo _info({
   bool immediate = true,
   bool flexible = true,
   InstallStatus installStatus = InstallStatus.unknown,
+  int versionCode = 12,
 }) => AppUpdateInfo(
   updateAvailability: availability,
   immediateUpdateAllowed: immediate,
   immediateAllowedPreconditions: null,
   flexibleUpdateAllowed: flexible,
   flexibleAllowedPreconditions: null,
-  availableVersionCode: 2,
+  availableVersionCode: versionCode,
   installStatus: installStatus,
   packageName: 'com.pranta.pourfect',
   clientVersionStalenessDays: null,
@@ -39,11 +39,13 @@ class FakeUpdateApi implements InAppUpdateApi {
   FakeUpdateApi({
     this.info,
     this.throwOnCheck = false,
+    this.immediateResult = AppUpdateResult.success,
     this.flexibleResult = AppUpdateResult.success,
   });
 
-  final AppUpdateInfo? info;
+  AppUpdateInfo? info;
   final bool throwOnCheck;
+  AppUpdateResult immediateResult;
   final AppUpdateResult flexibleResult;
 
   final calls = <String>[];
@@ -51,14 +53,17 @@ class FakeUpdateApi implements InAppUpdateApi {
   @override
   Future<AppUpdateInfo> checkForUpdate() async {
     calls.add('check');
-    // What Play throws when the app did not come from Play — the ordinary case
-    // for every debug build and every sideloaded APK.
+    // What Play throws when the app did not come from Play: every debug
+    // build and every sideloaded APK.
     if (throwOnCheck) throw NotOwnedByPlay();
     return info!;
   }
 
   @override
-  Future<void> performImmediateUpdate() async => calls.add('immediate');
+  Future<AppUpdateResult> performImmediateUpdate() async {
+    calls.add('immediate');
+    return immediateResult;
+  }
 
   @override
   Future<AppUpdateResult> startFlexibleUpdate() async {
@@ -70,191 +75,241 @@ class FakeUpdateApi implements InAppUpdateApi {
   Future<void> completeFlexibleUpdate() async => calls.add('complete');
 }
 
+class MemoryUpdateMemory implements UpdateMemory {
+  bool started = false;
+  (int, DateTime)? snoozedAt;
+
+  @override
+  Future<bool> immediateStarted() async => started;
+
+  @override
+  Future<void> markImmediateStarted() async => started = true;
+
+  @override
+  Future<void> clearImmediateStarted() async => started = false;
+
+  @override
+  Future<bool> snoozed(int versionCode, DateTime now) async {
+    final s = snoozedAt;
+    return s != null &&
+        s.$1 == versionCode &&
+        now.difference(s.$2) < kUpdateSnooze;
+  }
+
+  @override
+  Future<void> snooze(int versionCode, DateTime at) async =>
+      snoozedAt = (versionCode, at);
+}
+
 class NotOwnedByPlay implements Exception {
   @override
   String toString() => 'ERROR_APP_NOT_OWNED';
 }
 
 void main() {
-  test('no update available starts nothing', () async {
+  var now = DateTime(2026, 10, 1, 12);
+
+  ({AppUpdater updater, FakeUpdateApi api, MemoryUpdateMemory memory}) make(
+    AppUpdateInfo info, {
+    AppUpdateResult immediateResult = AppUpdateResult.success,
+    AppUpdateResult flexibleResult = AppUpdateResult.success,
+    MemoryUpdateMemory? memory,
+  }) {
     final api = FakeUpdateApi(
-      info: _info(availability: UpdateAvailability.updateNotAvailable),
+      info: info,
+      immediateResult: immediateResult,
+      flexibleResult: flexibleResult,
     );
-    final updater = AppUpdater(api: api);
+    final mem = memory ?? MemoryUpdateMemory();
+    return (
+      updater: AppUpdater(api: api, memory: mem, now: () => now),
+      api: api,
+      memory: mem,
+    );
+  }
 
-    await updater.check();
+  setUp(() => now = DateTime(2026, 10, 1, 12));
 
-    expect(api.calls, ['check']);
-    expect(updater.readyToInstall.value, isFalse);
+  test('no update available asks nothing and starts nothing', () async {
+    final h = make(_info(availability: UpdateAvailability.updateNotAvailable));
+    await h.updater.check();
+
+    expect(h.api.calls, ['check']);
+    expect(h.updater.updateAvailable.value, isFalse);
+    expect(h.updater.readyToInstall.value, isFalse);
   });
 
-  test('an available update takes the FLEXIBLE path by default', () async {
-    // The default is the whole point. Immediate would put a blocking screen
-    // between a player and level 1, in a game whose campaign needs no network
-    // at all — the one interruption the offline-first rule exists to prevent.
-    final api = FakeUpdateApi(
-      info: _info(availability: UpdateAvailability.updateAvailable),
-    );
+  test('an available update is ASKED about, never started unasked', () async {
+    final h = make(_info(availability: UpdateAvailability.updateAvailable));
+    await h.updater.check();
 
-    await AppUpdater(api: api).check();
-
-    expect(api.calls, ['check', 'flexible']);
-    expect(api.calls, isNot(contains('immediate')));
+    expect(h.updater.updateAvailable.value, isTrue);
+    expect(h.api.calls, ['check']);
   });
 
-  test('a completed download RAISES the restart offer', () async {
-    // THE BUG THIS FILE EXISTS FOR. Downloading is only half of a flexible
-    // update; without something offering the restart, the bytes sit on the
-    // device for ever and the app looks like it did nothing at all.
-    final api = FakeUpdateApi(
-      info: _info(availability: UpdateAvailability.updateAvailable),
+  test(
+    'Update now runs the immediate flow, so nobody has to find a restart',
+    () async {
+      final h = make(_info(availability: UpdateAvailability.updateAvailable));
+      await h.updater.check();
+
+      expect(await h.updater.updateNow(), UpdateNowOutcome.installing);
+      expect(h.api.calls, ['check', 'immediate']);
+      expect(h.updater.updateAvailable.value, isFalse);
+    },
+  );
+
+  test(
+    'when Play refuses immediate, flexible is downloaded AND installed',
+    () async {
+      // The player already said yes to the restart, so there is nothing left to
+      // offer them afterwards: the old flow's missed Restart bar was the whole
+      // reason for this change.
+      final h = make(
+        _info(
+          availability: UpdateAvailability.updateAvailable,
+          immediate: false,
+        ),
+      );
+      await h.updater.check();
+
+      expect(await h.updater.updateNow(), UpdateNowOutcome.installing);
+      expect(h.api.calls, ['check', 'flexible', 'complete']);
+    },
+  );
+
+  test('backing out of Play\'s screen is reported as declined', () async {
+    final h = make(
+      _info(availability: UpdateAvailability.updateAvailable),
+      immediateResult: AppUpdateResult.userDeniedUpdate,
     );
-    final updater = AppUpdater(api: api);
+    await h.updater.check();
 
-    var offered = false;
-    updater.readyToInstall.addListener(() => offered = true);
-
-    await updater.check();
-
-    expect(updater.readyToInstall.value, isTrue);
-    expect(offered, isTrue, reason: 'nothing would ever offer the restart');
+    expect(await h.updater.updateNow(), UpdateNowOutcome.declined);
+    // Nothing in progress any more, so a later check must not "resume" it.
+    expect(h.memory.started, isFalse);
   });
 
-  test('an update downloaded on an EARLIER run is picked up again', () async {
-    // The second half of the same bug. Between accepting an update and
-    // restarting, Play reports `developerTriggeredUpdateInProgress` rather
-    // than `updateAvailable` — so a check that only looks for the latter goes
-    // quiet about an update already sitting on the device, which is exactly
-    // what happened on the next launch.
-    final api = FakeUpdateApi(
-      info: _info(
+  group('Not now', () {
+    test('quiets the same version for a day', () async {
+      final h = make(_info(availability: UpdateAvailability.updateAvailable));
+      await h.updater.check();
+      await h.updater.later();
+
+      h.updater.updateAvailable.value = false;
+      now = now.add(const Duration(hours: 23));
+      await h.updater.check();
+      expect(h.updater.updateAvailable.value, isFalse);
+
+      now = now.add(const Duration(hours: 2));
+      await h.updater.check();
+      expect(h.updater.updateAvailable.value, isTrue);
+    });
+
+    test('never silences a NEWER version', () async {
+      final h = make(
+        _info(
+          availability: UpdateAvailability.updateAvailable,
+          versionCode: 12,
+        ),
+      );
+      await h.updater.check();
+      await h.updater.later();
+
+      h.api.info = _info(
+        availability: UpdateAvailability.updateAvailable,
+        versionCode: 13,
+      );
+      await h.updater.check();
+      expect(h.updater.updateAvailable.value, isTrue);
+    });
+
+    test('is not honored for a build below the supported minimum', () async {
+      final h = make(_info(availability: UpdateAvailability.updateAvailable));
+      await h.updater.check();
+      await h.updater.later();
+
+      h.updater.mandatory = true;
+      await h.updater.check();
+      expect(h.updater.updateAvailable.value, isTrue);
+    });
+  });
+
+  test('an update interrupted by leaving the app is RESUMED', () async {
+    // Play's guidance for immediate updates: if the player leaves mid-flow,
+    // put it back up when they return. The flag is what says it was ours.
+    final memory = MemoryUpdateMemory()..started = true;
+    final h = make(
+      _info(
         availability: UpdateAvailability.developerTriggeredUpdateInProgress,
       ),
+      memory: memory,
     );
-    final updater = AppUpdater(api: api);
+    await h.updater.check();
 
-    await updater.check();
-
-    expect(updater.readyToInstall.value, isTrue);
-    // Nothing is re-downloaded; it is already here.
-    expect(api.calls, ['check']);
+    expect(h.api.calls, ['check', 'immediate']);
+    expect(h.updater.readyToInstall.value, isFalse);
   });
 
-  test('a downloaded install status is picked up too', () async {
-    final api = FakeUpdateApi(
-      info: _info(
+  test(
+    'a flexible download from an older build gets its restart offered',
+    () async {
+      // Same availability as an interrupted immediate update, but this app
+      // never started one, so it is an older build's download waiting.
+      final h = make(
+        _info(
+          availability: UpdateAvailability.developerTriggeredUpdateInProgress,
+        ),
+      );
+      await h.updater.check();
+
+      expect(h.updater.readyToInstall.value, isTrue);
+      expect(h.api.calls, ['check']);
+    },
+  );
+
+  test('a downloaded install status is offered for restart', () async {
+    final h = make(
+      _info(
         availability: UpdateAvailability.updateNotAvailable,
         installStatus: InstallStatus.downloaded,
       ),
     );
-    final updater = AppUpdater(api: api);
+    await h.updater.check();
 
-    await updater.check();
-
-    expect(updater.readyToInstall.value, isTrue);
+    expect(h.updater.readyToInstall.value, isTrue);
+    await h.updater.install();
+    expect(h.api.calls, ['check', 'complete']);
   });
 
-  test('DECLINING the update offers no restart', () async {
-    // `startFlexibleUpdate` reports whether the player accepted, and that
-    // result was being discarded — so declining still raised the offer, for an
-    // update that had never been fetched.
-    final api = FakeUpdateApi(
-      info: _info(availability: UpdateAvailability.updateAvailable),
-      flexibleResult: AppUpdateResult.userDeniedUpdate,
+  test('a finished update clears the in-progress memory', () async {
+    final memory = MemoryUpdateMemory()..started = true;
+    final h = make(
+      _info(availability: UpdateAvailability.updateNotAvailable),
+      memory: memory,
     );
-    final updater = AppUpdater(api: api);
-
-    await updater.check();
-
-    expect(updater.readyToInstall.value, isFalse);
-    expect(api.calls, ['check', 'flexible']);
+    await h.updater.check();
+    expect(memory.started, isFalse);
   });
 
-  test('a failed download offers no restart', () async {
-    final api = FakeUpdateApi(
-      info: _info(availability: UpdateAvailability.updateAvailable),
-      flexibleResult: AppUpdateResult.inAppUpdateFailed,
-    );
-    final updater = AppUpdater(api: api);
+  test('a check while Play\'s screen is up starts nothing', () async {
+    // The app RESUMES as Play's screen closes; a resume check landing then
+    // must not open a second flow on top of the first.
+    final h = make(_info(availability: UpdateAvailability.updateAvailable));
+    await h.updater.check();
 
-    await updater.check();
+    final running = h.updater.updateNow();
+    await h.updater.check();
+    await running;
 
-    expect(updater.readyToInstall.value, isFalse);
+    expect(h.api.calls.where((c) => c == 'immediate'), hasLength(1));
   });
 
-  test('forceImmediate is honoured when Play permits it', () async {
-    final api = FakeUpdateApi(
-      info: _info(availability: UpdateAvailability.updateAvailable),
-    );
-
-    await AppUpdater(api: api).check(forceImmediate: true);
-
-    expect(api.calls, ['check', 'immediate']);
-  });
-
-  test('forceImmediate falls back to flexible when immediate is refused',
-      () async {
-    // Play decides what it will allow. Asking for immediate and getting no
-    // update at all would be the worst of both.
-    final api = FakeUpdateApi(
-      info: _info(
-        availability: UpdateAvailability.updateAvailable,
-        immediate: false,
-      ),
-    );
-
-    await AppUpdater(api: api).check(forceImmediate: true);
-
-    expect(api.calls, ['check', 'flexible']);
-  });
-
-  test('neither flow permitted is survivable', () async {
-    final api = FakeUpdateApi(
-      info: _info(
-        availability: UpdateAvailability.updateAvailable,
-        immediate: false,
-        flexible: false,
-      ),
-    );
-
-    await AppUpdater(api: api).check();
-
-    expect(api.calls, ['check']);
-  });
-
-  test('NOT being installed from Play never throws', () async {
-    // `check` is called fire-and-forget from the first frame, so an escaping
-    // error is an unhandled async error on the launch path — and off Play this
-    // throws on every launch, which is every debug build.
+  test('off Play, nothing escapes onto the launch path', () async {
     final api = FakeUpdateApi(throwOnCheck: true);
+    final updater = AppUpdater(api: api, memory: MemoryUpdateMemory());
 
-    await expectLater(AppUpdater(api: api).check(), completes);
-    expect(api.calls, ['check']);
-  });
-
-  test('installing does nothing when nothing is waiting', () async {
-    final api = FakeUpdateApi(
-      info: _info(availability: UpdateAvailability.updateNotAvailable),
-    );
-    final updater = AppUpdater(api: api);
-
-    await updater.check();
-    await updater.install();
-
-    // Restarting to install an update that was never downloaded would close
-    // the game under somebody mid-level for nothing.
-    expect(api.calls, isNot(contains('complete')));
-  });
-
-  test('installing completes a download that IS waiting', () async {
-    final api = FakeUpdateApi(
-      info: _info(availability: UpdateAvailability.updateAvailable),
-    );
-    final updater = AppUpdater(api: api);
-
-    await updater.check();
-    await updater.install();
-
-    expect(api.calls, ['check', 'flexible', 'complete']);
+    await expectLater(updater.check(), completes);
+    expect(updater.updateAvailable.value, isFalse);
   });
 }

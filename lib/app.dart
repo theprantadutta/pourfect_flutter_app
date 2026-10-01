@@ -30,6 +30,7 @@ import 'ui/theme/toy.dart';
 import 'ui/theme/typography.dart';
 import 'ui/transitions.dart';
 import 'ui/widgets/splash_handoff.dart';
+import 'ui/widgets/update_prompt.dart';
 
 class PourfectApp extends StatelessWidget {
   const PourfectApp({super.key});
@@ -179,6 +180,7 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // nothing had happened. Registered before the check, because the check
       // can raise it immediately when an earlier run already downloaded one.
       _updater.readyToInstall.addListener(_offerRestart);
+      _updater.updateAvailable.addListener(_offerUpdate);
       unawaited(_updater.check());
 
       // And today's board, so the home card knows whether it has been played
@@ -234,6 +236,45 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // The network may have come back while the app was away, so the quiet
       // period after a failed download is skipped.
       ref.read(campaignWorldsProvider.notifier).maybeFetch(force: true);
+      // An update interrupted by leaving the app is resumed here, and a
+      // player who was away for a day may have a newer build waiting.
+      unawaited(_updater.check());
+    }
+  }
+
+  bool _updatePromptOpen = false;
+
+  /// Asks about an available update, but only on the hub.
+  ///
+  /// Never over a level (the prompt waits for the level route to pop, see
+  /// [_openLevel]), never over the legal gate, and never twice at once.
+  Future<void> _offerUpdate() async {
+    if (!mounted || !_updater.updateAvailable.value || _updatePromptOpen) {
+      return;
+    }
+    if (_showLegalGate == true) return;
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+
+    _updatePromptOpen = true;
+    try {
+      final now = await showUpdatePrompt(
+        context,
+        mandatory: _updater.mandatory,
+      );
+      if (!mounted) return;
+      if (!now) {
+        await _updater.later();
+        return;
+      }
+      final outcome = await _updater.updateNow();
+      // Backing out of Play's own screen is the same answer as Not now,
+      // unless this build is no longer supported, in which case the next
+      // check asks again.
+      if (outcome == UpdateNowOutcome.declined && !_updater.mandatory) {
+        await _updater.later();
+      }
+    } finally {
+      _updatePromptOpen = false;
     }
   }
 
@@ -270,6 +311,7 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
   void dispose() {
     _taps?.cancel();
     _updater.readyToInstall.removeListener(_offerRestart);
+    _updater.updateAvailable.removeListener(_offerUpdate);
     _updater.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -311,6 +353,13 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
         // mid-animation, or mid-decision.
         .then((_) {
           if (!mounted) return;
+          // A waiting update takes this moment instead of the rating ask: one
+          // dialog per return to the hub, and the update is the one that
+          // changes what they play next.
+          if (_updater.updateAvailable.value) {
+            _offerUpdate();
+            return;
+          }
           ref.read(reviewPrompterProvider.notifier).maybeAsk();
         });
   }
@@ -391,7 +440,10 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     children: [
       if (_showLegalGate == true)
         LegalConsentScreen(
-          onAccepted: () => setState(() => _showLegalGate = false),
+          onAccepted: () {
+            setState(() => _showLegalGate = false);
+            _offerUpdate();
+          },
         )
       else
         HomeScreen(
