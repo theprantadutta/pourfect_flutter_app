@@ -14,6 +14,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/analytics/analytics_service.dart';
 import '../../services/api/api_result.dart';
 import '../../services/api/daily_api.dart';
 import '../../services/api/push_service.dart';
@@ -364,6 +365,9 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
 
   Future<void> _enableReminder() async {
     final on = await ref.read(pushServiceProvider).requestAndRegister();
+    ref
+        .read(analyticsServiceProvider)
+        .log(NotificationPermissionAnswered(placement: 'daily', granted: on));
     if (!mounted) return;
     setState(() {
       _reminderOn = on;

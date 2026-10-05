@@ -35,41 +35,82 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../analytics/analytics_service.dart' show firebaseReady;
 
-/// What a notification is about, and therefore where a tap should land.
+/// Where a tapped notification takes the player.
 ///
-/// Deliberately small. The backend sends exactly one kind today — the daily
-/// challenge reminder — and a taxonomy invented ahead of the messages that
-/// would use it is a taxonomy that will be wrong by the time they arrive.
-enum PourfectNotification {
-  dailyChallenge('daily_reminder'),
+/// The server names it under `nav_route` (never `route`: Android copies data
+/// keys onto the launch intent, and Flutter reads an extra called "route" as
+/// its initial route, which froze Snake Classic on its splash screen).
+enum NotificationDestination {
+  home('home'),
+  daily('daily'),
+  journey('journey'),
+  rankings('rankings'),
+  stats('stats');
 
-  /// Anything the app does not recognise. Still SHOWN — a message from a newer
-  /// backend than this build is not a reason to drop it silently — but it
-  /// opens the hub rather than guessing at a destination.
-  unknown('unknown');
-
-  const PourfectNotification(this.key);
+  const NotificationDestination(this.key);
 
   final String key;
 
-  /// Reads the kind off an FCM payload.
-  ///
-  /// **`kind`, not `type`, and `daily_reminder`, not `daily_challenge`.**
-  /// Those are the server's words — `NotificationJobService` sends
-  /// `["kind"] = "daily_reminder"` — and the server is the live half of this
-  /// contract, so the client matches it rather than the other way round.
-  ///
-  /// This was wrong in the first draft of this file, read `type`, and would
-  /// have sent every single reminder tap to [unknown]: no error, no log, the
-  /// notification simply opening the hub and the whole point of the
-  /// interruption quietly lost.
-  static PourfectNotification fromData(Map<String, dynamic> data) {
-    final raw = data['kind'];
-    for (final value in PourfectNotification.values) {
+  static NotificationDestination? fromKey(Object? raw) {
+    for (final value in values) {
       if (value.key == raw) return value;
     }
-    return PourfectNotification.unknown;
+    return null;
   }
+}
+
+/// A notification the player opened.
+@immutable
+class NotificationTap {
+  /// What it was, as the server named it: daily_reminder, daily_announcement,
+  /// new_levels, win_back, broadcast or test. Kept as the server's string, so
+  /// a kind this build has never heard of is still reported, not dropped.
+  final String kind;
+
+  final NotificationDestination destination;
+
+  /// The send's id, reported back so the dashboard can count it as opened.
+  /// Null for a message from before ids were sent.
+  final String? id;
+
+  const NotificationTap({
+    required this.kind,
+    required this.destination,
+    this.id,
+  });
+
+  /// Reads a tap off an FCM payload.
+  ///
+  /// **`kind`, not `type`.** Those are the server's words, and the first draft
+  /// of this file read `type`: every reminder tap would have opened the hub
+  /// with no error anywhere. The destination comes from `nav_route` when the
+  /// server sends one, and from the kind when it does not (an older server
+  /// sent only `kind: daily_reminder`). Anything unrecognised opens the hub:
+  /// a message from a newer backend is still shown, never dropped.
+  static NotificationTap fromData(Map<String, dynamic> data) {
+    final kind = data['kind'] is String ? data['kind'] as String : 'unknown';
+    final destination =
+        NotificationDestination.fromKey(data['nav_route']) ??
+        switch (kind) {
+          'daily_reminder' ||
+          'daily_announcement' => NotificationDestination.daily,
+          'new_levels' => NotificationDestination.journey,
+          _ => NotificationDestination.home,
+        };
+    final id = data['nid'];
+    return NotificationTap(
+      kind: kind,
+      destination: destination,
+      id: id is String && id.isNotEmpty ? id : null,
+    );
+  }
+
+  /// A tap whose payload could not be read: still a tap, and the hub is the
+  /// honest place for it.
+  static const unreadable = NotificationTap(
+    kind: 'unknown',
+    destination: NotificationDestination.home,
+  );
 }
 
 /// Channel, display and taps.
@@ -101,18 +142,45 @@ class NotificationService {
   static const _channelId = 'pourfect.reminders';
   static const _channelName = 'Reminders';
   static const _channelDescription =
-      'The daily challenge, and nothing else. At most one a day.';
+      'The Daily Pour, your next level and new worlds. Never more than two a day.';
 
   /// White-on-transparent, tinted by Android. NOT the launcher icon.
   static const _smallIcon = 'ic_notification';
 
-  final _taps = StreamController<PourfectNotification>.broadcast();
+  final _taps = StreamController<NotificationTap>.broadcast();
+
+  /// Taps that arrived before anybody was listening.
+  final _pending = <NotificationTap>[];
 
   /// Notifications the player opened, in order.
   ///
   /// A broadcast stream rather than a callback so the app can listen once at
   /// the root and route, without this service knowing what a route is.
-  Stream<PourfectNotification> get taps => _taps.stream;
+  Stream<NotificationTap> get taps => _taps.stream;
+
+  /// Hands over the taps that arrived before the app was listening.
+  ///
+  /// The tap that LAUNCHED the app is read during start-up, which runs
+  /// unawaited beside the first frames; a broadcast stream drops an event
+  /// nobody is subscribed to yet, and that tap is the one that mattered most.
+  /// The app subscribes, then drains this.
+  List<NotificationTap> takePending() {
+    final taps = List<NotificationTap>.of(_pending);
+    _pending.clear();
+    return taps;
+  }
+
+  /// Test seam: delivers [tap] as a real one would arrive.
+  @visibleForTesting
+  void debugEmit(NotificationTap tap) => _emit(tap);
+
+  void _emit(NotificationTap tap) {
+    if (_taps.hasListener) {
+      _taps.add(tap);
+    } else {
+      _pending.add(tap);
+    }
+  }
 
   var _started = false;
 
@@ -133,9 +201,7 @@ class NotificationService {
     // because the player was not already in the game.
     try {
       final initial = await FirebaseMessaging.instance.getInitialMessage();
-      if (initial != null) {
-        _taps.add(PourfectNotification.fromData(initial.data));
-      }
+      if (initial != null) _emit(NotificationTap.fromData(initial.data));
     } catch (error) {
       debugPrint('[notify] could not read the launch message: $error');
     }
@@ -195,7 +261,7 @@ class NotificationService {
 
     // Tapped while the app was alive but backgrounded.
     FirebaseMessaging.onMessageOpenedApp.listen(
-      (message) => _taps.add(PourfectNotification.fromData(message.data)),
+      (message) => _emit(NotificationTap.fromData(message.data)),
     );
   }
 
@@ -233,18 +299,18 @@ class NotificationService {
   void _onTapped(NotificationResponse response) {
     final payload = response.payload;
     if (payload == null || payload.isEmpty) {
-      _taps.add(PourfectNotification.unknown);
+      _emit(NotificationTap.unreadable);
       return;
     }
 
     try {
       final data = (jsonDecode(payload) as Map).cast<String, dynamic>();
-      _taps.add(PourfectNotification.fromData(data));
+      _emit(NotificationTap.fromData(data));
     } catch (error) {
       // A payload we cannot read is still a tap, and a tap still means the
       // player wants to be somewhere. The hub is the honest fallback.
       debugPrint('[notify] unreadable payload: $error');
-      _taps.add(PourfectNotification.unknown);
+      _emit(NotificationTap.unreadable);
     }
   }
 

@@ -1,12 +1,10 @@
-/// The one push this game sends, and how a player opts into it.
+/// Push permission, the FCM token, the player's two switches, and opens.
 ///
 /// **Permission is never asked for at launch.** A prompt on first run is a
 /// measurable D1 killer, and this game's only acquisition channel weights
-/// retention heavily — so the ask happens at the one moment it is obviously
-/// worth something: just after somebody finishes a daily challenge, when
-/// "remind me tomorrow" is a sentence about the thing they have just chosen to
-/// do. That also matches what the reminder job will actually send: it only
-/// targets players who have finished a daily before.
+/// retention heavily. It is asked at moments it is obviously worth something:
+/// a one-time card on the hub after the third level cleared, "Remind me
+/// tomorrow" after a daily, and the switch in Settings.
 ///
 /// A registered token is worth nothing on its own. The evening reminder picks
 /// players by their LOCAL time, which comes from the timezone offset the auth
@@ -16,6 +14,7 @@ library;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../analytics/analytics_service.dart';
 import '../notifications/notification_service.dart';
@@ -56,6 +55,66 @@ class PushService {
   /// What the OS currently says, without asking for anything.
   Future<PushPermission> permission() async =>
       _cached ??= await _readPermission();
+
+  /// Reads the OS again. Somebody may have switched notifications on in the
+  /// system settings since the last look.
+  Future<PushPermission> refreshPermission() async {
+    _cached = null;
+    return permission();
+  }
+
+  /// The player's switches as the server holds them, or null offline.
+  Future<NotificationPreferences?> fetchPreferences() async {
+    final result = await _resolveClient().get(
+      '/api/v1/users/notification-preferences',
+    );
+    return switch (result) {
+      ApiOk(:final value) => NotificationPreferences.fromJson(value),
+      ApiFailure() => null,
+    };
+  }
+
+  /// Sets both switches. Null when the server did not take it, so the switch
+  /// does not claim a state the server does not hold.
+  Future<NotificationPreferences?> savePreferences(
+    NotificationPreferences prefs,
+  ) async {
+    final result = await _resolveClient().put(
+      '/api/v1/users/notification-preferences',
+      prefs.toJson(),
+    );
+    return switch (result) {
+      ApiOk(:final value) => NotificationPreferences.fromJson(value),
+      ApiFailure(:final kind) => () {
+        debugPrint('[push] preferences not saved: $kind');
+        return null;
+      }(),
+    };
+  }
+
+  /// Tells the server the player opened notification [id]. Fire and forget:
+  /// a lost open costs a dashboard number, never the player anything.
+  Future<void> reportOpened(String id) async {
+    final result = await _resolveClient().post('/api/v1/notifications/opened', {
+      'id': id,
+    });
+    if (result case ApiFailure(:final kind)) {
+      debugPrint('[push] open not reported: $kind');
+    }
+  }
+
+  /// Opens this app's page in the system notification settings: the only
+  /// way back for somebody who declined, since Android asks once.
+  Future<bool> openSystemSettings() async {
+    try {
+      return await const MethodChannel('pourfect/notification_settings')
+              .invokeMethod<bool>('open') ??
+          false;
+    } catch (error) {
+      debugPrint('[push] could not open settings: $error');
+      return false;
+    }
+  }
 
   /// Registers the token if permission is ALREADY granted.
   ///
@@ -168,4 +227,30 @@ class PushService {
         AuthorizationStatus.notDetermined => PushPermission.notAsked,
         _ => PushPermission.denied,
       };
+}
+
+/// The player's two notification switches.
+@immutable
+class NotificationPreferences {
+  /// Daily Pour reminders: morning, evening, and the win-back.
+  final bool reminders;
+
+  /// New worlds and announcements.
+  final bool news;
+
+  const NotificationPreferences({required this.reminders, required this.news});
+
+  factory NotificationPreferences.fromJson(Map<String, Object?> json) =>
+      NotificationPreferences(
+        reminders: json['reminders'] as bool? ?? true,
+        news: json['news'] as bool? ?? true,
+      );
+
+  Map<String, Object?> toJson() => {'reminders': reminders, 'news': news};
+
+  NotificationPreferences copyWith({bool? reminders, bool? news}) =>
+      NotificationPreferences(
+        reminders: reminders ?? this.reminders,
+        news: news ?? this.news,
+      );
 }

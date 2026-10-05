@@ -11,12 +11,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'state/campaign_worlds.dart';
 import 'state/legal_acceptance.dart';
 import 'state/monetization_controller.dart';
+import 'services/analytics/analytics_service.dart';
+import 'services/api/push_service.dart';
 import 'services/notifications/notification_service.dart';
 import 'services/updates/app_updater.dart';
 import 'services/updates/release_policy.dart';
 import 'state/review_prompter.dart';
 import 'state/providers.dart';
 import 'state/daily_controller.dart';
+import 'state/notification_prefs.dart';
+import 'state/progress_repository.dart';
 import 'state/sync_controller.dart';
 import 'ui/screens/daily_challenge_screen.dart';
 import 'ui/screens/game_screen.dart';
@@ -131,7 +135,7 @@ class _Shell extends ConsumerStatefulWidget {
 
 class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
   /// Notification taps, cancelled with the shell.
-  StreamSubscription<PourfectNotification>? _taps;
+  StreamSubscription<NotificationTap>? _taps;
 
   /// Null until the launch count and stored acceptance have been read.
   bool? _showLegalGate;
@@ -208,17 +212,11 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     // Subscribed here rather than in the service, because the service has no
     // business knowing what a route is — it reports which notification was
     // opened and this decides where that lands.
-    _taps = NotificationService.shared.taps.listen((notification) {
-      if (!mounted) return;
-      switch (notification) {
-        case PourfectNotification.dailyChallenge:
-          _openDaily();
-        case PourfectNotification.unknown:
-          // Deliberately nothing. They are already on the hub, which is the
-          // honest destination for a message this build does not recognise.
-          break;
-      }
-    });
+    _taps = NotificationService.shared.taps.listen(_onNotificationTap);
+    // A tap that launched the app may have arrived before this listener did.
+    for (final tap in NotificationService.shared.takePending()) {
+      _onNotificationTap(tap);
+    }
   }
 
   /// Syncs again when the app comes back.
@@ -348,6 +346,7 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
   }
 
   void _openLevel(int levelId, Rect? origin) {
+    final solvedBefore = ref.read(progressProvider).length;
     Navigator.of(context)
         .push(
           PourfectPageRoute<void>(
@@ -363,7 +362,7 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
         // the player is between things. That is the only moment in this app
         // worth asking for a rating in — everywhere else they are mid-puzzle,
         // mid-animation, or mid-decision.
-        .then((_) {
+        .then((_) async {
           if (!mounted) return;
           // A waiting update takes this moment instead of the rating ask: one
           // dialog per return to the hub, and the update is the one that
@@ -372,8 +371,89 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
             _offerUpdate();
             return;
           }
+          // Then the notification offer, when it is due; it takes the slot
+          // from the rating ask on that return, never stacks with it.
+          final won = ref.read(progressProvider).length > solvedBefore;
+          if (await _maybeOfferNotifications(won: won)) return;
+          if (!mounted) return;
           ref.read(reviewPrompterProvider.notifier).maybeAsk();
         });
+  }
+
+  void _onNotificationTap(NotificationTap tap) {
+    if (!mounted) return;
+
+    // Counted on the server, so the dashboard has an open rate, and in the
+    // funnel beside whatever the player did next.
+    if (tap.id case final id?) ref.read(pushServiceProvider).reportOpened(id);
+    ref
+        .read(analyticsServiceProvider)
+        .log(
+          NotificationOpened(kind: tap.kind, destination: tap.destination.key),
+        );
+
+    switch (tap.destination) {
+      case NotificationDestination.daily:
+        _openDaily();
+      case NotificationDestination.journey:
+        _openJourney();
+      case NotificationDestination.rankings:
+        _openLeaderboard();
+      case NotificationDestination.stats:
+        _openStatistics();
+      case NotificationDestination.home:
+        // They are on the hub already, next level in front of them, which is
+        // what a "Level 65 is waiting" means.
+        break;
+    }
+  }
+
+  /// Offers notifications on the way back from a level, if it is time to.
+  ///
+  /// First after the third level cleared; then, while they are still off,
+  /// at most every 15 days and six times in all (`notification_prefs.dart`).
+  /// Only after a level was actually WON on that visit: a player who backs
+  /// out of a hard board is not in the mood to be asked for anything.
+  /// Returns whether it asked, because the hub shows one dialog per return.
+  Future<bool> _maybeOfferNotifications({required bool won}) async {
+    if (!won) return false;
+    final prefs = ref.read(notificationPrefsProvider.notifier);
+    final solved = ref.read(progressProvider).length;
+    if (!await prefs.shouldSoftAsk(solved: solved)) return false;
+    if (!mounted) return false;
+
+    await prefs.markSoftAskShown();
+    final declinedBefore =
+        await ref.read(pushServiceProvider).permission() ==
+        PushPermission.denied;
+    if (!mounted) return true;
+
+    final yes = await showToyConfirm(
+      context: context,
+      title: 'Want a nudge?',
+      body: declinedBefore
+          ? 'Notifications are off for Pourfect. Turn them on in your '
+                "phone's settings for a heads-up when the Daily Pour is out "
+                'or a new world arrives. Never more than two a day.'
+          : "A heads-up when today's Daily Pour is out, or your next level "
+                'is waiting. Never more than two a day, and you can switch '
+                'them off any time in Settings.',
+      cancelLabel: 'Not now',
+      confirmLabel: declinedBefore ? 'Open settings' : 'Yes please',
+      confirmColor: Toy.mint,
+    );
+    if (!yes) return true;
+
+    final granted = await prefs.turnOn();
+    ref
+        .read(analyticsServiceProvider)
+        .log(
+          NotificationPermissionAnswered(
+            placement: 'soft_ask',
+            granted: granted,
+          ),
+        );
+    return true;
   }
 
   void _openDaily() {

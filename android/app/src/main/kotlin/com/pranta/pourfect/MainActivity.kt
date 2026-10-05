@@ -1,7 +1,9 @@
 package com.pranta.pourfect
 
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -29,8 +31,32 @@ import java.security.MessageDigest
  */
 class MainActivity : FlutterActivity() {
 
+    /**
+     * Never take the initial route from the launch intent.
+     *
+     * Android copies a push's data keys onto the intent that opens the app,
+     * and FlutterActivity reads an extra called "route" as the route to start
+     * on. Snake Classic sent route=home and every cold tap froze on its splash
+     * screen. This app sends nav_route instead; this makes the mistake
+     * impossible rather than merely avoided.
+     */
+    override fun getInitialRoute(): String? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Opens this app's page in the system notification settings: the only
+        // way back for somebody who said no to the prompt, which Android will
+        // not show a second time.
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "pourfect/notification_settings",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "open" -> result.success(openNotificationSettings())
+                else -> result.notImplemented()
+            }
+        }
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -41,6 +67,20 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private fun openNotificationSettings(): Boolean = try {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        } else {
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(android.net.Uri.fromParts("package", packageName, null))
+        }
+        startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+    } catch (error: Throwable) {
+        false
     }
 
     /**

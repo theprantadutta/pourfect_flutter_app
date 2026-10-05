@@ -436,6 +436,30 @@ device, and every piece of it exists because the platform does not do it:
   never arrives through `onMessageOpenedApp`, so an app listening only to the
   stream drops exactly the taps that mattered most.
 
+**What the server sends and when** (two a day at most, at the player's local
+09:00 / 10:00 / 20:00) is in the backend's CLAUDE.md, "Notifications". This
+side, since 2026-10-05:
+
+- **A tap goes where the server says**, under `nav_route` (`home`, `daily`,
+  `journey`, `rankings`, `stats`), falling back to the kind for an older
+  server. Never `route`: `MainActivity.getInitialRoute` returns null so that
+  intent extra can never become Flutter's initial route (it froze Snake
+  Classic on its splash).
+- **A tap is reported** (`POST /notifications/opened` with the `nid`), so the
+  dashboard has an open rate, plus a `notification_opened` analytics event.
+- **A tap that launched the app is held** (`takePending`) until the shell is
+  listening; the broadcast stream would otherwise drop the tap that mattered
+  most.
+- **Settings → Notifications**: "Turn on notifications" while the OS says no
+  (opening the system settings once Android has stopped asking), and the two
+  switches, "Daily Pour reminders" and "Game news", which move only once the
+  server agrees.
+- **The hub offers notifications after a WIN**, first at the third level
+  cleared, then while they are still off at most every 15 days, six times in
+  all (`notification_prefs.dart`), taking the one-dialog slot from the rating
+  ask. The system prompt only follows a yes. Owner's call: ask occasionally,
+  never nag.
+
 **The payload key is `kind`, and the value is `daily_reminder`.** Those are the
 SERVER's words — `NotificationJobService` sends
 `["kind"] = "daily_reminder"` — and the first draft of the client invented

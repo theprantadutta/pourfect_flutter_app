@@ -19,7 +19,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/analytics/analytics_service.dart';
 import '../../services/iap/billing_service.dart';
 import '../../state/account_controller.dart';
+import '../../services/api/push_service.dart';
 import '../../state/monetization_controller.dart';
+import '../../state/notification_prefs.dart';
 import '../../state/onboarding.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
@@ -64,6 +66,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
     _loadVersion();
+    // The permission may have changed in the system settings, and the
+    // switches on another device, since this screen was last open.
+    Future.microtask(
+      () => ref.read(notificationPrefsProvider.notifier).refresh(),
+    );
     // The offer being SEEN is the denominator of the purchase funnel. Without
     // it, a low conversion rate is indistinguishable from nobody finding it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -512,6 +519,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
 
+                  const SectionHeader(label: 'Notifications'),
+                  _NotificationsGroup(
+                    onProblem: (message) => showRowMessage(context, message),
+                  ),
+
                   const SectionHeader(label: 'Support'),
                   Group(
                     children: [
@@ -923,4 +935,71 @@ String _smoothMotionDetail(DisplayRateState display, SmoothMotion mode) {
     SmoothMotion.max =>
       'Running at ${hz(rate.current)}, the fastest this screen goes',
   };
+}
+
+/// Whether the phone may notify at all, and the player's two switches.
+///
+/// The switches are the SERVER's (it decides what to send), so each one moves
+/// only once the server has agreed. The permission row appears only while
+/// the phone cannot show anything: it is the one fix the player has to make.
+class _NotificationsGroup extends ConsumerWidget {
+  final ValueChanged<String> onProblem;
+
+  const _NotificationsGroup({required this.onProblem});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(notificationPrefsProvider);
+    final controller = ref.read(notificationPrefsProvider.notifier);
+    final allowed = state.permission == PushPermission.granted;
+
+    Future<void> save(Future<bool> Function() change) async {
+      if (!await change()) {
+        onProblem('Could not reach the server, so nothing changed.');
+      }
+    }
+
+    return Group(
+      children: [
+        if (state.loaded && !allowed)
+          ActionRow(
+            icon: const Icon(Icons.notifications_off_rounded),
+            iconColor: Toy.tomato,
+            iconInk: Colors.white,
+            title: 'Turn on notifications',
+            detail: state.permission == PushPermission.denied
+                ? "Off in your phone's settings. Tap to open them."
+                : "Pourfect can't notify you yet",
+            onTap: () async {
+              final granted = await controller.turnOn();
+              ref
+                  .read(analyticsServiceProvider)
+                  .log(
+                    NotificationPermissionAnswered(
+                      placement: 'settings',
+                      granted: granted,
+                    ),
+                  );
+            },
+          ),
+        ToggleRow(
+          icon: const Icon(Icons.wb_twilight_rounded),
+          iconColor: Toy.blue,
+          iconInk: Colors.white,
+          title: 'Daily Pour reminders',
+          detail: 'Morning and evening, never more than two a day',
+          value: state.prefs.reminders,
+          onChanged: (on) => save(() => controller.setReminders(on)),
+        ),
+        ToggleRow(
+          icon: const Icon(Icons.auto_awesome_rounded),
+          iconColor: Toy.lilac,
+          title: 'Game news',
+          detail: 'New worlds and announcements',
+          value: state.prefs.news,
+          onChanged: (on) => save(() => controller.setNews(on)),
+        ),
+      ],
+    );
+  }
 }

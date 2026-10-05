@@ -351,6 +351,45 @@ final class IapPurchased extends AnalyticsEvent {
   };
 }
 
+/// The player opened a notification. The dashboard counts the same open from
+/// the server's side; this one lands in the funnel beside what they did next.
+final class NotificationOpened extends AnalyticsEvent {
+  final String kind;
+  final String destination;
+
+  const NotificationOpened({required this.kind, required this.destination});
+
+  @override
+  String get name => 'notification_opened';
+
+  @override
+  Map<String, Object> get parameters => {
+    'kind': kind,
+    'destination': destination,
+  };
+}
+
+/// What the player answered when notifications were offered, and where.
+final class NotificationPermissionAnswered extends AnalyticsEvent {
+  /// soft_ask (the hub card), daily (after a daily) or settings.
+  final String placement;
+  final bool granted;
+
+  const NotificationPermissionAnswered({
+    required this.placement,
+    required this.granted,
+  });
+
+  @override
+  String get name => 'notification_permission';
+
+  @override
+  Map<String, Object> get parameters => {
+    'placement': placement,
+    'granted': granted ? 1 : 0,
+  };
+}
+
 /// Where events go.
 ///
 /// Deliberately narrow and swappable — the same shape as the ad abstraction, so
