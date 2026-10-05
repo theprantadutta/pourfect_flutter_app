@@ -290,6 +290,15 @@ class SyncController extends Notifier<SyncState> {
 
         progress.mergeFromServer(value.progress);
 
+        // A grant the session predates: applied the moment the server says
+        // so. Only ever a GRANT, for the reason given above: false is also
+        // what a pending purchase and an older server look like.
+        if (value.adsRemoved) {
+          await ref
+              .read(monetizationProvider.notifier)
+              .applyServerEntitlement(granted: true);
+        }
+
         // Only the submitted REVISIONS are acknowledged. A level whose
         // revision moved while the request was in flight is a different
         // result from the one the server just took, so it stays dirty.

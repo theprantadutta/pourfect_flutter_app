@@ -45,7 +45,16 @@ class SyncOutcome {
     required this.changed,
     required this.progress,
     this.resetGeneration = 0,
+    this.adsRemoved = false,
   });
+
+  /// Whether the account owns Remove Ads, as of this sync.
+  ///
+  /// The session says the same, but only as it was at sign-in, and a session
+  /// lasts 30 days: a grant made since (the dashboard, a purchase verified on
+  /// another phone) did not reach this one until it expired. Older servers
+  /// do not send it, which reads as false and changes nothing.
+  final bool adsRemoved;
 }
 
 class ProgressApi {
@@ -151,6 +160,7 @@ class ProgressApi {
     changed: (body['changed'] as num?)?.toInt() ?? 0,
     progress: _rows(body['progress']),
     resetGeneration: (body['reset_generation'] as num?)?.toInt() ?? 0,
+    adsRemoved: body['ads_removed'] as bool? ?? false,
   );
 
   static List<LevelProgress> _rows(Object? raw) {

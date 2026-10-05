@@ -612,5 +612,23 @@ void main() {
 
       expect(built.container.read(monetizationProvider).adsRemoved, isTrue);
     });
+
+    test('a grant the session predates arrives with the next sync', () async {
+      // The session was issued before the grant (a dashboard grant, an
+      // operator script, a purchase verified on another phone) and lasts 30
+      // days. Found on a tablet: the account was premium on the server and
+      // the game still showed an interstitial, because only the session was
+      // ever read.
+      final built = harness(
+        handler: authThen((request) async {
+          final body = jsonDecode(syncBody(const [])) as Map<String, Object?>;
+          return http.Response(jsonEncode({...body, 'ads_removed': true}), 200);
+        }),
+      );
+
+      await built.container.read(syncControllerProvider.notifier).syncNow();
+
+      expect(built.container.read(monetizationProvider).adsRemoved, isTrue);
+    });
   });
 }
