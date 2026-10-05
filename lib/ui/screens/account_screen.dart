@@ -251,13 +251,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       // SAID OUT LOUD. The screen used to close without a word, and testers
       // could not tell a sign-in that worked from one that had quietly given
       // up. Taken before the pop, while this context still has an ancestor.
-      final messenger = ScaffoldMessenger.of(context);
+      final overlay = Overlay.of(context, rootOverlay: true);
       Navigator.of(context).maybePop();
-      messenger
-        ..clearSnackBars()
-        ..showSnackBar(
-          rowMessageBar('Signed in. Your stars now follow you to a new phone.'),
-        );
+      showToyToastOn(
+        overlay,
+        'Signed in. Your stars now follow you to a new phone.',
+      );
       return;
     }
     setState(

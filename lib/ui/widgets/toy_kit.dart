@@ -6,6 +6,7 @@
 /// re-typing them slightly differently.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -475,6 +476,203 @@ class ToyToast extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Shows [message] in the Toybox voice, floating above the bottom of the
+/// screen for [duration], with an optional [actionLabel].
+///
+/// **An overlay, not a SnackBar.** A SnackBar appears only where a [Scaffold]
+/// is registered with the messenger, and most screens here stand on a
+/// [ToyScaffold], which is not one. When the game screen moved to Toybox,
+/// every message it shows ("No hint for this position", "No video available
+/// right now", "Your video is saved") quietly stopped appearing: no error in
+/// release, just a button that seemed to do nothing. The root overlay is there
+/// on every screen and survives a route popping, so a message said on the way
+/// out of a screen still lands.
+///
+/// One at a time: a new message replaces whatever is showing.
+void showToyToast(
+  BuildContext context,
+  String message, {
+  String? actionLabel,
+  VoidCallback? onAction,
+  Duration duration = const Duration(milliseconds: 3200),
+}) => showToyToastOn(
+  Overlay.of(context, rootOverlay: true),
+  message,
+  actionLabel: actionLabel,
+  onAction: onAction,
+  duration: duration,
+);
+
+/// [showToyToast] for a caller holding the overlay itself: one about to pop
+/// its own route, whose context will not have an ancestor afterwards.
+void showToyToastOn(
+  OverlayState overlay,
+  String message, {
+  String? actionLabel,
+  VoidCallback? onAction,
+  Duration duration = const Duration(milliseconds: 3200),
+}) {
+  final previous = _toast;
+  if (previous != null && previous.mounted) previous.remove();
+
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (context) => _ToastHost(
+      message: message,
+      actionLabel: actionLabel,
+      onAction: onAction,
+      duration: duration,
+      onDone: () {
+        if (entry.mounted) entry.remove();
+        if (identical(_toast, entry)) _toast = null;
+      },
+    ),
+  );
+  _toast = entry;
+  overlay.insert(entry);
+}
+
+OverlayEntry? _toast;
+
+class _ToastHost extends StatefulWidget {
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final Duration duration;
+  final VoidCallback onDone;
+
+  const _ToastHost({
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+    required this.duration,
+    required this.onDone,
+  });
+
+  @override
+  State<_ToastHost> createState() => _ToastHostState();
+}
+
+class _ToastHostState extends State<_ToastHost>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _show = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 200),
+  );
+  Timer? _hold;
+
+  @override
+  void initState() {
+    super.initState();
+    _show.forward();
+    _hold = Timer(widget.duration, _dismiss);
+  }
+
+  Future<void> _dismiss() async {
+    _hold?.cancel();
+    if (!mounted) return;
+    await _show.reverse();
+    widget.onDone();
+  }
+
+  @override
+  void dispose() {
+    _hold?.cancel();
+    _show.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final calm = Toy.calm(context);
+    final action = widget.actionLabel;
+    // Clear of the game's control bar, which is the tallest thing that sits
+    // at the bottom of any screen.
+    final bottom = MediaQuery.paddingOf(context).bottom + 112;
+    return Positioned(
+      left: 20,
+      right: 20,
+      bottom: bottom,
+      child: AnimatedBuilder(
+        animation: _show,
+        builder: (context, child) {
+          final t = Curves.easeOutCubic.transform(_show.value);
+          return Opacity(
+            opacity: t,
+            child: Transform.translate(
+              offset: Offset(0, calm ? 0 : 12 * (1 - t)),
+              child: child,
+            ),
+          );
+        },
+        // Transparent Material: an overlay entry sits outside every screen's
+        // Material, and text there would otherwise wear the debug underline.
+        child: Material(
+          type: MaterialType.transparency,
+          child: Semantics(
+            liveRegion: true,
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  11,
+                  action == null ? 16 : 8,
+                  11,
+                ),
+                decoration: BoxDecoration(
+                  color: Toy.ink,
+                  borderRadius: BorderRadius.circular(Toy.rControl),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        widget.message,
+                        maxLines: 3,
+                        textAlign: TextAlign.center,
+                        style: Toy.ui(
+                          14.5,
+                          weight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    if (action != null) ...[
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          widget.onAction?.call();
+                          _dismiss();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          child: Text(
+                            action,
+                            style: Toy.ui(
+                              14.5,
+                              weight: FontWeight.w800,
+                              color: Toy.yellow,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -32,6 +32,7 @@ import 'ui/theme/toy.dart';
 import 'ui/theme/typography.dart';
 import 'ui/transitions.dart';
 import 'ui/widgets/splash_handoff.dart';
+import 'ui/widgets/toy_kit.dart';
 import 'ui/widgets/update_prompt.dart';
 
 class PourfectApp extends StatelessWidget {
@@ -307,24 +308,15 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
   void _offerRestart() {
     if (!mounted || !_updater.readyToInstall.value) return;
 
-    final tokens = PourfectTokens.of(context);
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          backgroundColor: tokens.surfaceRaised,
-          duration: const Duration(seconds: 10),
-          content: Text(
-            'An update is ready to install.',
-            style: bodyStyle(tokens),
-          ),
-          action: SnackBarAction(
-            label: 'Restart',
-            textColor: tokens.accent,
-            onPressed: _updater.install,
-          ),
-        ),
-      );
+    // A toy toast, not a SnackBar: the hub stands on a ToyScaffold, which is
+    // not a Scaffold, so a SnackBar here would never have appeared.
+    showToyToast(
+      context,
+      'An update is ready to install.',
+      actionLabel: 'Restart',
+      onAction: _updater.install,
+      duration: const Duration(seconds: 10),
+    );
   }
 
   @override
