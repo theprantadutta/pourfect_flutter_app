@@ -40,7 +40,8 @@ class DailyChallengeScreen extends ConsumerStatefulWidget {
       _DailyChallengeScreenState();
 }
 
-class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
+class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
+    with WidgetsBindingObserver {
   late final GameController _game;
 
   /// Held from initState for the same reason as [_game]: dispose banks the
@@ -70,8 +71,12 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _game = ref.read(gameControllerProvider.notifier);
     _history = ref.read(playHistoryProvider.notifier);
+    // Solves each position as it is reached, as on the campaign board, so a
+    // hint is instant and a dead end is known before anybody asks.
+    ref.read(positionAnalystProvider);
     ref.read(dailyProvider.notifier).ensureLoaded();
 
     // Read, never requested. Knowing the answer is what lets the offer appear
@@ -83,11 +88,41 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
 
   @override
   void dispose() {
-    _bankPlaytime();
+    WidgetsBinding.instance.removeObserver(this);
     // Same rule as the campaign board: the session ends when the screen does,
     // so nothing in flight can land on a board nobody is looking at.
+    //
+    // Playtime is NOT banked here. Banking writes provider state, and doing
+    // that while the tree is torn down throws: it is banked on the way out
+    // instead (see [_leave] and the PopScope in build).
     _game.endSession();
     super.dispose();
+  }
+
+  /// The daily is ranked by moves, then TIME, so its clock must stop when the
+  /// app does. It never did: a board left in the background for ten minutes
+  /// came back ten minutes slower, and an optimal solve sank down the board.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    final state = ref.read(gameControllerProvider);
+    if (state == null || state.level.id != 0) return;
+    switch (lifecycle) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        _bankPlaytime();
+        _game.pauseClock();
+      case AppLifecycleState.resumed:
+        _game.resumeClock();
+      case AppLifecycleState.inactive:
+        break;
+    }
+  }
+
+  /// Leaves the screen, banking the time played first.
+  void _leave() {
+    _bankPlaytime();
+    widget.onExit();
   }
 
   /// Logs the time spent on today's board into the play history.
@@ -183,17 +218,30 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
     // the player is halfway through.
     final playing = _playing;
 
-    return ToyScaffold(
-      surface: ToySurface.daily,
-      padding: EdgeInsets.zero,
-      child: playing == null
-          ? _Unavailable(state: daily, onBack: widget.onExit)
-          : _board(playing, daily),
+    // The system back gesture pops without passing through [_leave], so the
+    // time played is banked here as well. Banking twice is harmless: the
+    // second call finds nothing left to hand over.
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) _bankPlaytime();
+      },
+      child: ToyScaffold(
+        surface: ToySurface.daily,
+        padding: EdgeInsets.zero,
+        child: playing == null
+            ? _Unavailable(state: daily, onBack: _leave)
+            : _board(playing, daily),
+      ),
     );
   }
 
   Widget _board(DailyChallenge challenge, DailyState daily) {
-    final state = ref.watch(gameControllerProvider);
+    // The game controller is shared with the campaign, and the daily board is
+    // handed to it a frame after this screen first builds. Until then it
+    // still holds the last campaign level: its board, its moves, and, if it
+    // was won, today stamped as solved. Only the daily's own state counts.
+    final live = ref.watch(gameControllerProvider);
+    final state = live?.level.id == 0 ? live : null;
 
     // Today counts as stamped the moment the board is solved on this device —
     // nothing the server says afterwards can un-solve it — or when the
@@ -231,7 +279,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                   isRunning: state.isClockRunning,
                   fontSize: 13,
                 ),
-          onExit: widget.onExit,
+          onExit: _leave,
         ),
 
         const SizedBox(height: 12),
@@ -268,7 +316,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
           _Outcome(
             result: _result,
             error: _submitError,
-            onDone: widget.onExit,
+            onDone: _leave,
             onRetry: _submitError == null ? null : _submit,
             onRemindMe: _canOfferReminder ? _enableReminder : null,
             reminderOn: _reminderOn,
@@ -332,11 +380,44 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
     // leaderboard a question of who watched an ad, which is a worse board and
     // a worse product.
     final hints = ref.read(hintServiceProvider);
-    if (ref.read(gameControllerProvider)?.hintPending ?? false) {
+    final current = ref.read(gameControllerProvider);
+    if (current?.hintPending ?? false) {
       hints.cancel();
       return;
     }
-    await hints.request();
+    if (current == null || current.hintMove != null) return;
+
+    // Asked first, so a position with no way forward is said out loud
+    // instead of the button simply doing nothing.
+    final check = await hints.check();
+    if (!mounted) return;
+    switch (check.availability) {
+      case HintAvailability.available:
+        await hints.request();
+      case HintAvailability.deadEnd:
+        final back = check.stepsBack;
+        showToyToast(
+          context,
+          back == null
+              ? 'No way to finish from here. Restart to try another line.'
+              : 'No way to finish from here. Undo '
+                    '${back == 1 ? '1 move' : '$back moves'} to get back on '
+                    'track.',
+          actionLabel: back == null ? 'Restart' : 'Undo $back',
+          onAction: () {
+            if (back == null) return _onRestart();
+            for (var i = 0; i < back; i++) {
+              if (!_game.undo()) break;
+            }
+          },
+          duration: const Duration(seconds: 6),
+        );
+      case HintAvailability.unavailable:
+        showToyToast(context, 'No hint for this position.');
+      case HintAvailability.cancelled:
+      case HintAvailability.notApplicable:
+        break;
+    }
   }
 }
 

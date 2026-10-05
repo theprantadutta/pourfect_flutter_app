@@ -91,7 +91,14 @@ class DailyController extends Notifier<DailyState> {
 
     switch (await _api.today()) {
       case ApiOk(:final value):
-        state = DailyState(challenge: value);
+        // The same day's board keeps the result already in hand. The shell
+        // refreshes on every resume, and dropping it here turned a five-day
+        // streak on the daily screen into a single stamped day.
+        final sameDay = state.challenge?.date == value.date;
+        state = DailyState(
+          challenge: value,
+          result: sameDay ? state.result : null,
+        );
       case ApiFailure(:final kind):
         state = DailyState(loading: false, failure: kind);
         debugPrint('[daily] unavailable: $kind');
