@@ -129,9 +129,20 @@ class GameController extends Notifier<GameState?> {
 
     final selected = current.selectedTube;
 
+    // A hint on screen survives the player picking up the run it points at.
+    // Tapping the hinted source is the natural first half of following it; it
+    // used to clear the hint, so a hint paid for with a video vanished on
+    // the very tap that obeyed it.
+    final hint = current.hintMove;
+    Move? Function() keepHintFor(int tube) =>
+        () => hint?.from == tube ? hint : null;
+
     if (selected == null) {
       if (current.board[index].isEmpty) return TapOutcome.ignored;
-      state = current.copyWith(selectedTube: () => index, hintMove: () => null);
+      state = current.copyWith(
+        selectedTube: () => index,
+        hintMove: keepHintFor(index),
+      );
       _haptics.selection();
       return TapOutcome.selected;
     }
@@ -147,7 +158,12 @@ class GameController extends Notifier<GameState?> {
         state = current.copyWith(selectedTube: () => null);
         return TapOutcome.deselected;
       }
-      state = current.copyWith(selectedTube: () => index);
+      // Picking up a different run leaves the hint behind: its arrow would
+      // otherwise point at a tube this run may not even fit.
+      state = current.copyWith(
+        selectedTube: () => index,
+        hintMove: keepHintFor(index),
+      );
       _haptics.selection();
       return TapOutcome.reselected;
     }
@@ -223,6 +239,7 @@ class GameController extends Notifier<GameState?> {
       board: withSpare(current.board),
       undoStack: [for (final board in current.undoStack) withSpare(board)],
       extraTubeUsed: true,
+      movesFloor: current.movesUsed,
       // The hint pointed at a board that no longer exists, and its move may
       // now be the wrong one entirely.
       hintMove: () => null,
@@ -245,7 +262,11 @@ class GameController extends Notifier<GameState?> {
     state = current.copyWith(
       board: previous,
       undoStack: stack,
-      movesUsed: current.movesUsed - 1,
+      // Never below the count the extra tube was granted at: see
+      // GameState.movesFloor.
+      movesUsed: current.movesUsed - 1 < current.movesFloor
+          ? current.movesFloor
+          : current.movesUsed - 1,
       undosUsed: current.undosUsed + 1,
       selectedTube: () => null,
       hintMove: () => null,

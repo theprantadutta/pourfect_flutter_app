@@ -298,6 +298,11 @@ Tap-to-select, tap-to-pour.
 - Tapping the already-selected tube **deselects** it. Without this a player who
   changes their mind has to waste a move or hit undo.
 - The held run LIFTS with an ink drop shadow and the source tube goes tomato.
+  It rises AS ONE BLOCK, top ball just over the rim (`liftOffset`), and rows
+  are spaced so a run lifted from the bottom row clears the row above.
+  Stacking the run upward from the rim put a three-ball run on top of the
+  next row's balls. The lifted ball and the ▼ are part of their tube's tap
+  target, and the pour leaves from where the run is held.
   Every tube that can take it gets a mint fill and a bobbing tomato ▼; the
   rest dim to **40%** — below about 35% the ink outline fades into the dot grid
   and a dimmed tube stops reading as a tube.
@@ -481,6 +486,27 @@ Solved on a background isolate via `Isolate.run`. Three rules, all enforced in
 2. **`HintOutcome.resolved` is the only outcome that may consume a reward.**
 3. **A hint for a position the player has left is discarded** (`stale`), and
    tapping Hint again while one is solving cancels it.
+
+**The answer is known before anything is charged** (2026-10-05).
+`PositionAnalyst` solves every position the player reaches, one at a time
+on an isolate, while they look at it; one solve also settles every position
+along its optimal line, so following a hint never waits. `_onHint` asks
+`HintService.check()` FIRST, then spends a free hint or a video. It used to
+play the video and solve afterwards, so a player on a board with no way
+forward watched an ad to be told "no hint". A proven dead end (moves left,
+no finish: `Unsolvable`, never `SolveUnknown`) is answered free: "No way to
+finish from here. Undo N moves", with an Undo N action counted from the
+undo stack. A hint already on screen is not sold twice, and tapping the
+hinted source keeps the hint (it used to clear it). Pinned by
+`position_analyst_test`, `hint_follow_test` and the dead-end case in
+`hint_settlement_test`.
+
+**Messages go through `showToyToast`, never a SnackBar.** A SnackBar needs a
+`Scaffold`, and `ToyScaffold` is not one: from the Toybox rebuild until
+2026-10-05 every message on the game screen ("No hint for this position",
+"No video available", "Your video is saved") silently showed nothing in
+release. The toast is a root-overlay entry, so it works on any screen and
+survives the route popping.
 
 ## Onboarding — teach by playing
 
@@ -958,6 +984,11 @@ The tube is APPENDED, never inserted, because the selection, a pending hint and
 the pour animation all address tubes by index.
 
 One per attempt, and a restart hands back both the board and the offer.
+
+**Undo restores the board but not the moves spent before the grant**
+(`GameState.movesFloor`). Without the floor, undoing to move 0 with the
+spare tube in place let a player finish under par for three stars, a
+result the server rejects as impossible.
 
 ### Verified on device, 2026-09-13
 

@@ -42,6 +42,12 @@ class StalledHintService extends HintService {
   final Completer<HintOutcome> gate = Completer<HintOutcome>();
   int requests = 0;
 
+  /// There is a hint here: these tests are about what happens after it is
+  /// paid for, not about whether one exists.
+  @override
+  Future<HintCheck> check() async =>
+      const HintCheck(HintAvailability.available);
+
   @override
   Future<HintOutcome> request({bool wasRewarded = false}) {
     requests++;
@@ -62,12 +68,33 @@ class DelayedRealHintService extends HintService {
   int requests = 0;
 
   @override
+  Future<HintCheck> check() async =>
+      const HintCheck(HintAvailability.available);
+
+  @override
   Future<HintOutcome> request({bool wasRewarded = false}) async {
     requests++;
     await release.future;
     final outcome = await super.request(wasRewarded: wasRewarded);
     done.complete(outcome);
     return outcome;
+  }
+}
+
+/// A position with no way forward, two undos from a winnable one.
+class DeadEndHintService extends HintService {
+  DeadEndHintService(super.ref);
+
+  int requests = 0;
+
+  @override
+  Future<HintCheck> check() async =>
+      const HintCheck(HintAvailability.deadEnd, stepsBack: 2);
+
+  @override
+  Future<HintOutcome> request({bool wasRewarded = false}) async {
+    requests++;
+    return HintOutcome.resolved;
   }
 }
 
@@ -310,6 +337,43 @@ void main() {
         kFreeHints,
         reason: 'a real hint solved for an abandoned board was charged for',
       );
+    });
+  });
+
+  group('a position with no way forward', () {
+    testWidgets('is said out loud, before any video, and costs nothing', (
+      tester,
+    ) async {
+      // The report this answers: the Hint button showed its video badge on a
+      // board that could no longer be finished, and pressing it did nothing
+      // at all. The alert had stopped appearing (the screen has no Scaffold
+      // for a SnackBar), and the video came before the check anyway.
+      late DeadEndHintService deadEnd;
+      final scope = containerWith((ref) => deadEnd = DeadEndHintService(ref));
+      addTearDown(scope.dispose);
+      final money = scope.read(monetizationProvider.notifier);
+      for (var i = 0; i < kFreeHints; i++) {
+        await money.consumeFreeHint();
+      }
+
+      await openBoard(tester, scope);
+      await tapHint(tester);
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(
+        find.text(
+          'No way to finish from here. Undo 2 moves to get back on track.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Undo 2'), findsOneWidget);
+      expect(find.text('Watch'), findsNothing, reason: 'a video was offered');
+      expect(deadEnd.requests, 0);
+      expect(scope.read(monetizationProvider).hasHintCredit, isFalse);
+
+      // Let the message time out, so no timer outlives the test.
+      await tester.pump(const Duration(seconds: 7));
+      await tester.pump(const Duration(milliseconds: 300));
     });
   });
 

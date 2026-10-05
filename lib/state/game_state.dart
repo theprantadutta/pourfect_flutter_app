@@ -122,6 +122,17 @@ class GameState {
   /// generated, so it gives the offer back too.
   final bool extraTubeUsed;
 
+  /// The move count can never be undone below this.
+  ///
+  /// Set to the count at which the extra tube was granted. The tube is offered
+  /// only once par is spent, so that the finished count cannot land under
+  /// the proven optimum; undo used to take the count back to zero with the
+  /// tube still in place, and a clear with the spare tube then scored three
+  /// stars in fewer moves than the board allows, a result the server rejects
+  /// as impossible. Undo still restores the BOARD as far back as the player
+  /// likes. It only stops giving back moves already spent past this point.
+  final int movesFloor;
+
   const GameState({
     required this.level,
     required this.levelSetVersion,
@@ -140,6 +151,7 @@ class GameState {
     required this.bankedSeconds,
     required this.isRetry,
     required this.extraTubeUsed,
+    this.movesFloor = 0,
   });
 
   /// A fresh attempt at [level].
@@ -257,6 +269,7 @@ class GameState {
     DateTime? Function()? runningSince,
     int? bankedSeconds,
     bool? extraTubeUsed,
+    int? movesFloor,
   }) => GameState(
     level: level,
     levelSetVersion: levelSetVersion,
@@ -275,5 +288,6 @@ class GameState {
     bankedSeconds: bankedSeconds ?? this.bankedSeconds,
     isRetry: isRetry,
     extraTubeUsed: extraTubeUsed ?? this.extraTubeUsed,
+    movesFloor: movesFloor ?? this.movesFloor,
   );
 }

@@ -34,14 +34,11 @@ void main() {
     minMoves: minMoves,
     difficultyScore: 20,
     forcedMoveRatio: 0.1,
-    board: Board.fromLists(
-      [
-        [0, 1, 0, 1],
-        [1, 0, 1, 0],
-        [],
-      ],
-      capacity: 4,
-    ),
+    board: Board.fromLists([
+      [0, 1, 0, 1],
+      [1, 0, 1, 0],
+      [],
+    ], capacity: 4),
   );
 
   ProviderContainer harness() {
@@ -109,7 +106,10 @@ void main() {
       game.tapTube(2);
 
       expect(game.grantExtraTube(), isTrue);
-      expect(container.read(gameControllerProvider)!.canOfferExtraTube, isFalse);
+      expect(
+        container.read(gameControllerProvider)!.canOfferExtraTube,
+        isFalse,
+      );
       expect(game.grantExtraTube(), isFalse);
     });
 
@@ -147,7 +147,8 @@ void main() {
       expect(
         RewardedPlacement.levelSkip.isReachable,
         isFalse,
-        reason: 'preloading a placement nothing can show makes the fill rate '
+        reason:
+            'preloading a placement nothing can show makes the fill rate '
             'for the whole account meaningless',
       );
     });
@@ -191,14 +192,39 @@ void main() {
       game.tapTube(2);
       final movesBefore = container.read(gameControllerProvider)!.movesUsed;
 
+      final boardBefore = container.read(gameControllerProvider)!.undoStack;
       game.grantExtraTube();
 
       expect(container.read(gameControllerProvider)!.canUndo, isTrue);
       expect(game.undo(), isTrue);
-      expect(
-        container.read(gameControllerProvider)!.movesUsed,
-        movesBefore - 1,
-      );
+      final after = container.read(gameControllerProvider)!;
+      // The BOARD goes back, as far as the player likes...
+      expect(after.undoStack.length, boardBefore.length - 1);
+      // ...but moves spent before the grant are not handed back. See
+      // GameState.movesFloor.
+      expect(after.movesUsed, movesBefore);
+    });
+
+    test('undoing past the grant cannot finish under par', () {
+      // The tube is offered only once par is spent, so the final count
+      // cannot land under the proven optimum, which the server rejects as
+      // impossible. Undo used to take the count back to zero with the spare
+      // tube still in place, and a clear then scored three stars in fewer
+      // moves than the board allows.
+      final container = harness();
+      started(container, levelWith(minMoves: 1));
+
+      final game = container.read(gameControllerProvider.notifier);
+      game.tapTube(0);
+      game.tapTube(2);
+      final atGrant = container.read(gameControllerProvider)!.movesUsed;
+      expect(game.grantExtraTube(), isTrue);
+
+      while (game.undo()) {}
+      final state = container.read(gameControllerProvider)!;
+      expect(state.canUndo, isFalse);
+      expect(state.movesUsed, atGrant);
+      expect(state.movesUsed, greaterThanOrEqualTo(state.level.minMoves));
     });
 
     test('the granted tube is empty and appended, never inserted', () {

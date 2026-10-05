@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/ads/ad_service.dart';
 import '../../services/analytics/analytics_service.dart';
+import '../../engine/level.dart';
 import '../../engine/move.dart';
 import '../../state/game_controller.dart';
 import '../../state/game_state.dart';
@@ -80,6 +81,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _game = ref.read(gameControllerProvider.notifier);
+    // Built now, so every position is solved while the player looks at it
+    // and the Hint button already knows the answer when it is pressed.
+    ref.read(positionAnalystProvider);
     _win = AnimationController(vsync: this)..addListener(_onWinTick);
   }
 
@@ -108,6 +112,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
+        // A rewarded video is its own activity, so the game is "backgrounded"
+        // for every one of them. The offer already stopped the clock; logging
+        // an abandonment here would count every ad watched on a hard level as
+        // the player giving up on it.
+        if (_adOnScreen) return;
         // The clock stops FIRST, before anything reads a duration, so the
         // banked time is what was actually played and not however long the
         // phone sat in a pocket.
@@ -118,6 +127,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
             .reportAbandon(AbandonReason.backgrounded);
         ref.read(analyticsServiceProvider).flush();
       case AppLifecycleState.resumed:
+        // Back from a video: the offer resumes the clock itself.
+        if (_adOnScreen) return;
         // Coming back un-latches the terminal event, so finishing this board
         // still reports a completion. Without it, backgrounding permanently
         // suppressed level_complete for the rest of the run and the funnel
@@ -157,6 +168,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
   }
 
   void _exit() {
+    // Leaving an unfinished board is an abandonment. Only backgrounding was
+    // ever reported, so the funnel never saw a player press back.
+    _game.reportAbandon(AbandonReason.exited);
     _bankPlaytime();
     // Disposal ends the session too, but not until the route animation
     // finishes. Ending it here means a solve that lands during the transition
@@ -173,11 +187,39 @@ class _GameScreenState extends ConsumerState<GameScreen>
   /// straight to `_startLevel`, so there is no code path where quitting or
   /// replaying a level can produce an ad.
   Future<void> _advanceFrom(int completedLevelId, int nextLevelId) async {
-    await ref
-        .read(monetizationProvider.notifier)
-        .maybeShowInterstitialAfter(completedLevelId);
-    if (!mounted) return;
-    _startLevel(nextLevelId);
+    // A second tap on NEXT while the interstitial is opening would decide
+    // again before the first one is recorded: two ads, two level starts.
+    if (_advancing) return;
+    _advancing = true;
+    try {
+      await ref
+          .read(monetizationProvider.notifier)
+          .maybeShowInterstitialAfter(completedLevelId);
+      if (!mounted) return;
+      _startLevel(nextLevelId);
+    } finally {
+      _advancing = false;
+    }
+  }
+
+  bool _advancing = false;
+
+  /// True while a rewarded video is on screen; see didChangeAppLifecycleState.
+  bool _adOnScreen = false;
+
+  /// Plays a rewarded video for [placement], with the lifecycle quiet for it.
+  Future<RewardOutcome> _offerRewarded(
+    RewardedPlacement placement,
+    int levelId,
+  ) async {
+    _adOnScreen = true;
+    try {
+      return await ref
+          .read(monetizationProvider.notifier)
+          .offerRewarded(placement, levelId: levelId);
+    } finally {
+      _adOnScreen = false;
+    }
   }
 
   void _startLevel(int id) {
@@ -198,6 +240,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     ref
         .read(gameControllerProvider.notifier)
         .startLevel(level.level, levelSetVersion: campaign.levelSetVersion);
+    _checkPar(level.level);
 
     _tip = null;
     _tipTimer?.cancel();
@@ -228,6 +271,25 @@ class _GameScreenState extends ConsumerState<GameScreen>
         _showTip(Tip.hint, 'Stuck? Hint shows you a good next move.');
       });
     }
+  }
+
+  /// Confirms, on this phone, that the board's par is its true optimum.
+  ///
+  /// The opening position is solved in the background as the level opens
+  /// anyway (that is what makes the first hint instant), so checking the
+  /// answer against the par the level shipped with costs nothing. Bundled
+  /// levels are pinned by a test; server-built worlds are checked by the
+  /// server's own solver. This is the third look, and the one on a device.
+  void _checkPar(Level level) {
+    ref.read(positionAnalystProvider).verdictFor(level.board).then((verdict) {
+      final problem = switch (verdict) {
+        SolvablePosition(:final movesLeft) when movesLeft != level.minMoves =>
+          'solves in $movesLeft, par says ${level.minMoves}',
+        DeadEndPosition() => 'cannot be solved',
+        _ => null,
+      };
+      if (problem != null) debugPrint('[level] ${level.id} $problem');
+    });
   }
 
   /// Shows [tip] once in the life of the install, for a few seconds.
@@ -544,9 +606,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
         return;
       }
 
-      final outcome = await money.offerRewarded(
+      final outcome = await _offerRewarded(
         RewardedPlacement.extraTube,
-        levelId: levelId,
+        levelId,
       );
       _game.resumeClock();
 
@@ -597,19 +659,44 @@ class _GameScreenState extends ConsumerState<GameScreen>
         );
   }
 
-  /// THE ORDER HERE IS THE WHOLE POINT. The video plays, the reward is
-  /// confirmed EARNED, and only then is the solver asked. If the solver cannot
-  /// answer, the player is told plainly — and because a rewarded video costs
-  /// attention rather than a balance, nothing of theirs was consumed. The one
-  /// arrangement never to write is "grant, then check".
+  /// THE ORDER HERE IS THE WHOLE POINT. First the game checks there IS a hint
+  /// (usually already known: the position was solved while the player looked
+  /// at it). Only then is anything spent, a free hint or a video, and only a
+  /// hint that reaches the board keeps what was spent. A position with no
+  /// way forward is answered in words, for free: watching a video to be told
+  /// "no hint" is the worst trade this screen could offer.
   Future<void> _onHint() async {
     final hints = ref.read(hintServiceProvider);
-    if (ref.read(gameControllerProvider)?.hintPending ?? false) {
+    final current = ref.read(gameControllerProvider);
+    if (current?.hintPending ?? false) {
       hints.cancel();
       return;
     }
+    if (current == null || current.isWon) return;
 
-    final levelId = ref.read(gameControllerProvider)?.level.id ?? 0;
+    // A hint already on the board is not bought twice.
+    if (current.hintMove != null) {
+      _toast('Your hint is showing: pour into the glowing tube.');
+      return;
+    }
+
+    final check = await hints.check();
+    if (!mounted) return;
+    switch (check.availability) {
+      case HintAvailability.deadEnd:
+        _toastDeadEnd(check.stepsBack);
+        return;
+      case HintAvailability.unavailable:
+        _toast('No hint for this position. Nothing was used.');
+        return;
+      case HintAvailability.cancelled:
+      case HintAvailability.notApplicable:
+        return;
+      case HintAvailability.available:
+        break;
+    }
+
+    final levelId = current.level.id;
     final money = ref.read(monetizationProvider.notifier);
 
     // The spell of play this request belongs to. Everything below is settled
@@ -649,10 +736,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         return;
       }
 
-      final outcome = await money.offerRewarded(
-        RewardedPlacement.hint,
-        levelId: levelId,
-      );
+      final outcome = await _offerRewarded(RewardedPlacement.hint, levelId);
       _game.resumeClock();
 
       if (outcome != RewardOutcome.earned) {
@@ -763,6 +847,53 @@ class _GameScreenState extends ConsumerState<GameScreen>
     }
   }
 
+  /// Says there is no way to finish from here, and how far back there is.
+  ///
+  /// Free, always: it is not a hint, it is the game being honest about the
+  /// board. A player shuffling balls on a board that cannot be finished is
+  /// exactly the "what did I miss" the stuck banner exists to prevent, one
+  /// step earlier.
+  void _toastDeadEnd(int? stepsBack) {
+    final game = ref.read(gameControllerProvider.notifier);
+    if (stepsBack == null) {
+      showToyToast(
+        context,
+        'No way to finish from here. Restart to try another line.',
+        actionLabel: 'Restart',
+        onAction: () {
+          final state = ref.read(gameControllerProvider);
+          if (state == null || !mounted) return;
+          _restart(state);
+        },
+        duration: const Duration(seconds: 6),
+      );
+      return;
+    }
+    final moves = stepsBack == 1 ? '1 move' : '$stepsBack moves';
+    showToyToast(
+      context,
+      'No way to finish from here. Undo $moves to get back on track.',
+      actionLabel: 'Undo $stepsBack',
+      onAction: () {
+        for (var i = 0; i < stepsBack; i++) {
+          if (!game.undo()) break;
+        }
+      },
+      duration: const Duration(seconds: 6),
+    );
+  }
+
+  /// Restart, from the button or from a dead-end message.
+  void _restart(GameState state) {
+    // Banked BEFORE the restart, which discards the clock. Time spent on an
+    // attempt somebody threw away is still time they played.
+    _bankPlaytime();
+    // Reported here because the level restarts through `_startLevel`, not
+    // `GameController.restart`, so nothing else ever sent this reason.
+    if (state.movesUsed > 0) _game.reportAbandon(AbandonReason.restarted);
+    _startLevel(state.level.id);
+  }
+
   /// Asks before a rewarded video plays. Never auto-play an ad.
   ///
   /// Defaults to the hint wording, because that was the only caller for a long
@@ -785,11 +916,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     );
   }
 
-  void _toast(String message) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _toast(String message) => showToyToast(context, message);
 
   // ---- build ---------------------------------------------------------------
 
@@ -833,266 +960,284 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final campaign = ref.watch(campaignProvider);
     final state = ref.watch(gameControllerProvider);
 
-    return campaign.when(
-      loading: () => const _Loading(),
-      error: (error, _) => _LoadFailed(message: '$error'),
-      data: (levelSet) {
-        // Started from HERE, not from initState: the campaign is a future,
-        // and a post-frame callback fires before it resolves. Opening the
-        // level the moment the data actually exists is the only ordering
-        // that cannot race.
-        if (!_started) {
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _startLevel(widget.levelId),
+    // The system back gesture pops the route without passing through
+    // [_exit], and the unfinished attempt's time and its abandonment both
+    // went unrecorded: a day spent only on a hard board broke the streak.
+    // Reporting twice is harmless, since both calls latch.
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) return;
+        _game.reportAbandon(AbandonReason.exited);
+        _bankPlaytime();
+      },
+      child: campaign.when(
+        loading: () => const _Loading(),
+        error: (error, _) => _LoadFailed(message: '$error'),
+        data: (levelSet) {
+          // Started from HERE, not from initState: the campaign is a future,
+          // and a post-frame callback fires before it resolves. Opening the
+          // level the moment the data actually exists is the only ordering
+          // that cannot race.
+          if (!_started) {
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _startLevel(widget.levelId),
+            );
+            return const _Loading();
+          }
+          if (state == null) return const _Loading();
+
+          final elapsed = _win.value * _profile.total;
+          final result = _result;
+          final progress = ref.read(progressProvider.notifier);
+          final bands = ref.watch(campaignBandsProvider);
+          final band = bands.firstWhere((b) => b.contains(state.level.id));
+          final clearedNow = progress.clearedIn(
+            band.firstLevel,
+            band.lastLevel,
           );
-          return const _Loading();
-        }
-        if (state == null) return const _Loading();
 
-        final elapsed = _win.value * _profile.total;
-        final result = _result;
-        final progress = ref.read(progressProvider.notifier);
-        final bands = ref.watch(campaignBandsProvider);
-        final band = bands.firstWhere((b) => b.contains(state.level.id));
-        final clearedNow = progress.clearedIn(band.firstLevel, band.lastLevel);
+          // Where the win sequence is. Both are 0 while playing.
+          final raysIn = _profile.rays == null
+              ? 0.0
+              : ((elapsed - _profile.rays!.at) / _profile.rays!.length).clamp(
+                  0.0,
+                  1.0,
+                );
+          final settled = result == null
+              ? 0.0
+              : ((elapsed - _profile.settle.at) / _profile.settle.length).clamp(
+                  0.0,
+                  1.0,
+                );
 
-        // Where the win sequence is. Both are 0 while playing.
-        final raysIn = _profile.rays == null
-            ? 0.0
-            : ((elapsed - _profile.rays!.at) / _profile.rays!.length).clamp(
-                0.0,
-                1.0,
-              );
-        final settled = result == null
-            ? 0.0
-            : ((elapsed - _profile.settle.at) / _profile.settle.length).clamp(
-                0.0,
-                1.0,
-              );
+          ref.watch(onboardingProvider);
+          final guided = _guideActive(state);
+          final guideMove = guided ? _guidance(state) : null;
+          // The guided level is UNTIMED. A new player reading captions on their
+          // very first board was watching the clock go red past par and losing
+          // most of the level's points for it. It records as time 0, which the
+          // whole app already treats as "unknown", never as instant.
+          if (guided && state.isClockRunning) {
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _game.pauseClock(),
+            );
+          }
+          if (guided && !_guideLogged) {
+            _guideLogged = true;
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _logTutorial(TutorialOutcome.begin),
+            );
+          }
+          // The hand: every step of the first two pours, then only when the
+          // player pauses.
+          final guideTube = !guided || guideMove == null
+              ? null
+              : (_guideSteps >= 2 && !_guideIdle)
+              ? null
+              : state.selectedTube == guideMove.from
+              ? guideMove.to
+              : guideMove.from;
 
-        ref.watch(onboardingProvider);
-        final guided = _guideActive(state);
-        final guideMove = guided ? _guidance(state) : null;
-        // The guided level is UNTIMED. A new player reading captions on their
-        // very first board was watching the clock go red past par and losing
-        // most of the level's points for it. It records as time 0, which the
-        // whole app already treats as "unknown", never as instant.
-        if (guided && state.isClockRunning) {
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _game.pauseClock(),
-          );
-        }
-        if (guided && !_guideLogged) {
-          _guideLogged = true;
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _logTutorial(TutorialOutcome.begin),
-          );
-        }
-        // The hand: every step of the first two pours, then only when the
-        // player pauses.
-        final guideTube = !guided || guideMove == null
-            ? null
-            : (_guideSteps >= 2 && !_guideIdle)
-            ? null
-            : state.selectedTube == guideMove.from
-            ? guideMove.to
-            : guideMove.from;
+          final selected = state.selectedTube;
+          final coaching =
+              result == null &&
+              !guided &&
+              _tip == null &&
+              selected != null &&
+              state.board[selected].isNotEmpty &&
+              state.level.id <= _coachUntilLevel;
+          if (coaching) {
+            _coach = (
+              color: state.board[selected].balls.last,
+              count: state.board[selected].topRunLength,
+            );
+          }
 
-        final selected = state.selectedTube;
-        final coaching =
-            result == null &&
-            !guided &&
-            _tip == null &&
-            selected != null &&
-            state.board[selected].isNotEmpty &&
-            state.level.id <= _coachUntilLevel;
-        if (coaching) {
-          _coach = (
-            color: state.board[selected].balls.last,
-            count: state.board[selected].topRunLength,
-          );
-        }
-
-        final playfield = ToyScaffold(
-          padding: EdgeInsets.zero,
-          backdrop: raysIn > 0
-              ? WinRays(color: const Color(0x47FFC233), opacity: raysIn)
-              : null,
-          child: Column(
-            children: [
-              // The HUD recedes rather than disappearing during the win
-              // moment — the level number still answers "where am I".
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: _winActive ? 0.5 : 1,
-                child: BoardHud(
-                  levelId: state.level.id,
-                  bandName: band.name,
-                  movesUsed: state.movesUsed,
-                  minMoves: state.level.minMoves,
-                  showParMeter: !_winActive,
-                  clock: guided
-                      ? null
-                      : LevelClock(
-                          // Read through the notifier rather than closing over
-                          // `state`: the ticker outlives this build, and a captured
-                          // snapshot would freeze at the time of the last move.
-                          elapsedSeconds: () =>
-                              ref
-                                  .read(gameControllerProvider)
-                                  ?.elapsedSecondsAt(DateTime.now()) ??
-                              0,
-                          parSeconds: state.parSeconds,
-                          isRunning: state.isClockRunning,
-                        ),
-                  onExit: _exit,
-                ),
-              ),
-              SizedBox(
-                // Two lines for the caption and tips; one for the coaching toast.
-                height: guided || (_tip != null && result == null) ? 84 : 58,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  // One slot, three voices in priority order: the guided
-                  // level's caption, a one-time tip, the coaching toast.
-                  child: guided
-                      ? GuideCaption(
-                          text: _guideCaption(state, guideMove),
-                          onSkip: _skipGuide,
-                        )
-                      : _tip != null && result == null
-                      ? ToyToast(text: _tip!)
-                      // One toast that fades, holding its last words while it
-                      // does, rather than a switcher: deselecting and reselecting
-                      // the same tube would hand a switcher two identical keys.
-                      : AnimatedOpacity(
-                          duration: const Duration(milliseconds: 160),
-                          opacity: coaching ? 1 : 0,
-                          child: _coach == null
-                              ? const SizedBox.shrink()
-                              : ToyToast(
-                                  leading: ToyBall.id(_coach!.color, size: 22),
-                                  text:
-                                      'Holding ${_coach!.count}'
-                                      ' · drop into a bouncing tube',
-                                ),
-                        ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: BoardView(
-                    onTapTube: _onTapTube,
-                    onBallLanded: _onBallLanded,
-                    guideTube: guideTube,
-                    win: result == null
+          final playfield = ToyScaffold(
+            padding: EdgeInsets.zero,
+            backdrop: raysIn > 0
+                ? WinRays(color: const Color(0x47FFC233), opacity: raysIn)
+                : null,
+            child: Column(
+              children: [
+                // The HUD recedes rather than disappearing during the win
+                // moment — the level number still answers "where am I".
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 300),
+                  opacity: _winActive ? 0.5 : 1,
+                  child: BoardHud(
+                    levelId: state.level.id,
+                    bandName: band.name,
+                    movesUsed: state.movesUsed,
+                    minMoves: state.level.minMoves,
+                    showParMeter: !_winActive,
+                    clock: guided
                         ? null
-                        : WinPhase(
-                            profile: _profile,
-                            elapsedMs: elapsed,
-                            celebrateThird: result.stars >= 3,
+                        : LevelClock(
+                            // Read through the notifier rather than closing over
+                            // `state`: the ticker outlives this build, and a captured
+                            // snapshot would freeze at the time of the last move.
+                            elapsedSeconds: () =>
+                                ref
+                                    .read(gameControllerProvider)
+                                    ?.elapsedSecondsAt(DateTime.now()) ??
+                                0,
+                            parSeconds: state.parSeconds,
+                            isRunning: state.isClockRunning,
+                          ),
+                    onExit: _exit,
+                  ),
+                ),
+                SizedBox(
+                  // Two lines for the caption and tips; one for the coaching toast.
+                  height: guided || (_tip != null && result == null) ? 84 : 58,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    // One slot, three voices in priority order: the guided
+                    // level's caption, a one-time tip, the coaching toast.
+                    child: guided
+                        ? GuideCaption(
+                            text: _guideCaption(state, guideMove),
+                            onSkip: _skipGuide,
+                          )
+                        : _tip != null && result == null
+                        ? ToyToast(text: _tip!)
+                        // One toast that fades, holding its last words while it
+                        // does, rather than a switcher: deselecting and reselecting
+                        // the same tube would hand a switcher two identical keys.
+                        : AnimatedOpacity(
+                            duration: const Duration(milliseconds: 160),
+                            opacity: coaching ? 1 : 0,
+                            child: _coach == null
+                                ? const SizedBox.shrink()
+                                : ToyToast(
+                                    leading: ToyBall.id(
+                                      _coach!.color,
+                                      size: 22,
+                                    ),
+                                    text:
+                                        'Holding ${_coach!.count}'
+                                        ' · drop into a bouncing tube',
+                                  ),
                           ),
                   ),
                 ),
-              ),
-              if (result != null)
-                WinMomentCaption(
-                  movesUsed: state.movesUsed,
-                  minMoves: state.level.minMoves,
-                  opacity: (elapsed / 180).clamp(0.0, 1.0),
-                )
-              else ...[
-                if (state.isStuck && !state.isWon)
-                  _StuckBanner(
-                    onUndo: () =>
-                        ref.read(gameControllerProvider.notifier).undo(),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: BoardView(
+                      onTapTube: _onTapTube,
+                      onBallLanded: _onBallLanded,
+                      guideTube: guideTube,
+                      win: result == null
+                          ? null
+                          : WinPhase(
+                              profile: _profile,
+                              elapsedMs: elapsed,
+                              celebrateThird: result.stars >= 3,
+                            ),
+                    ),
                   ),
-                BoardControls(
-                  // Hidden until par is spent — see
-                  // GameState.canOfferExtraTube for why that particular
-                  // moment, which is about what the server will accept rather
-                  // than about difficulty.
-                  onExtraTube: state.canOfferExtraTube ? _onExtraTube : null,
-                  onUndo: state.canUndo
-                      ? () => ref.read(gameControllerProvider.notifier).undo()
-                      : null,
-                  onRestart: () {
-                    // Banked BEFORE the restart, which discards the clock.
-                    // Time spent on an attempt somebody threw away is still
-                    // time they played.
-                    _bankPlaytime();
-                    _startLevel(state.level.id);
-                  },
-                  onHint: _onHint,
-                  hintBusy: state.hintPending,
-                  hintBadge: _hintBadge(),
                 ),
+                if (result != null)
+                  WinMomentCaption(
+                    movesUsed: state.movesUsed,
+                    minMoves: state.level.minMoves,
+                    opacity: (elapsed / 180).clamp(0.0, 1.0),
+                  )
+                else ...[
+                  if (state.isStuck && !state.isWon)
+                    _StuckBanner(
+                      onUndo: () =>
+                          ref.read(gameControllerProvider.notifier).undo(),
+                    ),
+                  BoardControls(
+                    // Hidden until par is spent — see
+                    // GameState.canOfferExtraTube for why that particular
+                    // moment, which is about what the server will accept rather
+                    // than about difficulty.
+                    onExtraTube: state.canOfferExtraTube ? _onExtraTube : null,
+                    onUndo: state.canUndo
+                        ? () => ref.read(gameControllerProvider.notifier).undo()
+                        : null,
+                    onRestart: () => _restart(state),
+                    onHint: _onHint,
+                    hintBusy: state.hintPending,
+                    hintBadge: _hintBadge(),
+                  ),
+                ],
               ],
+            ),
+          );
+
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // Offstage once the result covers it completely. It used to keep
+              // painting underneath — board, rays and confetti, every frame, all
+              // invisible — which doubled the GPU work for as long as the result
+              // was up. Offstage keeps its state (Replay needs it) and mutes its
+              // tickers too.
+              Offstage(offstage: settled >= 1, child: playfield),
+              if (result != null && _profile.confetti != null)
+                WinConfetti(
+                  t:
+                      ((elapsed - _profile.confetti!.at) /
+                              _profile.confetti!.length)
+                          .clamp(0.0, 1.0),
+                  seed: state.level.id,
+                ),
+              if (result != null && settled > 0)
+                Opacity(
+                  opacity: settled,
+                  child: WinResult(
+                    profile: _profile,
+                    elapsedMs: elapsed,
+                    levelId: state.level.id,
+                    board: state.board,
+                    stars: result.stars,
+                    movesUsed: state.movesUsed,
+                    minMoves: state.level.minMoves,
+                    previousBest: result.previousBest,
+                    isNewBest: result.isNewBest,
+                    elapsedSeconds: result.elapsedSeconds,
+                    parSeconds: result.parSeconds,
+                    points: result.points,
+                    previousFastest: result.previousFastest,
+                    bandName: band.name,
+                    worldNumber: bands.indexOf(band) + 1,
+                    // A replay of a level already cleared fills nothing: the
+                    // bar used to tick up by one on every replay.
+                    bandClearedBefore:
+                        (result.previousBest == null
+                                ? clearedNow - 1
+                                : clearedNow)
+                            .clamp(0, band.length),
+                    bandClearedAfter: clearedNow,
+                    bandTotal: band.length,
+                    onNext: levelSet.byId(state.level.id + 1) == null
+                        ? null
+                        : () =>
+                              _advanceFrom(state.level.id, state.level.id + 1),
+                    onReplay: () => _startLevel(state.level.id),
+                    onLevels: _exit,
+                    interactive: !_skipActive,
+                  ),
+                ),
+
+              // Swallows exactly one tap, then removes itself.
+              if (_skipActive)
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _skip,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
             ],
-          ),
-        );
-
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            // Offstage once the result covers it completely. It used to keep
-            // painting underneath — board, rays and confetti, every frame, all
-            // invisible — which doubled the GPU work for as long as the result
-            // was up. Offstage keeps its state (Replay needs it) and mutes its
-            // tickers too.
-            Offstage(offstage: settled >= 1, child: playfield),
-            if (result != null && _profile.confetti != null)
-              WinConfetti(
-                t:
-                    ((elapsed - _profile.confetti!.at) /
-                            _profile.confetti!.length)
-                        .clamp(0.0, 1.0),
-                seed: state.level.id,
-              ),
-            if (result != null && settled > 0)
-              Opacity(
-                opacity: settled,
-                child: WinResult(
-                  profile: _profile,
-                  elapsedMs: elapsed,
-                  levelId: state.level.id,
-                  board: state.board,
-                  stars: result.stars,
-                  movesUsed: state.movesUsed,
-                  minMoves: state.level.minMoves,
-                  previousBest: result.previousBest,
-                  isNewBest: result.isNewBest,
-                  elapsedSeconds: result.elapsedSeconds,
-                  parSeconds: result.parSeconds,
-                  points: result.points,
-                  previousFastest: result.previousFastest,
-                  bandName: band.name,
-                  worldNumber: bands.indexOf(band) + 1,
-                  bandClearedBefore: (clearedNow - 1).clamp(0, band.length),
-                  bandClearedAfter: clearedNow,
-                  bandTotal: band.length,
-                  onNext: levelSet.byId(state.level.id + 1) == null
-                      ? null
-                      : () => _advanceFrom(state.level.id, state.level.id + 1),
-                  onReplay: () => _startLevel(state.level.id),
-                  onLevels: _exit,
-                  interactive: !_skipActive,
-                ),
-              ),
-
-            // Swallows exactly one tap, then removes itself.
-            if (_skipActive)
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _skip,
-                  child: const SizedBox.expand(),
-                ),
-              ),
-          ],
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
