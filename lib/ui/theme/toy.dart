@@ -176,6 +176,25 @@ abstract final class Toy {
   /// the decoration around them is dropped.
   static bool calm(BuildContext context) =>
       MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+
+  /// How much bigger the BOARD may draw on a tablet. Exactly 1 on a phone.
+  ///
+  /// Everything in the Toybox look is sized for a ~411dp phone, and most of
+  /// it reads fine wider: cards and rows simply stretch. The board does not.
+  /// Its balls stop at a phone's comfortable maximum, so on a tablet the
+  /// level sat small in the middle of a big empty screen. Only the things
+  /// that draw balls read this; a phone (shortest side under 600dp) gets 1,
+  /// so its layout is untouched.
+  static double tabletScale(BuildContext context) {
+    final shortest = MediaQuery.sizeOf(context).shortestSide;
+    if (shortest < 600) return 1;
+    return (shortest / 411).clamp(1.0, 1.6);
+  }
+
+  /// The widest any screen's content gets. Wider than every phone and the
+  /// small tablets, so it only acts on a big tablet, where a card or a
+  /// settings row stretched edge to edge stops looking like a toy.
+  static const double maxContentWidth = 680;
 }
 
 /// One of the four grounds a screen can stand on.

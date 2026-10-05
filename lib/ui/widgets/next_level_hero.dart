@@ -97,8 +97,9 @@ class NextLevelHero extends StatelessWidget {
                 child: BoardPreview(
                   board: board,
                   boldGlyphs: boldGlyphs,
-                  // Grows with the card, to about the playable board's size.
-                  ballSize: 36,
+                  // Grows with the card, to about the playable board's size,
+                  // and further on a tablet, whose card has the room.
+                  ballSize: 36 * Toy.tabletScale(context),
                 ),
               ),
             )

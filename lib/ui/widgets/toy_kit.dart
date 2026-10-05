@@ -60,7 +60,14 @@ class ToyScaffold extends StatelessWidget {
             ?backdrop,
             SafeArea(
               bottom: safeBottom,
-              child: Padding(padding: padding, child: child),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: Toy.maxContentWidth,
+                  ),
+                  child: Padding(padding: padding, child: child),
+                ),
+              ),
             ),
           ],
         ),

@@ -7,7 +7,12 @@
          without anybody noticing. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- appCategory="game" keeps the portrait lock on tablets. Android 16
+         ignores an app's orientation on screens 600dp and wider unless the
+         app declares itself a game, and this board is a vertical row of
+         vertical tubes: the tablet ran it sideways. -->
     <application
+        android:appCategory="game"
         android:label="Pourfect"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"

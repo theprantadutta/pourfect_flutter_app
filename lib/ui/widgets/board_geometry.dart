@@ -52,11 +52,16 @@ class BoardGeometry {
     double maxBallSize = 44,
     double? gap,
     double rowGap = 44,
+    double scale = 1,
   }) {
+    // A tablet's board: the ceiling on the ball and the gaps between tubes
+    // grow together, so a bigger board keeps a phone board's proportions.
+    // 1 on a phone, which leaves every phone layout exactly as it was.
+    maxBallSize *= scale;
     // The gap between tubes is generous on a short row, as the Toybox boards
     // are drawn, and tightens as a row fills. A fixed wide gap on a six-tube
     // row costs the ball the legibility the glyphs depend on.
-    const tightGap = 10.0;
+    final tightGap = 10.0 * scale;
     // Up to six tubes read comfortably in one row on a phone. Past that, two
     // rows keep the balls big enough to tell apart, which matters more than
     // keeping the board on one line.
@@ -75,11 +80,13 @@ class BoardGeometry {
       rows++;
     }
     final perRow = (tubeCount / rows).ceil();
-    gap ??= perRow <= 4
-        ? 18.0
-        : perRow == 5
-        ? 14.0
-        : tightGap;
+    gap ??=
+        (perRow <= 4
+            ? 18.0
+            : perRow == 5
+            ? 14.0
+            : 10.0) *
+        scale;
 
     // Solve for the ball size that fits both axes, then clamp.
     //
@@ -120,10 +127,10 @@ class BoardGeometry {
         (rows - 1) * rowSpacing(ball) +
         _liftHeadroom(ball);
     // The reserve above normally covers this; this only ever trims a ball
-    // that would otherwise push the board off a very short screen.
-    while (rows > 1 &&
-        ballSize > 12 &&
-        heightFor(ballSize) > available.height) {
+    // that would otherwise push the board off a short screen. One row too:
+    // a tablet's bigger ball can be bound by height, and the fixed reserve
+    // above it is sized for a phone's.
+    while (ballSize > 12 && heightFor(ballSize) > available.height) {
       ballSize -= 0.5;
     }
     final spacing = rowSpacing(ballSize);

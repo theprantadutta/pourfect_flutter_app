@@ -572,7 +572,13 @@ class _WinResultState extends State<WinResult>
           // a tall one; the painter centres the board in whatever it gets.
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 150),
-            child: CustomPaint(painter: _SolvedBoardPainter(widget.board)),
+            child: CustomPaint(
+              painter: _SolvedBoardPainter(
+                widget.board,
+                // Bigger on a tablet, whose card has the room; 1 on a phone.
+                scale: Toy.tabletScale(context),
+              ),
+            ),
           ),
         ),
         if (widget.isNewBest && sticker > 0)
@@ -882,7 +888,10 @@ class _DroppingStar extends StatelessWidget {
 class _SolvedBoardPainter extends CustomPainter {
   final Board board;
 
-  const _SolvedBoardPainter(this.board);
+  /// Grows the ball ceiling and the gaps together on a tablet.
+  final double scale;
+
+  const _SolvedBoardPainter(this.board, {this.scale = 1});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -890,14 +899,14 @@ class _SolvedBoardPainter extends CustomPainter {
     if (n == 0) return;
     final rows = n <= 6 ? 1 : 2;
     final perRow = (n / rows).ceil();
-    const gap = 10.0;
-    const rowGap = 10.0;
+    final gap = 10.0 * scale;
+    final rowGap = 10.0 * scale;
 
     final cap = board.capacity;
     // Solve for the ball that fits both axes; the tube pads the ball by 12%.
     final byWidth = (size.width - gap * (perRow - 1)) / perRow / 1.24;
     final byHeight = (size.height - rowGap * (rows - 1)) / rows / (cap + 0.34);
-    final ball = math.min(byWidth, byHeight).clamp(8.0, 36.0);
+    final ball = math.min(byWidth, byHeight).clamp(8.0, 36.0 * scale);
     final pad = ball * 0.12;
     final tubeW = ball + pad * 2;
     final tubeH = ball * cap + pad * 2;
@@ -950,5 +959,6 @@ class _SolvedBoardPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_SolvedBoardPainter old) => old.board != board;
+  bool shouldRepaint(_SolvedBoardPainter old) =>
+      old.board != board || old.scale != scale;
 }

@@ -1483,6 +1483,18 @@ result's solved-board card grows, the Stats chart grows (`SlackScroll`), and
 short content — Rankings with nobody on it, the legal card — is centred rather
 than pinned to the top. Short phones still scroll at natural size.
 
+**Tablets (2026-10-05), checked on the Galaxy Tab A9 (601×1006dp) and the
+A24.** The Toybox look is sized for a ~411dp phone and almost all of it
+stretches fine. The board did not: its balls stopped at 44dp, so on a tablet
+the level sat small in a big empty screen. `Toy.tabletScale` (shortest side
+≥ 600dp: up to 1.6×; a phone: exactly 1) raises the ball ceiling and the
+tube gaps on the play board, the hub preview and the win card, and nothing
+else, so every phone layout is unchanged (the A24 hub was pixel-identical
+before and after). `Toy.maxContentWidth` (680dp) centres content on a big
+tablet only. **`android:appCategory="game"` keeps the portrait lock**:
+Android 16 ignores orientation on screens ≥ 600dp unless the app declares
+itself a game, and the tablet used to run this board sideways.
+
 **The daily has no number.** The mockup says "Daily Pour #17"; nothing on the
 server or the client numbers dailies, so the card says "Daily Pour" rather than
 inventing one.

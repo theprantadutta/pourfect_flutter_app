@@ -225,6 +225,8 @@ class _BoardViewState extends ConsumerState<BoardView>
           available: Size(constraints.maxWidth, constraints.maxHeight),
           tubeCount: state.board.tubeCount,
           capacity: state.board.capacity,
+          // Bigger balls and wider gaps on a tablet; 1 on a phone.
+          scale: Toy.tabletScale(context),
         );
 
         return GestureDetector(
