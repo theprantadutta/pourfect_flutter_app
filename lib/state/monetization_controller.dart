@@ -96,6 +96,8 @@ class MonetizationController extends Notifier<MonetizationState> {
   static const _hintsKey = 'pourfect.hints.used';
   static const _creditsKey = 'pourfect.hints.credits';
   static const _tubeCreditsKey = 'pourfect.tubes.credits';
+  static const _interstitialLevelKey = 'pourfect.interstitial.level';
+  static const _interstitialAtKey = 'pourfect.interstitial.at';
 
   /// Completes once the persisted hint count has been read.
   ///
@@ -169,6 +171,18 @@ class MonetizationController extends Notifier<MonetizationState> {
         // loading, handing the spent credit straight back.
         extraTubeCredits:
             state.extraTubeCredits + (prefs.getInt(_tubeCreditsKey) ?? 0),
+        // The last interstitial survives a restart. Held only in memory, the
+        // level gap and the cooldown both reset on every cold start, so the
+        // first eligible win after reopening the game always earned an ad.
+        interstitials: state.interstitials.lastShownAt != null
+            ? null
+            : InterstitialPolicy(
+                lastShownAtLevel: prefs.getInt(_interstitialLevelKey),
+                lastShownAt: switch (prefs.getInt(_interstitialAtKey)) {
+                  final ms? => DateTime.fromMillisecondsSinceEpoch(ms),
+                  null => null,
+                },
+              ),
       );
     } catch (_) {}
   }
@@ -180,6 +194,9 @@ class MonetizationController extends Notifier<MonetizationState> {
   /// The only call site is the level-advance path. There is deliberately no
   /// method here that could be called on restart or mid-level.
   Future<void> maybeShowInterstitialAfter(int levelId) async {
+    // The caps are persisted; deciding before they are read would judge
+    // against an install that has never seen an ad.
+    await _restored;
     final ads = ref.read(adServiceProvider);
     final analytics = ref.read(analyticsServiceProvider);
 
@@ -213,12 +230,18 @@ class MonetizationController extends Notifier<MonetizationState> {
     );
 
     if (shown) {
+      final now = DateTime.now();
       state = state.copyWith(
         interstitials: state.interstitials.recordShown(
           levelId: levelId,
-          now: DateTime.now(),
+          now: now,
         ),
       );
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt(_interstitialLevelKey, levelId);
+        await prefs.setInt(_interstitialAtKey, now.millisecondsSinceEpoch);
+      } catch (_) {}
     }
   }
 
