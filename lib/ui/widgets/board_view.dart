@@ -197,9 +197,24 @@ class _BoardViewState extends ConsumerState<BoardView>
 
     ref.listen(gameControllerProvider, (previous, next) {
       final pour = next?.pour;
-      if (pour == null) return;
-      if (previous?.pour?.sequence == pour.sequence) return;
-      _startPour(pour, tokens);
+      if (pour != null && previous?.pour?.sequence != pour.sequence) {
+        _startPour(pour, tokens);
+        return;
+      }
+      // The board changed with no new pour: an undo, a restart, a new level.
+      // Whatever is still in flight belongs to a board that is gone, and left
+      // running it drew the restored balls twice, played landing sounds for
+      // a pour that was taken back, and hid the new board's top balls until
+      // the ghosts touched down.
+      if (_active != null && next?.board != previous?.board) {
+        _pour.stop();
+        _flourish.stop();
+        _flourish.value = 0;
+        setState(() {
+          _active = null;
+          _glowTube = null;
+        });
+      }
     });
 
     if (state == null) return const SizedBox.shrink();
@@ -543,15 +558,15 @@ class _BoardViewState extends ConsumerState<BoardView>
       }
 
       final liftedFrom = _liftedFromSlot(state, tube);
+      final lift = liftedFrom < 0
+          ? 0.0
+          : geometry.liftOffset(tube, balls.length - 1);
       final opacity = _tubeOpacity(state, tube);
 
       for (var slot = 0; slot < visibleCount; slot++) {
         final centre = geometry.ballCentre(tube, slot);
         final isLifted = liftedFrom >= 0 && slot >= liftedFrom;
-        final y = isLifted
-            ? geometry.liftPoint(tube).dy -
-                  (slot - liftedFrom) * geometry.ballSize
-            : centre.dy;
+        final y = isLifted ? centre.dy - lift : centre.dy;
 
         widgets.add(
           AnimatedPositioned(
@@ -624,16 +639,23 @@ class _BoardViewState extends ConsumerState<BoardView>
     final elapsedMs = _pour.value * totalMs;
     final calm = Toy.calm(context);
 
+    // A pour always follows a selection, so the run leaves from where it was
+    // HELD. Starting from the resting slots dropped it back into the tube for
+    // a frame before it flew.
+    final held = Offset(
+      0,
+      geometry.liftOffset(active.move.from, active.sourceTopSlot),
+    );
+
     final widgets = <Widget>[];
     for (var j = 0; j < active.ballsMoved; j++) {
       final startMs = j * pourStagger.inMilliseconds;
       final local = ((elapsedMs - startMs) / travelMs).clamp(0.0, 1.0);
       if (local >= 1) continue; // landed — the resting layer has it now
 
-      final from = geometry.ballCentre(
-        active.move.from,
-        active.sourceTopSlot - j,
-      );
+      final from =
+          geometry.ballCentre(active.move.from, active.sourceTopSlot - j) -
+          held;
       final to = geometry.ballCentre(active.move.to, active.destBaseSlot + j);
 
       final position = elapsedMs < startMs
@@ -786,7 +808,8 @@ class _TubeShell extends StatelessWidget {
                   borderRadius: radius,
                   border: Border.all(
                     color: stroke,
-                    width: (look == _TubeLook.hintSource ? 3.5 : Toy.stroke) * k,
+                    width:
+                        (look == _TubeLook.hintSource ? 3.5 : Toy.stroke) * k,
                   ),
                   boxShadow: Toy.hard(shadow * k, shadowColor),
                 ),

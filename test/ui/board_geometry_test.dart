@@ -172,4 +172,50 @@ void main() {
       expect(geometry.tubeAt(const Offset(180, 500)), isNull);
     });
   });
+
+  group('a held run', () {
+    test('never reaches into the row above, however long the run', () {
+      // The report: three balls lifted out of a bottom-row tube sat on top of
+      // the tube above it. The run used to stack upward from the lift point,
+      // so its top ball floated three balls over the rim.
+      for (final height in <double>[480, 560, 640, 760]) {
+        for (final capacity in [4, 5]) {
+          for (var tubes = 7; tubes <= 12; tubes++) {
+            final g = BoardGeometry.fit(
+              available: Size(320, height),
+              tubeCount: tubes,
+              capacity: capacity,
+            );
+            final perRow = (tubes / 2).ceil();
+            for (var i = perRow; i < tubes; i++) {
+              final above = g.tubeRects[i - perRow];
+              for (var top = 0; top < capacity; top++) {
+                final lifted = g.ballCentre(i, top).dy - g.liftOffset(i, top);
+                expect(
+                  lifted - g.ballSize / 2,
+                  greaterThan(above.bottom),
+                  reason:
+                      'tube $i, run topping slot $top, $tubes tubes of '
+                      '$capacity at height $height',
+                );
+              }
+            }
+          }
+        }
+      }
+    });
+
+    test('the lifted ball is part of its tube for a tap', () {
+      // Tapping the floating ball is the natural way to put it back down.
+      final g = BoardGeometry.fit(
+        available: const Size(320, 640),
+        tubeCount: 8,
+        capacity: 4,
+      );
+      for (var i = 0; i < 8; i++) {
+        final lifted = g.liftPoint(i);
+        expect(g.tubeAt(lifted), i, reason: 'tube $i');
+      }
+    });
+  });
 }

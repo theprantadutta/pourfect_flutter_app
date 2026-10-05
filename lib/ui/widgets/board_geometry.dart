@@ -106,15 +106,33 @@ class BoardGeometry {
     // Fitting WINS over the minimum. A ball a little under the comfortable
     // floor is survivable; a tube clipped off the screen edge is not.
     final fits = math.min(ballFromWidth, ballFromHeight);
-    final ballSize = math
+    var ballSize = math
         .min(math.max(fits, math.min(minBallSize, fits)), maxBallSize)
         .toDouble();
+
+    // Rows sit far enough apart that a run lifted out of a lower row clears
+    // the row above it. At a fixed 44 a big ball's lift reached into the next
+    // row's tubes and the held run sat on top of somebody else's balls.
+    double rowSpacing(double ball) =>
+        rows == 1 ? 0 : math.max(rowGap, _liftHeadroom(ball) + 8);
+    double heightFor(double ball) =>
+        rows * (ball * capacity + 2 * _paddingFor(ball)) +
+        (rows - 1) * rowSpacing(ball) +
+        _liftHeadroom(ball);
+    // The reserve above normally covers this; this only ever trims a ball
+    // that would otherwise push the board off a very short screen.
+    while (rows > 1 &&
+        ballSize > 12 &&
+        heightFor(ballSize) > available.height) {
+      ballSize -= 0.5;
+    }
+    final spacing = rowSpacing(ballSize);
 
     final padding = _paddingFor(ballSize);
     final tubeWidth = ballSize + padding * 2;
     final tubeHeight = ballSize * capacity + padding * 2;
 
-    final boardHeight = rows * tubeHeight + (rows - 1) * rowGap;
+    final boardHeight = rows * tubeHeight + (rows - 1) * spacing;
 
     // Centre the board in the space it was given, both axes. Without this the
     // tubes pin to the top of their slot and the screen reads as a header with
@@ -138,7 +156,7 @@ class BoardGeometry {
 
       final rowWidth = count * tubeWidth + (count - 1) * gap;
       final left = (available.width - rowWidth) / 2;
-      final rowTop = top + row * (tubeHeight + rowGap);
+      final rowTop = top + row * (tubeHeight + spacing);
 
       for (var i = 0; i < count; i++) {
         rects.add(
@@ -172,11 +190,12 @@ class BoardGeometry {
   /// never clips the HUD.
   static double _liftReserve(int rows) => 56.0 * rows;
 
-  /// Clearance above the top row for a held run.
+  /// Clearance above a row for a held run.
   ///
   /// `liftPoint` sits 0.58 ball-heights above the rim and the ball is drawn
   /// from its centre, so the topmost held ball reaches 1.08 ball-heights above
-  /// the tube. Anything less than that here and a lifted run clips the HUD.
+  /// the tube, however long the run (see [liftOffset]). Anything less than
+  /// that here and a lifted run clips the HUD, or the row above.
   static double _liftHeadroom(double ballSize) => ballSize * 1.12;
 
   /// Centre of the ball occupying [slot] (0 = bottom) in [tube].
@@ -200,12 +219,34 @@ class BoardGeometry {
     return Offset(rect.center.dx, rect.top - ballSize * 0.58);
   }
 
+  /// How far a held run rises out of [tube] whose top ball is in [topSlot].
+  ///
+  /// The WHOLE run rises together, by exactly what puts its top ball at
+  /// [liftPoint]. Stacking the run upward from the lift point instead put the
+  /// top of a three-ball run more than three balls above the rim, through the
+  /// row above on a two-row board and into the HUD on a one-row board.
+  double liftOffset(int tube, int topSlot) =>
+      ballCentre(tube, topSlot).dy - liftPoint(tube).dy;
+
   /// The tube containing [point], or null.
   int? tubeAt(Offset point) {
     for (var i = 0; i < tubeRects.length; i++) {
       // Inflated so the tap target stays comfortable even when the board
       // scales down; a miss on a 22px tube is a genuinely annoying failure.
-      if (tubeRects[i].inflate(6).contains(point)) return i;
+      //
+      // And reaching UP over the rim, as high as a held run floats: the
+      // lifted ball and the ▼ over a legal target are what a player taps,
+      // and both sit above the tube. The rows are spaced wider than this
+      // reach (see `_liftHeadroom`), so a tap there cannot belong to the row
+      // above.
+      final rect = tubeRects[i];
+      final target = Rect.fromLTRB(
+        rect.left - 6,
+        rect.top - ballSize * 1.1,
+        rect.right + 6,
+        rect.bottom + 6,
+      );
+      if (target.contains(point)) return i;
     }
     return null;
   }
