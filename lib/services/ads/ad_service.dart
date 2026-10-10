@@ -12,7 +12,13 @@ library;
 enum RewardedPlacement {
   hint,
   extraTube,
-  levelSkip;
+  levelSkip,
+
+  /// A streak freeze, from the Daily Pour's streak card.
+  streakFreeze,
+
+  /// Doubling a star chest's credits.
+  chestDouble;
 
   /// Whether a placement has gameplay behind it that can actually show it.
   ///
@@ -35,6 +41,8 @@ enum RewardedPlacement {
     RewardedPlacement.hint => 'hint',
     RewardedPlacement.extraTube => 'extra_tube',
     RewardedPlacement.levelSkip => 'level_skip',
+    RewardedPlacement.streakFreeze => 'streak_freeze',
+    RewardedPlacement.chestDouble => 'chest_double',
   };
 }
 

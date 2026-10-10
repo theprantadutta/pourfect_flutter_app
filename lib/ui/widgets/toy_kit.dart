@@ -11,6 +11,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../services/audio/audio_service.dart';
+import '../../state/providers.dart';
 
 import '../theme/ball_palette.dart';
 import '../theme/toy.dart';
@@ -224,6 +228,7 @@ class ToySquareButton extends StatelessWidget {
   final Color color;
   final double size;
   final String? semanticLabel;
+  final UiCue cue;
 
   const ToySquareButton({
     super.key,
@@ -232,6 +237,7 @@ class ToySquareButton extends StatelessWidget {
     this.color = Toy.card,
     this.size = 44,
     this.semanticLabel,
+    this.cue = UiCue.tap,
   });
 
   @override
@@ -249,6 +255,7 @@ class ToySquareButton extends StatelessWidget {
       return Semantics(label: semanticLabel, child: box);
     }
     return Pressable(
+      cue: cue,
       onPressed: onPressed,
       semanticLabel: semanticLabel,
       depth: 2,
@@ -267,6 +274,7 @@ class ToyBackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ToySquareButton(
     semanticLabel: 'Back',
+    cue: UiCue.back,
     color: color,
     onPressed: onPressed ?? () => Navigator.of(context).maybePop(),
     child: const CustomPaint(
@@ -504,13 +512,26 @@ void showToyToast(
   String? actionLabel,
   VoidCallback? onAction,
   Duration duration = const Duration(milliseconds: 3200),
-}) => showToyToastOn(
-  Overlay.of(context, rootOverlay: true),
-  message,
-  actionLabel: actionLabel,
-  onAction: onAction,
-  duration: duration,
-);
+  UiCue? cue = UiCue.toast,
+}) {
+  if (cue != null) {
+    try {
+      ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(audioServiceProvider).ui(cue);
+    } catch (_) {
+      // No provider scope (a bare widget test): the toast still shows.
+    }
+  }
+  showToyToastOn(
+    Overlay.of(context, rootOverlay: true),
+    message,
+    actionLabel: actionLabel,
+    onAction: onAction,
+    duration: duration,
+  );
+}
 
 /// [showToyToast] for a caller holding the overlay itself: one about to pop
 /// its own route, whose context will not have an ancestor afterwards.
@@ -1302,6 +1323,10 @@ Future<T?> showToyDialog<T>({
   bool barrierDismissible = true,
 }) {
   final calm = Toy.calm(context);
+  final audio = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(audioServiceProvider)..ui(UiCue.sheetOpen);
   return showGeneralDialog<T>(
     context: context,
     barrierDismissible: barrierDismissible,
@@ -1335,7 +1360,7 @@ Future<T?> showToyDialog<T>({
         ),
       );
     },
-  );
+  ).whenComplete(() => audio.ui(UiCue.sheetClose));
 }
 
 /// The standard dialog card: white, 3px ink stroke, 7px shadow, an optional

@@ -15,6 +15,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../services/audio/audio_service.dart';
+
 import '../theme/toy.dart';
 import 'toy_kit.dart';
 
@@ -228,6 +230,7 @@ class ToggleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Pressable(
+    cue: UiCue.toggle,
     onPressed: () => onChanged(!value),
     semanticLabel: '$title, ${value ? "on" : "off"}',
     depth: 1.5,
@@ -352,6 +355,51 @@ class ActionRow extends StatelessWidget {
       child: body,
     );
   }
+}
+
+/// A volume slider under its switch, in the Toybox look.
+class VolumeRow extends StatelessWidget {
+  final String label;
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  const VolumeRow({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+    child: Row(
+      children: [
+        const SizedBox(width: 2),
+        Icon(Icons.volume_down_rounded, size: 20, color: Toy.inkMuted),
+        Expanded(
+          child: Semantics(
+            label: label,
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: Toy.ink,
+                inactiveTrackColor: Toy.track,
+                thumbColor: Toy.yellow,
+                overlayColor: Toy.yellow.withValues(alpha: 0.2),
+                trackHeight: 6,
+                thumbShape: const RoundSliderThumbShape(
+                  enabledThumbRadius: 11,
+                  elevation: 0,
+                ),
+              ),
+              child: Slider(value: value.clamp(0.0, 1.0), onChanged: onChanged),
+            ),
+          ),
+        ),
+        Icon(Icons.volume_up_rounded, size: 20, color: Toy.inkMuted),
+      ],
+    ),
+  );
 }
 
 /// Three ink bars: the Statistics tile.

@@ -80,11 +80,15 @@ class JourneyLevel {
     required this.mark,
     required this.stars,
     required this.colorId,
+    this.hard = false,
   });
 
   final int id;
   final JourneyMark mark;
   final int stars;
+
+  /// A hard level: a tomato bolt on the tile's corner.
+  final bool hard;
 
   /// A ball color for the level. The Toybox tiles are colored by state, not
   /// by ball, so the path no longer paints this; it is kept so callers that
@@ -249,6 +253,35 @@ class JourneyPainter extends CustomPainter {
       case JourneyMark.current:
         break;
     }
+    if (level.hard) _paintHardBadge(canvas, rect.topRight);
+  }
+
+  /// A tomato disc with a white bolt, on a hard level's corner.
+  void _paintHardBadge(Canvas canvas, Offset corner) {
+    final c = corner + const Offset(-2, 2);
+    const r = 9.5;
+    canvas
+      ..drawCircle(c + const Offset(0, 2), r, Paint()..color = Toy.ink)
+      ..drawCircle(c, r, Paint()..color = Toy.tomato)
+      ..drawCircle(
+        c,
+        r - 1,
+        Paint()
+          ..color = Toy.ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      )
+      ..drawPath(
+        Path()
+          ..moveTo(c.dx + 1.5, c.dy - 6)
+          ..lineTo(c.dx - 3.5, c.dy + 1)
+          ..lineTo(c.dx - 0.2, c.dy + 1)
+          ..lineTo(c.dx - 1.5, c.dy + 6)
+          ..lineTo(c.dx + 3.5, c.dy - 1)
+          ..lineTo(c.dx + 0.2, c.dy - 1)
+          ..close(),
+        Paint()..color = Colors.white,
+      );
   }
 
   void _paintCurrent(Canvas canvas, JourneyLevel level, Offset centre) {
@@ -279,6 +312,7 @@ class JourneyPainter extends CustomPainter {
           ..strokeWidth = 3,
       );
     _label(canvas, _TileText.current, level.id, centre);
+    if (level.hard) _paintHardBadge(canvas, rect.topRight);
 
     // The YOU pin, 6px above the tile.
     final you = _text(

@@ -1,10 +1,11 @@
 /// The board's HUD and its action bar, in the Toybox style.
 ///
-/// Top: a back square, the level title with its world and clock underneath, and
-/// a yellow moves counter. Under that, the PAR METER — how many stars this
-/// attempt is still on for, and how much of par it has spent — which replaced
-/// the old "0 / 14" readout: a fraction asks the player to do arithmetic, and a
-/// bar that runs out does not.
+/// Top: a back square, the level title with its world underneath, and a yellow
+/// moves counter. Under that, the PAR METER — how many stars this attempt is
+/// still on for, how much of par it has spent, moves against par, and in words
+/// what is left ("4 moves left for 3 stars"), so nobody has to do the
+/// arithmetic. Its second line carries the clock against the time par and what
+/// the clock is worth right now in points.
 ///
 /// Bottom: three chunky labeled actions, Undo / Hint / Restart. Labels are not
 /// optional here; an icon-only row is a row of guesses.
@@ -13,6 +14,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../engine/level.dart' show kTwoStarMoveMultiplier;
+import '../../services/audio/audio_service.dart';
 import '../theme/toy.dart';
 import 'toy_kit.dart';
 
@@ -45,6 +47,9 @@ class BoardHud extends StatelessWidget {
   /// The par meter row. On by default.
   final bool showParMeter;
 
+  /// A hard level: badged beside the title, worth 1.5× points.
+  final bool hard;
+
   const BoardHud({
     super.key,
     required this.levelId,
@@ -58,7 +63,10 @@ class BoardHud extends StatelessWidget {
     this.titleColor = Toy.ink,
     this.subtitleColor,
     this.showParMeter = true,
+    this.hard = false,
   });
+
+  bool get _meterShown => showParMeter && minMoves > 0;
 
   String get _title {
     final label = titleLabel == null
@@ -70,8 +78,11 @@ class BoardHud extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sub = subtitleColor ??
-        (titleColor == Toy.ink ? Toy.inkMuted : titleColor.withValues(alpha: 0.85));
+    final sub =
+        subtitleColor ??
+        (titleColor == Toy.ink
+            ? Toy.inkMuted
+            : titleColor.withValues(alpha: 0.85));
     final subStyle = Toy.ui(13, weight: FontWeight.w600, color: sub);
 
     return Padding(
@@ -88,10 +99,35 @@ class BoardHud extends StatelessWidget {
                   children: [
                     FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Text(
-                        _title,
-                        maxLines: 1,
-                        style: Toy.display(30, color: titleColor),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _title,
+                            maxLines: 1,
+                            style: Toy.display(30, color: titleColor),
+                          ),
+                          if (hard) ...[
+                            const SizedBox(width: 8),
+                            Semantics(
+                              label:
+                                  'Hard level, one and a half times the points',
+                              excludeSemantics: true,
+                              child: ToySticker.text(
+                                'HARD ×1.5',
+                                color: Toy.tomato,
+                                size: 12,
+                                angle: -4,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
+                                radius: 8,
+                                shadow: 2,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -109,7 +145,7 @@ class BoardHud extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (clock != null) ...[
+                            if (clock != null && !_meterShown) ...[
                               if (bandName.isNotEmpty) const Text(' · '),
                               clock!,
                             ],
@@ -123,9 +159,9 @@ class BoardHud extends StatelessWidget {
               _MovesCounter(moves: movesUsed),
             ],
           ),
-          if (showParMeter && minMoves > 0) ...[
+          if (_meterShown) ...[
             const SizedBox(height: 12),
-            ParMeter(movesUsed: movesUsed, minMoves: minMoves),
+            ParMeter(movesUsed: movesUsed, minMoves: minMoves, clock: clock),
           ],
         ],
       ),
@@ -154,7 +190,10 @@ class _MovesCounter extends StatelessWidget {
           children: [
             FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text('$moves', style: Toy.numbers(17, weight: FontWeight.w800)),
+              child: Text(
+                '$moves',
+                style: Toy.numbers(17, weight: FontWeight.w800),
+              ),
             ),
             Text(
               'MOVES',
@@ -167,7 +206,7 @@ class _MovesCounter extends StatelessWidget {
   );
 }
 
-/// ★★★ → bar → "par 14".
+/// ★★★ → bar → "5 / 14", and under it what is left and the clock.
 ///
 /// The stars are the ones this attempt is STILL ON FOR: three until par is
 /// spent, two until one and a half times par, then one. The bar is how much of
@@ -177,7 +216,31 @@ class ParMeter extends StatelessWidget {
   final int movesUsed;
   final int minMoves;
 
-  const ParMeter({super.key, required this.movesUsed, required this.minMoves});
+  /// The level clock, in its detailed form, on the meter's second line.
+  final Widget? clock;
+
+  const ParMeter({
+    super.key,
+    required this.movesUsed,
+    required this.minMoves,
+    this.clock,
+  });
+
+  /// What this attempt can still earn, in words.
+  static String pace({required int movesUsed, required int minMoves}) {
+    final twoStarCeiling = (minMoves * kTwoStarMoveMultiplier).ceil();
+    if (movesUsed < minMoves) {
+      final left = minMoves - movesUsed;
+      return '$left ${left == 1 ? 'move' : 'moves'} left for 3 stars';
+    }
+    if (movesUsed == minMoves) return 'Par spent · 2 stars from here';
+    if (movesUsed < twoStarCeiling) {
+      final left = twoStarCeiling - movesUsed;
+      return '$left ${left == 1 ? 'move' : 'moves'} left for 2 stars';
+    }
+    if (movesUsed == twoStarCeiling) return '1 star from here · any finish';
+    return 'Any finish earns 1 star';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -194,8 +257,9 @@ class ParMeter extends StatelessWidget {
       _ => Toy.tomato,
     };
 
+    final words = pace(movesUsed: movesUsed, minMoves: minMoves);
     return Semantics(
-      label: '$stars star pace, $movesUsed of par $minMoves moves',
+      label: '$stars star pace, $movesUsed of par $minMoves moves. $words',
       child: ExcludeSemantics(
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 7, 12, 7),
@@ -204,33 +268,83 @@ class ParMeter extends StatelessWidget {
             borderRadius: BorderRadius.circular(Toy.rButton),
             border: Border.all(color: Toy.ink, width: Toy.stroke),
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              ToyStars(
-                earned: stars,
-                size: 15,
-                spacing: 0,
-                fill: Toy.tomato,
-                outlined: false,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(end: fill),
-                  duration: Toy.calm(context)
-                      ? Duration.zero
-                      : const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, value, _) => ToyProgressBar(
-                    value: value,
-                    fill: color,
-                    track: Toy.track,
-                    height: 14,
+              Row(
+                children: [
+                  ToyStars(
+                    earned: stars,
+                    size: 15,
+                    spacing: 0,
+                    fill: Toy.tomato,
+                    outlined: false,
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(end: fill),
+                      duration: Toy.calm(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, _) => ToyProgressBar(
+                        value: value,
+                        fill: color,
+                        track: Toy.track,
+                        height: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$movesUsed',
+                          style: Toy.numbers(
+                            15,
+                            weight: FontWeight.w800,
+                            color: stars == 3 ? Toy.ink : Toy.tomato,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' / $minMoves',
+                          style: Toy.numbers(14, weight: FontWeight.w800),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Text('par $minMoves', style: Toy.numbers(14, weight: FontWeight.w800)),
+              const SizedBox(height: 5),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      words,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Toy.ui(
+                        12,
+                        weight: FontWeight.w700,
+                        color: Toy.inkMuted,
+                      ),
+                    ),
+                  ),
+                  if (clock != null) ...[
+                    const SizedBox(width: 8),
+                    DefaultTextStyle(
+                      style: Toy.ui(
+                        12,
+                        weight: FontWeight.w700,
+                        color: Toy.inkMuted,
+                      ),
+                      child: clock!,
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
@@ -256,6 +370,9 @@ class HudAction extends StatelessWidget {
   /// A small round badge on the top-right corner.
   final Widget? badge;
 
+  /// The press sound.
+  final UiCue cue;
+
   const HudAction({
     super.key,
     required this.icon,
@@ -264,6 +381,7 @@ class HudAction extends StatelessWidget {
     this.color = Toy.card,
     this.busy = false,
     this.badge,
+    this.cue = UiCue.tap,
   });
 
   @override
@@ -300,7 +418,10 @@ class HudAction extends StatelessWidget {
                   ),
           ),
           const SizedBox(height: 3),
-          Text(label, style: Toy.ui(15, weight: FontWeight.w800, color: ink)),
+          Text(
+            label,
+            style: Toy.ui(15, weight: FontWeight.w800, color: ink),
+          ),
         ],
       ),
     );
@@ -316,9 +437,15 @@ class HudAction extends StatelessWidget {
     // Pressable would fade a disabled child on top of its own disabled look,
     // leaving a ghost; a disabled action just isn't pressable.
     if (!enabled) {
-      return Semantics(button: true, enabled: false, label: label, child: content);
+      return Semantics(
+        button: true,
+        enabled: false,
+        label: label,
+        child: content,
+      );
     }
     return Pressable(
+      cue: cue,
       onPressed: onPressed,
       semanticLabel: busy ? '$label, working. Tap to cancel' : label,
       child: content,
@@ -381,6 +508,7 @@ class BoardControls extends StatelessWidget {
               // earn a little and cost a lot.
               Expanded(
                 child: HudAction(
+                  cue: UiCue.undo,
                   icon: const ToyIcon(ToyGlyph.undo, size: 22),
                   label: 'Undo',
                   onPressed: onUndo,
@@ -432,7 +560,11 @@ class _HintBadge extends StatelessWidget {
     child: remaining > 0
         ? Text(
             '$remaining',
-            style: Toy.numbers(14, color: Colors.white, weight: FontWeight.w800),
+            style: Toy.numbers(
+              14,
+              color: Colors.white,
+              weight: FontWeight.w800,
+            ),
           )
         : const Padding(
             padding: EdgeInsets.only(left: 2),

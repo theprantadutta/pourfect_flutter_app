@@ -8,10 +8,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'state/cosmetics_controller.dart';
 import 'state/campaign_worlds.dart';
 import 'state/legal_acceptance.dart';
 import 'state/monetization_controller.dart';
 import 'services/analytics/analytics_service.dart';
+import 'services/audio/audio_service.dart';
 import 'services/api/push_service.dart';
 import 'services/notifications/notification_service.dart';
 import 'services/updates/app_updater.dart';
@@ -19,6 +21,8 @@ import 'services/updates/release_policy.dart';
 import 'state/review_prompter.dart';
 import 'state/providers.dart';
 import 'state/daily_controller.dart';
+import 'state/achievements.dart';
+import 'state/event_controller.dart';
 import 'state/notification_prefs.dart';
 import 'state/progress_repository.dart';
 import 'state/sync_controller.dart';
@@ -31,6 +35,7 @@ import 'ui/screens/home_screen.dart';
 import 'ui/screens/journey_screen.dart';
 import 'ui/screens/settings_screen.dart';
 import 'ui/screens/statistics_screen.dart';
+import 'ui/theme/cosmetics.dart';
 import 'ui/theme/tokens.dart';
 import 'ui/theme/toy.dart';
 import 'ui/theme/typography.dart';
@@ -168,6 +173,15 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       ref.read(monetizationProvider);
       ref.read(billingServiceProvider).init();
 
+      // The skins being worn: from the device's cache at once, then the
+      // server's word on what is owned. Every ball and tube painter reads the
+      // worn notifiers, so this is the one place they are set.
+      ref.listenManual(cosmeticsProvider, (_, next) {
+        wornBallSkin.value = BallSkin.byId(next.ballSkin);
+        wornTubeTheme.value = TubeTheme.byId(next.tubeTheme);
+      }, fireImmediately: true);
+      ref.read(cosmeticsProvider.notifier).refresh();
+
       // And the first sync. Off the first frame like everything else here,
       // because the level map must be on screen before any of this runs — a
       // player on a train opens the game and plays; they do not wait for a
@@ -194,6 +208,45 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       // before the player looks at it. Off the first frame like everything
       // else: the level map does not wait on it.
       ref.read(dailyProvider.notifier).ensureLoaded();
+      ref.read(eventProvider.notifier).refresh();
+
+      // Achievements: a toast for each one the moment it unlocks, wherever
+      // the player is, and the server's record merged with this phone's.
+      ref.listenManual(achievementsProvider, (previous, next) {
+        if (identical(previous?.justUnlocked, next.justUnlocked)) return;
+        final fresh = next.justUnlocked;
+        if (fresh.isEmpty || !mounted) return;
+        showToyToast(
+          context,
+          fresh.length == 1
+              ? 'Achievement unlocked: ${fresh.single.title}'
+              : '${fresh.length} achievements unlocked!',
+          cue: UiCue.achievement,
+        );
+      });
+      ref.read(achievementsProvider.notifier).refresh();
+
+      // Once per launch, a little after start so the saved settings are in.
+      Future<void>.delayed(const Duration(seconds: 5), () {
+        if (!mounted) return;
+        final s = ref.read(settingsProvider);
+        ref
+            .read(analyticsServiceProvider)
+            .log(
+              AudioSettingsSnapshot(
+                sound: s.soundEnabled,
+                music: s.musicEnabled,
+                soundVolume: s.soundVolume,
+                musicVolume: s.musicVolume,
+              ),
+            );
+      });
+
+      // The music switch and slider take effect at once.
+      ref.listenManual(
+        settingsProvider.select((s) => (s.musicEnabled, s.musicVolume)),
+        (_, _) => ref.read(audioServiceProvider).refreshMusic(),
+      );
 
       // Re-registers an ALREADY granted push token. Never asks: a prompt on
       // launch is a measurable D1 killer, and the ask belongs at the one
@@ -226,6 +279,16 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
   /// to push earlier gets another go without a retry timer to tune.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Music stops with the app and comes back with it — unless the player
+    // started their own music meanwhile.
+    switch (state) {
+      case AppLifecycleState.paused || AppLifecycleState.hidden:
+        ref.read(audioServiceProvider).appPaused();
+      case AppLifecycleState.resumed:
+        ref.read(audioServiceProvider).appResumed();
+      default:
+        break;
+    }
     if (state == AppLifecycleState.resumed) {
       ref.read(syncControllerProvider.notifier).syncNow();
       // Midnight UTC may have passed while the app was in a pocket, in which

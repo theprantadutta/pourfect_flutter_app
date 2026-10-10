@@ -22,17 +22,26 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/ads/ad_service.dart';
 import '../../state/account_controller.dart';
 import '../../state/daily_controller.dart';
+import '../../state/event_controller.dart';
+import '../../state/zen.dart';
+import '../../state/monetization_controller.dart';
 import '../../state/onboarding.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
+import '../../state/streak_controller.dart';
 import '../theme/ball_palette.dart';
 import '../theme/toy.dart';
+import '../transitions.dart';
 import '../widgets/daily_card.dart';
+import 'event_screen.dart';
+import 'zen_screen.dart';
 import '../widgets/next_level_hero.dart';
 import '../widgets/player_crest.dart';
+import '../widgets/streak_dialog.dart';
 import '../widgets/more_levels_card.dart';
 import '../widgets/toy_kit.dart';
 import '../widgets/tutorial.dart';
@@ -94,9 +103,12 @@ class HomeScreen extends ConsumerWidget {
       ),
       const SizedBox(height: 14),
     ];
-    final daily = _Daily(
-      onOpenDaily: onOpenDaily,
-      onOpenLeaderboard: onOpenLeaderboard,
+    final daily = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _Daily(onOpenDaily: onOpenDaily, onOpenLeaderboard: onOpenLeaderboard),
+        const _Extras(),
+      ],
     );
     final foot = <Widget>[
       const SizedBox(height: 14),
@@ -532,6 +544,149 @@ class _Daily extends ConsumerWidget {
       },
       onOpenDaily: onOpenDaily,
       onOpenLeaderboard: onOpenLeaderboard,
+      streak: ref.watch(streakProvider)?.current,
+      onOpenStreak: () => showStreakDialog(
+        context,
+        watchVideo: () => ref
+            .read(monetizationProvider.notifier)
+            .offerRewarded(RewardedPlacement.streakFreeze, levelId: 0),
+      ),
+    );
+  }
+}
+
+/// This week's event, under the daily: seven boards, one week, one board.
+/// Nothing at all when there is no server or no event yet.
+/// The weekly event and Zen, side by side and compact: the hub does not
+/// scroll, and stacking two more full-width cards squeezed the hero board out
+/// of its card. Zen takes the whole row when there is no event to show.
+class _Extras extends ConsumerWidget {
+  const _Extras();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasEvent = ref.watch(eventProvider.select((e) => e.event != null));
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (hasEvent) ...[
+              const Expanded(child: _Event()),
+              const SizedBox(width: 12),
+            ],
+            const Expanded(child: _Zen()),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Event extends ConsumerWidget {
+  const _Event();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final event = ref.watch(eventProvider).event;
+    if (event == null) {
+      // No server or no event yet: keep the slot so Zen does not stretch.
+      return const SizedBox.shrink();
+    }
+
+    return Pressable(
+      onPressed: () => Navigator.of(context).push(
+        PourfectPageRoute<void>(
+          builder: (route) =>
+              EventScreen(onClose: () => Navigator.of(route).maybePop()),
+        ),
+      ),
+      semanticLabel: 'Weekly event, ${event.cleared} of 7 boards',
+      child: ToyBox(
+        color: Toy.mint,
+        radius: 20,
+        shadow: 5,
+        padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              event.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Toy.display(17, height: 1.1),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${event.cleared}/${event.boards.length}'
+              '${event.rank == null ? '' : ' · #${event.rank}'}'
+              ' · ${eventEndsIn(event.endsAt).replaceFirst('ends in ', '')}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Toy.ui(12, weight: FontWeight.w800),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Zen extends ConsumerWidget {
+  const _Zen();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cleared = ref.watch(progressProvider).length;
+    final open = cleared >= kZenUnlockLevel;
+    final ink = open ? Colors.white : Toy.inkMuted;
+
+    return Pressable(
+      onPressed: open
+          ? () => Navigator.of(context).push(
+              PourfectPageRoute<void>(
+                builder: (route) =>
+                    ZenScreen(onExit: () => Navigator.of(route).maybePop()),
+              ),
+            )
+          : null,
+      semanticLabel: open
+          ? 'Zen mode'
+          : 'Zen mode unlocks at level $kZenUnlockLevel',
+      child: ToyBox(
+        color: open ? Toy.lilac : Toy.card,
+        radius: 20,
+        shadow: open ? 5 : 3,
+        padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Zen',
+                    style: Toy.display(17, height: 1.1, color: ink),
+                  ),
+                ),
+                if (!open) const ToyIcon(ToyGlyph.lock, size: 14),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              open
+                  ? 'Endless, no clock'
+                  : 'Level $kZenUnlockLevel · ${kZenUnlockLevel - cleared} to go',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Toy.ui(12, weight: FontWeight.w800, color: ink),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

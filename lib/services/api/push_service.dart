@@ -15,6 +15,7 @@ library;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../analytics/analytics_service.dart';
 import '../notifications/notification_service.dart';
@@ -40,21 +41,63 @@ class PushService {
   final Future<PushPermission> Function() _request;
   final Future<String?> Function() _readToken;
 
+  /// Whether "denied" from the OS can still mean "never asked". True on
+  /// Android — see [permission].
+  final bool _deniedMayMeanUnasked;
+
   PushService({
     required ApiClient Function() client,
     Future<PushPermission> Function()? readPermission,
     Future<PushPermission> Function()? requestPermission,
     Future<String?> Function()? readToken,
+    bool? deniedMayMeanUnasked,
   }) : _resolveClient = client,
        _readPermission = readPermission ?? _firebasePermission,
        _request = requestPermission ?? _firebaseRequest,
-       _readToken = readToken ?? _firebaseToken;
+       _readToken = readToken ?? _firebaseToken,
+       _deniedMayMeanUnasked =
+           deniedMayMeanUnasked ??
+           defaultTargetPlatform == TargetPlatform.android;
 
   PushPermission? _cached;
 
+  /// Set once this install has shown the system prompt.
+  static const _promptedKey = 'pourfect.push.system_prompted.v1';
+
   /// What the OS currently says, without asking for anything.
+  ///
+  /// **On Android, "denied" is ambiguous, and reading it literally is the bug
+  /// that kept every Android 13+ player from ever being asked.** Android has
+  /// no "not determined": a fresh install that has never seen the prompt
+  /// reports exactly what a player who refused it reports. Treated as a
+  /// refusal, the app never raised the prompt and only ever offered to open
+  /// the system settings — so almost nobody turned notifications on, and the
+  /// server had no token to send to. Until this install has shown the prompt
+  /// once, "denied" therefore reads as [PushPermission.notAsked].
   Future<PushPermission> permission() async =>
-      _cached ??= await _readPermission();
+      _cached ??= await _effectivePermission();
+
+  Future<PushPermission> _effectivePermission() async {
+    final raw = await _readPermission();
+    if (raw != PushPermission.denied || !_deniedMayMeanUnasked) return raw;
+    return await _promptedBefore() ? raw : PushPermission.notAsked;
+  }
+
+  Future<bool> _promptedBefore() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_promptedKey) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _markPrompted() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_promptedKey, true);
+    } catch (_) {}
+  }
 
   /// Reads the OS again. Somebody may have switched notifications on in the
   /// system settings since the last look.
@@ -136,6 +179,7 @@ class PushService {
   Future<bool> requestAndRegister() async {
     if (await permission() == PushPermission.denied) return false;
 
+    await _markPrompted();
     _cached = await _request();
     if (_cached != PushPermission.granted) return false;
 

@@ -87,6 +87,27 @@ const List<(String, List<Faq>)> kFaqSections = [
             'not take it away. A level finished with an extra tube earns up '
             'to two stars.',
       ),
+      (
+        question: 'What are HARD levels?',
+        answer:
+            'The toughest level in every ten wears a red HARD badge. It plays '
+            'like any other level, and it is worth one and a half times the '
+            'points.',
+      ),
+      (
+        question: 'What are star chests?',
+        answer:
+            'Every 30 stars opens a chest on your Journey: two hints and an '
+            'extra tube, saved for when you need them. Every third chest also '
+            'unlocks a ball skin.',
+      ),
+      (
+        question: 'What is a streak freeze?',
+        answer:
+            'Miss a day of the Daily Pour and a freeze covers it, so your '
+            'streak carries on. You get one free every Monday, can earn one '
+            'a day with a video, and can hold two.',
+      ),
     ],
   ),
   (

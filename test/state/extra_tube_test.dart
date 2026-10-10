@@ -204,6 +204,8 @@ void main() {
       // gameplay that can reach them.
       expect(RewardedPlacement.hint.isReachable, isTrue);
       expect(RewardedPlacement.extraTube.isReachable, isTrue);
+      expect(RewardedPlacement.streakFreeze.isReachable, isTrue);
+      expect(RewardedPlacement.chestDouble.isReachable, isTrue);
       expect(
         RewardedPlacement.levelSkip.isReachable,
         isFalse,

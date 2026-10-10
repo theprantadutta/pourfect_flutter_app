@@ -17,6 +17,7 @@
 library;
 
 import 'package:flutter/material.dart';
+
 import 'dart:ui' show PointMode;
 
 import 'package:flutter/services.dart';
@@ -86,9 +87,8 @@ abstract final class Toy {
   // ---- shadows -------------------------------------------------------------
 
   /// The signature toy shadow: solid, no blur, straight down.
-  static List<BoxShadow> hard([double dy = 4, Color color = ink]) => dy <= 0
-      ? const []
-      : [BoxShadow(color: color, offset: Offset(0, dy))];
+  static List<BoxShadow> hard([double dy = 4, Color color = ink]) =>
+      dy <= 0 ? const [] : [BoxShadow(color: color, offset: Offset(0, dy))];
 
   /// White card, ink stroke, hard shadow — the default container.
   static BoxDecoration box({
@@ -209,7 +209,11 @@ enum ToySurface {
   win(Toy.blue, Color(0x00000000), Brightness.light),
 
   /// Tomato with ink dots: the splash and first frame.
-  splash(Toy.tomato, Color(0x241F1A33), Brightness.light);
+  splash(Toy.tomato, Color(0x241F1A33), Brightness.light),
+
+  /// Warm tint with ink dots: a hard level. Light enough that every ball
+  /// reads exactly as it does on cream.
+  hard(Toy.tomatoTint, Color(0x1F1F1A33), Brightness.dark);
 
   final Color background;
   final Color dot;

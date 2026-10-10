@@ -14,6 +14,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/ads/ad_service.dart';
+import '../../services/audio/audio_service.dart';
 import '../../services/analytics/analytics_service.dart';
 import '../../services/api/api_result.dart';
 import '../../services/api/daily_api.dart';
@@ -21,15 +23,20 @@ import '../../services/api/push_service.dart';
 import '../../state/daily_controller.dart';
 import '../../state/game_controller.dart';
 import '../../state/hint_controller.dart';
+import '../../state/monetization_controller.dart';
 import '../../state/play_history.dart';
 import '../../state/providers.dart';
+import '../../state/streak_controller.dart';
 import '../format.dart';
 import '../theme/toy.dart';
 import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
+import '../widgets/leave_board_prompt.dart';
 import '../widgets/level_clock.dart';
 import '../widgets/toy_kit.dart';
 import '../widgets/pour_loader.dart';
+import '../widgets/streak_dialog.dart';
+import '../widgets/streak_glyphs.dart';
 
 class DailyChallengeScreen extends ConsumerStatefulWidget {
   final VoidCallback onExit;
@@ -44,6 +51,7 @@ class DailyChallengeScreen extends ConsumerStatefulWidget {
 class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
     with WidgetsBindingObserver {
   late final GameController _game;
+  late final AudioService _audio;
 
   /// Held from initState for the same reason as [_game]: dispose banks the
   /// time played, and reading a provider during teardown is when it throws.
@@ -74,6 +82,9 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _game = ref.read(gameControllerProvider.notifier);
+    // The quieter music while a board is up; the menu loop again on the way
+    // out. Held here because dispose must not read providers.
+    _audio = ref.read(audioServiceProvider)..setScene(MusicScene.play);
     _history = ref.read(playHistoryProvider.notifier);
     // Solves each position as it is reached, as on the campaign board, so a
     // hint is instant and a dead end is known before anybody asks.
@@ -89,6 +100,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
 
   @override
   void dispose() {
+    _audio.setScene(MusicScene.menu);
     WidgetsBinding.instance.removeObserver(this);
     // Same rule as the campaign board: the session ends when the screen does,
     // so nothing in flight can land on a board nobody is looking at.
@@ -117,6 +129,51 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
         _game.resumeClock();
       case AppLifecycleState.inactive:
         break;
+    }
+  }
+
+  /// Today's board with moves on it, not yet solved: leaving loses them.
+  bool get _midGame {
+    final live = ref.read(gameControllerProvider);
+    return live != null &&
+        live.level.id == 0 &&
+        live.movesUsed > 0 &&
+        !live.isWon &&
+        _result == null &&
+        !_submitting;
+  }
+
+  bool _confirmingLeave = false;
+
+  /// Set once the player has said yes — see the same flag on the game screen.
+  bool _leaving = false;
+
+  /// Leaves at once from an untouched or finished board, and asks first from
+  /// one with moves on it.
+  Future<void> _confirmLeave() async {
+    if (!_midGame) return _leave();
+    if (_confirmingLeave) return;
+    _confirmingLeave = true;
+    final running = ref.read(gameControllerProvider)?.isClockRunning ?? false;
+    if (running) _game.pauseClock();
+    try {
+      final leave = await confirmLeaveBoard(
+        context,
+        lost:
+            "Your moves on today's Daily Pour won't be saved. You can start "
+            'it again any time today.',
+      );
+      if (!mounted) return;
+      if (leave) {
+        setState(() => _leaving = true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _leave();
+        });
+      } else if (running) {
+        _game.resumeClock();
+      }
+    } finally {
+      _confirmingLeave = false;
     }
   }
 
@@ -166,6 +223,26 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
     }
   }
 
+  /// True when the result just reached a streak milestone.
+  bool _milestone = false;
+
+  /// Opens the streak, pausing the board's clock while it is up — the video
+  /// for a freeze is watched from in there.
+  Future<void> _openStreak() async {
+    final running = ref.read(gameControllerProvider)?.isClockRunning ?? false;
+    if (running) _game.pauseClock();
+    try {
+      await showStreakDialog(
+        context,
+        watchVideo: () => ref
+            .read(monetizationProvider.notifier)
+            .offerRewarded(RewardedPlacement.streakFreeze, levelId: 0),
+      );
+    } finally {
+      if (running && mounted) _game.resumeClock();
+    }
+  }
+
   Future<void> _submit() async {
     final state = ref.read(gameControllerProvider);
     final playing = _playing;
@@ -179,6 +256,10 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
     ref.read(audioServiceProvider).win();
     ref.read(hapticsServiceProvider).levelCompleted();
     _bankPlaytime();
+
+    // Whether this submission is the one that completes the day. A replay of
+    // a finished board returns the same streak and must not celebrate twice.
+    final firstToday = !playing.isPlayed;
 
     final result = await ref
         .read(dailyProvider.notifier)
@@ -197,6 +278,9 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
       switch (result) {
         case ApiOk(:final value):
           _result = value;
+          _milestone =
+              firstToday && kStreakMilestones.contains(value.dailyStreak);
+          if (_milestone) ref.read(audioServiceProvider).ui(UiCue.streak);
         case ApiFailure(:final kind):
           // The board IS solved — that happened on this device and nothing can
           // take it back. Only the ranking is missing, and saying so is more
@@ -223,8 +307,13 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
     // time played is banked here as well. Banking twice is harmless: the
     // second call finds nothing left to hand over.
     return PopScope(
+      canPop: _leaving || !_midGame,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) _bankPlaytime();
+        if (didPop) {
+          _bankPlaytime();
+        } else {
+          _confirmLeave();
+        }
       },
       child: ToyScaffold(
         surface: ToySurface.daily,
@@ -278,9 +367,10 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
                       0,
                   parSeconds: state.parSeconds,
                   isRunning: state.isClockRunning,
-                  fontSize: 13,
+                  fontSize: 12,
+                  detailed: true,
                 ),
-          onExit: _leave,
+          onExit: _confirmLeave,
         ),
 
         const SizedBox(height: 12),
@@ -290,6 +380,8 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
             today: challenge.date,
             solvedToday: solvedToday,
             streak: streak,
+            info: ref.watch(streakProvider),
+            onTap: _openStreak,
           ),
         ),
         const SizedBox(height: 14),
@@ -316,6 +408,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
         if (_result != null || _submitError != null)
           _Outcome(
             result: _result,
+            milestone: _milestone,
             error: _submitError,
             onDone: _leave,
             onRetry: _submitError == null ? null : _submit,
@@ -339,7 +432,9 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
   void _onBallLanded(double fill, bool completed) {
     ref.read(audioServiceProvider).pour(fill: fill);
     if (completed) {
-      ref.read(audioServiceProvider).tubeComplete();
+      // The tube that finishes the board has its own, brighter cue.
+      final finished = ref.read(gameControllerProvider)?.isWon ?? false;
+      ref.read(audioServiceProvider).tubeComplete(last: finished);
       ref.read(hapticsServiceProvider).tubeCompleted();
     } else {
       ref.read(hapticsServiceProvider).ballLanded();
@@ -544,10 +639,19 @@ class _WeekStrip extends StatefulWidget {
   /// The server's streak, including today, once it has said. Null before.
   final int? streak;
 
+  /// The server's calendar, once fetched: which days were played and which a
+  /// freeze covered. Null before, when the strip falls back to [streak].
+  final StreakInfo? info;
+
+  /// Opens the streak.
+  final VoidCallback onTap;
+
   const _WeekStrip({
     required this.today,
     required this.solvedToday,
     required this.streak,
+    required this.info,
+    required this.onTap,
   });
 
   @override
@@ -589,18 +693,45 @@ class _WeekStripState extends State<_WeekStrip>
       widget.today.day,
     );
     final monday = today.subtract(Duration(days: today.weekday - 1));
-    final streak = widget.streak ?? (widget.solvedToday ? 1 : 0);
+    final streak =
+        widget.streak ?? widget.info?.current ?? (widget.solvedToday ? 1 : 0);
 
-    return ToyBox(
-      radius: Toy.rControl,
-      shadow: 4,
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          for (var i = 0; i < 7; i++)
-            _day(letters[i], monday.add(Duration(days: i)), today, streak),
-        ],
+    return Pressable(
+      onPressed: widget.onTap,
+      semanticLabel: 'Your streak: ${plural(streak, 'day')}. Open',
+      child: ToyBox(
+        radius: Toy.rControl,
+        shadow: 4,
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  StreakFlame(size: 22, lit: streak > 0),
+                  const SizedBox(height: 2),
+                  Text('$streak', style: Toy.numbers(13)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (var i = 0; i < 7; i++)
+                    _day(
+                      letters[i],
+                      monday.add(Duration(days: i)),
+                      today,
+                      streak,
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -608,11 +739,25 @@ class _WeekStripState extends State<_WeekStrip>
   Widget _day(String letter, DateTime day, DateTime today, int streak) {
     final ago = today.difference(day).inDays;
     final isToday = ago == 0;
-    final done = ago >= 0 && ago < streak && (ago > 0 || widget.solvedToday);
+    final info = widget.info;
+    // The server's calendar when there is one; before it arrives, the run
+    // ending today is all that is known.
+    final done = isToday
+        ? widget.solvedToday
+        : info != null
+        ? info.played.contains(day)
+        : ago > 0 && ago < streak;
+    final frozen = !done && (info?.frozen.contains(day) ?? false);
 
     final Widget stamp;
     final String state;
-    if (done) {
+    if (frozen) {
+      state = 'missed, covered by a freeze';
+      stamp = const _Stamp(
+        color: Toy.blue,
+        child: StreakSnowflake(size: 16, color: Colors.white),
+      );
+    } else if (done) {
       state = isToday ? 'played today' : 'played';
       stamp = _Stamp(
         color: Toy.mint,
@@ -747,6 +892,10 @@ class _DashedSquarePainter extends CustomPainter {
 /// The result of a submitted board.
 class _Outcome extends StatelessWidget {
   final DailyResult? result;
+
+  /// The streak just reached one of [kStreakMilestones].
+  final bool milestone;
+
   final String? error;
   final VoidCallback onDone;
   final VoidCallback? onRetry;
@@ -758,6 +907,7 @@ class _Outcome extends StatelessWidget {
 
   const _Outcome({
     required this.result,
+    this.milestone = false,
     required this.error,
     required this.onDone,
     required this.onRetry,
@@ -789,10 +939,23 @@ class _Outcome extends StatelessWidget {
                 ),
               ],
             ] else ...[
-              Text(
-                outcome.isPersonalBest ? 'A new best' : 'Solved',
-                style: Toy.display(24),
-              ),
+              if (milestone)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const StreakFlame(size: 28),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${outcome.dailyStreak}-day streak!',
+                      style: Toy.display(24, color: Toy.tomato),
+                    ),
+                  ],
+                )
+              else
+                Text(
+                  outcome.isPersonalBest ? 'A new best' : 'Solved',
+                  style: Toy.display(24),
+                ),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,

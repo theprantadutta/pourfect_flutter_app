@@ -167,5 +167,69 @@ void main() {
       expect(bank.pour.length, lessThan(bank.tubeComplete.length));
       expect(bank.pour.length, lessThan(bank.win.length));
     });
+
+    test('the finishing tube is longer than an ordinary sorted tube', () {
+      // Its own beat before the win bell, not the same cue again.
+      expect(bank.finalTube.length, greaterThan(bank.tubeComplete.length));
+      expect(bank.finalTube.length, lessThan(bank.win.length));
+    });
+  });
+
+  group('the quick-pour streak', () {
+    test('balls of one run do not count as a streak', () {
+      expect(nextCombo(0, 120), 0);
+      expect(nextCombo(3, 120), 3);
+    });
+
+    test('a quick next move extends it, a slow one ends it', () {
+      expect(nextCombo(0, 700), 1);
+      expect(nextCombo(2, 900), 3);
+      expect(nextCombo(4, 2000), 0);
+    });
+
+    test('it lifts the pitch a little and stops climbing at six', () {
+      expect(comboBoost(0), 1.0);
+      expect(comboBoost(2), greaterThan(1.0));
+      expect(comboBoost(9), comboBoost(6));
+      expect(nextCombo(6, 700), 6);
+    });
+  });
+
+  group('the rest of the app', () {
+    test('every UI cue has a sound', () {
+      final cues = generateUiCues();
+      expect(cues.keys.toSet(), UiCue.values.toSet());
+      for (final wav in cues.values) {
+        expect(wav.length, greaterThan(44));
+      }
+    });
+
+    test('the music loops without a seam', () {
+      for (final scene in MusicScene.values) {
+        final wav = renderMusicLoop(scene);
+        final data = ByteData.sublistView(wav);
+        final count = (wav.length - 44) ~/ 2;
+        // About 38 seconds at the music rate.
+        expect(count / kMusicSampleRate, closeTo(38.4, 0.2));
+        final first = data.getInt16(44, Endian.little) / 32767;
+        final last = data.getInt16(44 + (count - 1) * 2, Endian.little) / 32767;
+        expect((first - last).abs(), lessThan(0.25), reason: '$scene');
+      }
+    });
+
+    test('the gameplay loop is quieter than the menu loop', () {
+      double energy(MusicScene scene) {
+        final wav = renderMusicLoop(scene);
+        final data = ByteData.sublistView(wav);
+        var sum = 0.0;
+        for (var i = 44; i + 1 < wav.length; i += 2) {
+          final v = data.getInt16(i, Endian.little) / 32767;
+          sum += v * v;
+        }
+        return sum;
+      }
+
+      expect(energy(MusicScene.play), lessThan(energy(MusicScene.menu)));
+    });
   });
 }

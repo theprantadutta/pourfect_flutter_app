@@ -12,12 +12,15 @@
 /// player keeps whatever they spent.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/ads/ad_ids.dart';
 import '../services/ads/ad_service.dart';
+import '../services/audio/audio_service.dart';
 import '../services/ads/interstitial_policy.dart';
 import '../services/analytics/analytics_service.dart';
 import '../services/iap/billing_service.dart';
@@ -26,6 +29,7 @@ import 'package:flutter/foundation.dart';
 
 import '../services/api/api_result.dart';
 import '../services/api/purchases_api.dart';
+import 'cosmetics_controller.dart';
 import 'providers.dart';
 
 /// Hints a player gets without watching anything.
@@ -245,6 +249,61 @@ class MonetizationController extends Notifier<MonetizationState> {
     }
   }
 
+  /// Zen boards between interstitials.
+  static const int zenBoardsBetweenAds = 4;
+
+  /// Offers an interstitial after the [poured]th Zen board.
+  ///
+  /// Zen has no level numbers, so it cannot use the campaign's level gap —
+  /// and faking one would break the campaign's (the gap is measured from the
+  /// last level an ad followed). It keeps the rules that matter to the
+  /// player: never with Remove Ads, never inside the cooldown, and only every
+  /// [zenBoardsBetweenAds] boards. A shown ad updates the cooldown clock the
+  /// campaign reads too, so the two never stack.
+  Future<void> maybeShowZenInterstitial(int poured) async {
+    await _restored;
+    if (poured <= 0 || poured % zenBoardsBetweenAds != 0) return;
+    if (state.adsRemoved) return;
+    final now = DateTime.now();
+    final last = state.interstitials.lastShownAt;
+    if (last != null && now.difference(last) < InterstitialPolicy.cooldown) {
+      return;
+    }
+    final ads = ref.read(adServiceProvider);
+    if (!ads.isInterstitialReady) return;
+
+    final analytics = ref.read(analyticsServiceProvider);
+    analytics.log(
+      const AdShown(
+        format: AdFormat.interstitial,
+        placement: 'zen',
+        levelId: 0,
+      ),
+    );
+    final shown = await ads.showInterstitial();
+    analytics.log(
+      AdCompleted(
+        format: AdFormat.interstitial,
+        placement: 'zen',
+        levelId: 0,
+        rewardGranted: shown,
+      ),
+    );
+    if (!shown) return;
+
+    final at = DateTime.now();
+    state = state.copyWith(
+      interstitials: InterstitialPolicy(
+        lastShownAtLevel: state.interstitials.lastShownAtLevel,
+        lastShownAt: at,
+      ),
+    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_interstitialAtKey, at.millisecondsSinceEpoch);
+    } catch (_) {}
+  }
+
   // ---- rewarded ------------------------------------------------------------
 
   /// Spends a free hint if one remains.
@@ -358,6 +417,9 @@ class MonetizationController extends Notifier<MonetizationState> {
       ),
     );
 
+    if (outcome == RewardOutcome.earned) {
+      ref.read(audioServiceProvider).ui(UiCue.rewardGranted);
+    }
     return outcome;
   }
 
@@ -402,6 +464,11 @@ class MonetizationController extends Notifier<MonetizationState> {
         // BillingService.finishPurchase. The server acknowledges too; this is
         // the backstop for the case where its own call failed.
         if (value.isPurchased) await billing.finishPurchase(receipt.token);
+
+        // The pack's skins are listed from the server's answer.
+        if (receipt.productId == IapIds.skinPack) {
+          unawaited(ref.read(cosmeticsProvider.notifier).refresh());
+        }
 
         if (value.adsRemoved) {
           await applyServerEntitlement(granted: true);

@@ -18,11 +18,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../state/chest_controller.dart';
 import '../../state/level_repository.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../theme/ball_palette.dart';
 import '../theme/toy.dart';
+import '../widgets/chest_dialog.dart';
 import '../widgets/journey_path.dart';
 import '../widgets/toy_kit.dart';
 
@@ -93,6 +95,10 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen>
   @override
   void initState() {
     super.initState();
+    // What is open on this account, for the chest strip.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(chestProvider.notifier).refresh();
+    });
     // 1.6s there and back: the current tile's halo, and the only thing on
     // this screen that animates.
     _pulse = AnimationController(
@@ -228,6 +234,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen>
               : JourneyMark.locked,
           stars: progress[id]?.stars ?? 0,
           colorId: (id * 3) % 10,
+          hard: levelSet.byId(id)?.level.isHard ?? false,
         ),
     ];
 
@@ -273,6 +280,11 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen>
                 );
               },
             ),
+          ),
+          const SizedBox(height: 10),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: ChestStrip(),
           ),
           const SizedBox(height: 10),
           Expanded(

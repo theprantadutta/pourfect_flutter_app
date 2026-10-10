@@ -1,6 +1,10 @@
 /// Sound playback, behind an interface so it can be muted, faked and swapped.
 library;
 
+import 'synth.dart' show MusicScene, UiCue;
+
+export 'synth.dart' show MusicScene, UiCue;
+
 abstract interface class AudioService {
   /// Generates the sound bank and opens the mixer. Safe to call twice.
   ///
@@ -17,7 +21,8 @@ abstract interface class AudioService {
   void select();
 
   /// A tube just completed.
-  void tubeComplete();
+  /// A tube just completed. [last] is the tube that finishes the board.
+  void tubeComplete({bool last = false});
 
   /// A star landing. [index] is 0-2; the third is richer and longer.
   void star(int index);
@@ -27,6 +32,19 @@ abstract interface class AudioService {
 
   /// Personal best.
   void newBest();
+
+  /// A sound from the app around the board. See [UiCue].
+  void ui(UiCue cue);
+
+  /// Which music should play. Crossfades.
+  void setScene(MusicScene scene);
+
+  /// Re-reads the music switch and volume.
+  void refreshMusic();
+
+  /// The app went to the background, or came back.
+  void appPaused();
+  void appResumed();
 
   Future<void> dispose();
 }
@@ -45,7 +63,7 @@ class NoopAudioService implements AudioService {
   void select() {}
 
   @override
-  void tubeComplete() {}
+  void tubeComplete({bool last = false}) {}
 
   @override
   void star(int index) {}
@@ -55,6 +73,21 @@ class NoopAudioService implements AudioService {
 
   @override
   void newBest() {}
+
+  @override
+  void ui(UiCue cue) {}
+
+  @override
+  void setScene(MusicScene scene) {}
+
+  @override
+  void refreshMusic() {}
+
+  @override
+  void appPaused() {}
+
+  @override
+  void appResumed() {}
 
   @override
   Future<void> dispose() async {}
@@ -75,7 +108,8 @@ class RecordingAudioService implements AudioService {
   void select() => cues.add('select');
 
   @override
-  void tubeComplete() => cues.add('tubeComplete');
+  void tubeComplete({bool last = false}) =>
+      cues.add(last ? 'finalTube' : 'tubeComplete');
 
   @override
   void star(int index) => cues.add('star$index');
@@ -85,6 +119,24 @@ class RecordingAudioService implements AudioService {
 
   @override
   void newBest() => cues.add('newBest');
+
+  @override
+  void ui(UiCue cue) => cues.add('ui:${cue.name}');
+
+  /// The scene asked for last.
+  MusicScene scene = MusicScene.menu;
+
+  @override
+  void setScene(MusicScene scene) => this.scene = scene;
+
+  @override
+  void refreshMusic() {}
+
+  @override
+  void appPaused() {}
+
+  @override
+  void appResumed() {}
 
   @override
   Future<void> dispose() async {}

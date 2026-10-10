@@ -82,7 +82,7 @@ section first, then pick the first item whose status is not `done`.
 
 ## 1. Streaks and the Daily Pour calendar
 
-**Status:** not started
+**Status:** done (2026-10-10)
 **Why:** the strongest return-tomorrow hook, and most of the data exists.
 
 **Build**
@@ -109,14 +109,14 @@ section first, then pick the first item whose status is not `done`.
 end to end against the local API, the API tests cover the freeze rule, and the
 dashboard shows it.
 
-**Ask the owner:** how freezes are earned (weekly, by video, or both), and the
-maximum held.
+**Owner decided (2026-10-10):** one free freeze every Monday, plus one per
+rewarded video; hold at most 2.
 
 ---
 
 ## 2. "Try for 3★" on the win screen
 
-**Status:** not started
+**Status:** done (2026-10-10)
 **Why:** an instant replay, with zero new content.
 
 **Build**
@@ -135,7 +135,8 @@ phone and tablet.
 
 ## 3. Star chests on the journey
 
-**Status:** not started
+**Status:** done (2026-10-10). The every-third-chest cosmetic is flagged by the
+server (`cosmetic: true`) and waits for item 4 to give it something to unlock.
 **Why:** it gives stars a use, and the "double it" video is a natural ad slot.
 
 **Build**
@@ -155,13 +156,16 @@ phone and tablet.
 land, and there are tests for the threshold maths and the server's
 idempotency.
 
-**Ask the owner:** the reward table and the threshold spacing.
+**Owner decided (2026-10-10):** a chest every 30★, each giving 2 hint credits
+and 1 extra-tube credit; every third chest also unlocks a cosmetic (item 4).
+Optional video doubles the credits.
 
 ---
 
 ## 4. Cosmetics: ball skins and tube themes
 
-**Status:** not started. It depends on item 3 for unlocks.
+**Status:** done (2026-10-10). Owner action: create and price the `skin_pack`
+in-app product in Play Console (see the API's docs/PLAY_BILLING.md).
 **Why:** the main way to earn money in this genre without pay-to-win.
 
 **Build**
@@ -181,14 +185,17 @@ idempotency.
 daily screen; colour-blind glyphs still show; and the equipped skin survives a
 reinstall after signing in.
 
-**Ask the owner:** which skins are free and which are paid, and the price if
-an IAP.
+**Owner decided (2026-10-10):** earned skins (chests, streak milestones) PLUS
+a paid "Skin pack" IAP. The pack is a new Play product, so it also needs the
+server catalogue, verification and docs/PLAY_BILLING.md updated, and the owner
+must create and price it in Play Console.
 
 ---
 
 ## 5. Hard and Super-hard levels
 
-**Status:** not started
+**Status:** done (2026-10-10). Super-hard was not built: the owner chose a
+label-only "hard" with one multiplier.
 **Why:** spikes in the difficulty curve feel good, and it is mostly labelling.
 
 **Build**
@@ -206,14 +213,16 @@ an IAP.
 **Done when:** the labels are deterministic (tested), client and server
 points agree (tested on both sides), and it is checked on both devices.
 
-**Ask the owner:** the multiplier, and whether to keep the label only or also
-use a harder generation.
+**Owner decided (2026-10-10):** label only (no regeneration, levels stay
+identical), the hardest level in each block of 10, 1.5× points on both the app
+and the server.
 
 ---
 
 ## 6. Dead-end marker in the undo history
 
-**Status:** not started
+**Status:** done (2026-10-10), as a free banner rather than a marker on Undo
+(owner's choice keeps the step count paid).
 **Why:** it teaches without spending a hint, and it is cheap because the
 solver already knows.
 
@@ -223,9 +232,8 @@ solver already knows.
    already does this.
 2. Show a subtle marker: a small dot on the Undo button with the number of
    steps. Don't show a toast, and don't reveal the move.
-3. **Decide with the owner whether this undercuts the paid dead-end hint**,
-   which says the same thing. If it does, show only "this position can't be
-   finished" and keep the step count behind the hint.
+3. **Owner decided (2026-10-10):** a free "no way out from here" warning
+   only. How many undos it takes stays behind the paid dead-end hint.
 
 **Done when:** the owner has decided point 3, and there is a widget test for
 the marker appearing on a proven dead end.
@@ -234,7 +242,7 @@ the marker appearing on a proven dead end.
 
 ## 7. Weekly event
 
-**Status:** not started
+**Status:** done (2026-10-10), checked end to end on the A24 against a local API.
 **Why:** a shared goal for everybody, built on the leaderboard and the level
 clock.
 
@@ -248,8 +256,8 @@ clock.
    countdown to the reset. Results count for the event only, not the campaign.
 4. **Dashboard:** an event page (levels, entrants, the board), and a "generate
    now" button like the existing System page.
-5. **Optional:** a new notification kind for "the event ends tomorrow". Ask
-   first. It counts toward the 2-a-day cap.
+5. **Owner decided (2026-10-10): no new notification kind.** Mention the
+   event inside the existing evening reminder instead.
 
 **Done when:** a week can be generated, played, submitted and ranked end to
 end against the local API, with API tests for the weekly seed and the
@@ -259,7 +267,7 @@ submission checks.
 
 ## 8. Achievements
 
-**Status:** not started
+**Status:** done (2026-10-10)
 **Why:** cheap goals that last, and good dashboard material.
 
 **Build**
@@ -283,7 +291,7 @@ unlocks sync across devices.
 
 ## 9. Gameplay sound and haptics polish
 
-**Status:** not started
+**Status:** done (2026-10-10). Owner to approve by ear (build/sound_preview).
 **Why:** the look is already strong; feel is the cheapest upgrade left.
 
 **What exists today:** `AudioService` (`lib/services/audio/audio_service.dart`)
@@ -306,7 +314,8 @@ no audio regressions in the tests.
 
 ## 10. Zen mode after the campaign
 
-**Status:** not started
+**Status:** done (2026-10-10). Opens at level 30 (`kZenUnlockLevel`), not only
+after the whole campaign, so players actually meet it.
 **Why:** keeps the players who finish everything.
 
 **Build**
@@ -326,8 +335,10 @@ frame pacing on the A24), and the caps are respected.
 
 ## 11. Sound design across the whole app
 
-**Status:** not started. Do it after item 9, which settles the gameplay
-sound palette this item extends.
+**Status:** done (2026-10-10). Palette: soft glass and marimba, D major
+pentatonic (written at the top of the UI-cue section of `synth.dart`). Owner to
+approve by ear: `dart run tool/export_sounds.dart` writes every sound and both
+music loops to `build/sound_preview/`.
 **Why:** today only the board makes sound. Menus, buttons, the journey, the
 daily screen, toasts, chests and celebrations are silent, and music would
 give the game an identity.
@@ -383,8 +394,8 @@ give the game an identity.
 - the settings persist;
 - the owner has listened on the A24 and approved.
 
-**Ask the owner:** the palette and mood, whether to have music at all and
-whether it defaults to on, and a synthesized versus licensed track.
+**Owner decided (2026-10-10):** music ON by default, synthesized in code (no
+files, no licence). Still show the palette/mood to the owner for approval.
 
 ---
 
@@ -393,5 +404,77 @@ whether it defaults to on, and a synthesized versus licensed track.
 Each agent that finishes an item updates its **Status** line above and adds a
 line here: date, item, what shipped, anything left over.
 
+- 2026-10-10: items 8-11 shipped.
+  8: 14 achievements (`state/achievements.dart`, allowlisted by the API's
+  `AchievementCatalogue`), Badges tab on Your Stats, unlock toast, synced and
+  merged across devices, first launch unlocks quietly; dashboard
+  Achievements page + per-player list.
+  9: sorted-tube roll, brighter final-tube cue, pitch climbing on quick move
+  streaks (`nextCombo`/`comboBoost`), double-tap haptic.
+  10: Zen (`state/zen.dart`, `ZenScreen`): Calm/Steady/Deep, boards made on an
+  isolate, next one prepared ahead, free hint, its own interstitial gate
+  (every 4 boards, same cooldown), `zen_25` achievement.
+  11: 14 UI cues (every Pressable taps; back, toggle, dialogs, toast, error,
+  reward, undo, hint, extra tube, streak, chest, achievement), "Pour Song"
+  music (16 bars, 100 BPM, menu + quieter gameplay loop, crossfade, ducking
+  under wins, paused in background, never over the player's own music),
+  Settings: Sound effects + Music switches with volume sliders, voice cap and
+  retrigger guard, `audio_settings` analytics.
+- 2026-10-10: item 7 shipped. API: `weekly_events` / `weekly_event_levels` /
+  `weekly_event_results`, `WeeklyEventJobService` (this week + next, daily at
+  03:40 UTC and once at boot, seven climbing boards), `GET /api/v1/events/current`,
+  `POST /api/v1/events/submit` (plausibility floor, best kept, 2h grace after
+  Monday), `GET /api/v1/events/current/leaderboard`, the evening reminder's
+  `event_ending` line, dashboard Weekly events page + "Generate events now".
+  App: `eventProvider`, home event card, `EventScreen` (7 tiles, points, rank,
+  board), `EventPlayScreen` (free hint like the daily).
+- 2026-10-10: owner asks done alongside: "Leaving so soon?" prompt before
+  leaving a board with moves on it (campaign, daily, event; back button and
+  gesture); Home button on the win screen; PLAY_CONSOLE_PRODUCTS.md (products
+  to create once Play's monetization page opens). Device pass fixed: chest
+  dialog opening during build, chest lid overflow, empty store prices
+  (unpriced products are dropped), zero-streak title, event rank wording.
+- 2026-10-10: item 6 shipped. A proven dead end shows the stuck banner with
+  "No way out from here. Undo, or tap Hint to see how far back to go."
+- 2026-10-10: NOTIFICATIONS FIX (not a roadmap item, found while checking why
+  the owner never got any). Production showed 5 of 55 players with a push
+  token. Cause: on Android 13+ Firebase reports "denied" for an install that
+  was never prompted, and the app read that as a refusal, so it never raised
+  the system prompt (only "open settings"). `PushService.permission()` now
+  reads an unprompted Android "denied" as notAsked; the soft-ask budget keys
+  were bumped to v2 so every install gets fresh offers. Needs a release to
+  reach phones.
+- 2026-10-10: item 5 shipped. Rule (both sides, pinned in both test suites):
+  hardest of each COMPLETE block of ten, difficulty compared in hundredths,
+  ties to the higher id. API: `HardLevels`, `campaign_levels.is_hard` (set by
+  `HardLevelMarker` at seed and after world generation), sync scores 1.5×,
+  worlds payload carries `is_hard`. App: `engine/hard_levels.dart`,
+  `Level.isHard`, HUD "HARD ×1.5" sticker, warm `ToySurface.hard` backdrop,
+  bolt badge on journey tiles, FAQ entries for hard levels, chests, freezes.
+- 2026-10-10: item 4 shipped. 8 ball skins (finishes over the CVD-checked
+  palette, glyphs untouched) and 4 tube themes (resting tubes only). Earned:
+  chests 3/6/9, best streak 7/30; paid: `skin_pack` (Marble, Pearl, Checker,
+  Wood, Lilac). API: `ProductCatalogue` is now per-entitlement (grant,
+  transfer and refund never cross products), `users.skin_pack_owned` and
+  equipped columns, `GET /api/v1/cosmetics`, `PUT /api/v1/cosmetics/equipped`,
+  ownership derived on every read. App: billing sells both products,
+  `cosmeticsProvider` (worn skins cached for the first frame), Settings →
+  Collection screen, chests announce the skin they unlock.
+- 2026-10-10: item 3 shipped. API: `star_chests` table (unique user+index),
+  `ChestRule`, `GET /api/v1/chests`, `POST /api/v1/chests/{i}/open|double`,
+  player page shows chests opened. App: `chestProvider` (syncs before opening,
+  banks credits into the existing hint/tube banks), `ChestStrip` under the
+  journey's World card, painted `ToyChest` and opening dialog. The double video
+  also rides the spare level-skip AdMob unit (`AdIds.rewardedChestDouble`).
+- 2026-10-10: item 2 shipped. `WinResult` shows a "Try for 3★" strip on any
+  clear short of three stars (assisted clears are told the tube caps them);
+  analytics `retry_for_stars` and `retry_for_stars_result`.
+- 2026-10-10: item 1 shipped. API: `StreakFreezeRule` (pure) + `StreakKeeper`,
+  `GET /api/v1/daily/streak`, `POST /api/v1/daily/streak/freeze`, migration
+  `StreakFreezes` (user_stats freeze columns, best streak backfilled,
+  `streak_freeze_days`), freeze-aware evening reminder, dashboard streak spread
+  and per-player freezes. App: `streakProvider`, streak dialog (calendar,
+  freezes, video), flame on the week strip and hub card, milestone title.
+  The freeze video uses the unused level-skip AdMob unit (`AdIds.rewardedStreakFreeze`).
 - 2026-10-10: roadmap written. Shipped before it: a paid dead-end hint, and an
   extra tube offered when stuck (up to 2 per attempt, assisted clear 2★ max).

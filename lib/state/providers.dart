@@ -44,7 +44,17 @@ import 'level_repository.dart';
 /// the very next tap rather than the next level.
 class Settings {
   final bool hapticsEnabled;
+
+  /// Sound effects: the board, the buttons, the rewards.
   final bool soundEnabled;
+
+  /// The background music. On by default (owner's call, 2026-10-10); it
+  /// never starts over music the player is already listening to.
+  final bool musicEnabled;
+
+  /// 0..1, applied on top of each cue's own level.
+  final double soundVolume;
+  final double musicVolume;
 
   /// Draws the accessibility glyphs larger and at full contrast.
   ///
@@ -65,6 +75,9 @@ class Settings {
   const Settings({
     this.hapticsEnabled = true,
     this.soundEnabled = true,
+    this.musicEnabled = true,
+    this.soundVolume = 1.0,
+    this.musicVolume = 0.6,
     this.boldSymbols = false,
     this.smoothMotion = SmoothMotion.auto,
   });
@@ -72,11 +85,17 @@ class Settings {
   Settings copyWith({
     bool? hapticsEnabled,
     bool? soundEnabled,
+    bool? musicEnabled,
+    double? soundVolume,
+    double? musicVolume,
     bool? boldSymbols,
     SmoothMotion? smoothMotion,
   }) => Settings(
     hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
     soundEnabled: soundEnabled ?? this.soundEnabled,
+    musicEnabled: musicEnabled ?? this.musicEnabled,
+    soundVolume: soundVolume ?? this.soundVolume,
+    musicVolume: musicVolume ?? this.musicVolume,
     boldSymbols: boldSymbols ?? this.boldSymbols,
     smoothMotion: smoothMotion ?? this.smoothMotion,
   );
@@ -84,6 +103,9 @@ class Settings {
   Map<String, Object?> toJson() => {
     'haptics': hapticsEnabled,
     'sound': soundEnabled,
+    'music': musicEnabled,
+    'sound_volume': soundVolume,
+    'music_volume': musicVolume,
     'bold_symbols': boldSymbols,
     'smooth_motion': smoothMotion.name,
   };
@@ -91,6 +113,15 @@ class Settings {
   factory Settings.fromJson(Map<String, Object?> json) => Settings(
     hapticsEnabled: json['haptics'] as bool? ?? true,
     soundEnabled: json['sound'] as bool? ?? true,
+    musicEnabled: json['music'] as bool? ?? true,
+    soundVolume: ((json['sound_volume'] as num?)?.toDouble() ?? 1.0).clamp(
+      0.0,
+      1.0,
+    ),
+    musicVolume: ((json['music_volume'] as num?)?.toDouble() ?? 0.6).clamp(
+      0.0,
+      1.0,
+    ),
     boldSymbols: json['bold_symbols'] as bool? ?? false,
     // Absent on every settings blob written before this existed: Auto.
     smoothMotion:
@@ -147,6 +178,21 @@ class SettingsController extends Notifier<Settings> {
 
   void setSound(bool value) {
     state = state.copyWith(soundEnabled: value);
+    _persist();
+  }
+
+  void setMusic(bool value) {
+    state = state.copyWith(musicEnabled: value);
+    _persist();
+  }
+
+  void setSoundVolume(double value) {
+    state = state.copyWith(soundVolume: value.clamp(0.0, 1.0));
+    _persist();
+  }
+
+  void setMusicVolume(double value) {
+    state = state.copyWith(musicVolume: value.clamp(0.0, 1.0));
     _persist();
   }
 
@@ -341,6 +387,9 @@ final hapticsServiceProvider = Provider<HapticsService>(
 final audioServiceProvider = Provider<AudioService>((ref) {
   final service = SoLoudAudioService(
     enabled: () => ref.read(settingsProvider).soundEnabled,
+    volume: () => ref.read(settingsProvider).soundVolume,
+    musicEnabled: () => ref.read(settingsProvider).musicEnabled,
+    musicVolume: () => ref.read(settingsProvider).musicVolume,
   );
   ref.onDispose(service.dispose);
   return service;

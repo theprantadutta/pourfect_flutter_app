@@ -246,6 +246,8 @@ class AdMobAdService implements AdService {
     RewardedPlacement.hint => AdIds.rewardedHint,
     RewardedPlacement.extraTube => AdIds.rewardedExtraTube,
     RewardedPlacement.levelSkip => AdIds.rewardedLevelSkip,
+    RewardedPlacement.streakFreeze => AdIds.rewardedStreakFreeze,
+    RewardedPlacement.chestDouble => AdIds.rewardedChestDouble,
   };
 
   @override

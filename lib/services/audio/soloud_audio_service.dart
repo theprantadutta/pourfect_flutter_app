@@ -36,6 +36,8 @@
 ///    side rather than another audio_session call.
 library;
 
+import 'dart:async';
+import 'dart:isolate';
 import 'dart:math' as math;
 
 import 'package:audio_session/audio_session.dart';
@@ -55,12 +57,39 @@ const double _selectVolume = 0.18;
 const double _tubeVolume = 0.42;
 const double _starVolume = 0.46;
 const double _winVolume = 0.55;
+const double _uiVolume = 0.30;
+
+/// Music levels before the player's own slider: the menu loop a little
+/// forward, the gameplay loop well back.
+const double _menuMusicLevel = 0.5;
+const double _playMusicLevel = 0.45;
+
+/// Voices at once. A pour, a sorted tube and a star can all land in one
+/// frame; past this, the quietest is dropped rather than everything clipping.
+const int _maxVoices = 24;
+
+/// The same cue retriggered faster than this is dropped: a frantic tapper
+/// hears a tap, not a buzz.
+const Duration _retrigger = Duration(milliseconds: 35);
 
 class SoLoudAudioService implements AudioService {
   /// Read live so a settings toggle takes effect on the very next tap.
   final bool Function() enabled;
 
-  SoLoudAudioService({required this.enabled});
+  /// Sound effects volume, 0..1.
+  final double Function() volume;
+
+  final bool Function() musicEnabled;
+  final double Function() musicVolume;
+
+  SoLoudAudioService({
+    required this.enabled,
+    double Function()? volume,
+    bool Function()? musicEnabled,
+    double Function()? musicVolume,
+  }) : volume = volume ?? (() => 1.0),
+       musicEnabled = musicEnabled ?? (() => false),
+       musicVolume = musicVolume ?? (() => 0.6);
 
   final _random = math.Random();
   bool _ready = false;
@@ -68,9 +97,27 @@ class SoLoudAudioService implements AudioService {
   AudioSource? _pour;
   AudioSource? _select;
   AudioSource? _tubeComplete;
+  AudioSource? _finalTube;
+
+  /// Quick moves in a row, and when the last ball landed — see [comboBoost].
+  int _combo = 0;
+  DateTime? _lastPour;
   final List<AudioSource> _stars = [];
   AudioSource? _win;
   AudioSource? _newBest;
+  final Map<UiCue, AudioSource> _ui = {};
+  final Map<AudioSource, DateTime> _lastPlayed = {};
+
+  // Music: both loops run together, one audible, so a scene change is a
+  // crossfade rather than a restart.
+  AudioSource? _menuMusic;
+  AudioSource? _playMusic;
+  SoundHandle? _menuHandle;
+  SoundHandle? _playHandle;
+  MusicScene _scene = MusicScene.menu;
+  bool _musicRunning = false;
+  bool _inBackground = false;
+  Timer? _unduck;
 
   @override
   Future<void> init() async {
@@ -90,14 +137,26 @@ class SoLoudAudioService implements AudioService {
         'pourfect/tube.wav',
         bank.tubeComplete,
       );
+      _finalTube = await soloud.loadMem('pourfect/final.wav', bank.finalTube);
       for (var i = 0; i < bank.stars.length; i++) {
         _stars.add(await soloud.loadMem('pourfect/star$i.wav', bank.stars[i]));
       }
       _win = await soloud.loadMem('pourfect/win.wav', bank.win);
       _newBest = await soloud.loadMem('pourfect/best.wav', bank.newBest);
+      for (final entry in generateUiCues().entries) {
+        _ui[entry.key] = await soloud.loadMem(
+          'pourfect/ui_${entry.key.name}.wav',
+          entry.value,
+        );
+      }
+      soloud.setMaxActiveVoiceCount(_maxVoices);
 
       await _configureSession();
       _ready = true;
+
+      // The music is made off the UI thread — it is the one sound that takes
+      // a moment to render — and starts when it is ready.
+      unawaited(_prepareMusic());
     } catch (error, stack) {
       // A device with no usable audio output still has to reach level 1.
       debugPrint('[audio] init failed, continuing silent: $error\n$stack');
@@ -134,10 +193,17 @@ class SoLoudAudioService implements AudioService {
 
   bool get _live => _ready && enabled();
 
-  void _play(AudioSource? source, double volume, {double speed = 1}) {
+  void _play(AudioSource? source, double level, {double speed = 1}) {
     if (!_live || source == null) return;
+    final now = DateTime.now();
+    final last = _lastPlayed[source];
+    if (last != null && now.difference(last) < _retrigger) return;
+    _lastPlayed[source] = now;
     try {
-      final handle = SoLoud.instance.play(source, volume: volume);
+      final handle = SoLoud.instance.play(
+        source,
+        volume: level * volume().clamp(0.0, 1.0),
+      );
       if (speed != 1) {
         SoLoud.instance.setRelativePlaySpeed(handle, speed);
       }
@@ -150,10 +216,17 @@ class SoLoudAudioService implements AudioService {
   void pour({required double fill}) {
     // Pitch rises with how full the destination now is, so a run of four plays
     // as a rising figure rather than the same note four times.
+    final now = DateTime.now();
+    final last = _lastPour;
+    _combo = nextCombo(
+      _combo,
+      last == null ? 1 << 30 : now.difference(last).inMilliseconds,
+    );
+    _lastPour = now;
     _play(
       _pour,
       _pourVolume,
-      speed: pourSpeedForFill(fill, _random.nextDouble()),
+      speed: pourSpeedForFill(fill, _random.nextDouble()) * comboBoost(_combo),
     );
   }
 
@@ -162,23 +235,205 @@ class SoLoudAudioService implements AudioService {
       _play(_select, _selectVolume, speed: 0.98 + _random.nextDouble() * 0.04);
 
   @override
-  void tubeComplete() => _play(_tubeComplete, _tubeVolume);
+  void tubeComplete({bool last = false}) =>
+      last ? _play(_finalTube, _winVolume) : _play(_tubeComplete, _tubeVolume);
 
   @override
   void star(int index) {
     if (index < 0 || index >= _stars.length) return;
+    _duck();
     _play(_stars[index], _starVolume);
   }
 
   @override
-  void win() => _play(_win, _winVolume);
+  void win() {
+    _duck();
+    _play(_win, _winVolume);
+  }
 
   @override
-  void newBest() => _play(_newBest, _starVolume);
+  void newBest() {
+    _duck();
+    _play(_newBest, _starVolume);
+  }
+
+  @override
+  void ui(UiCue cue) {
+    if (cue == UiCue.achievement ||
+        cue == UiCue.chestOpen ||
+        cue == UiCue.streak) {
+      _duck();
+    }
+    _play(_ui[cue], _uiVolume);
+  }
+
+  // ---- music ---------------------------------------------------------------
+
+  Future<void> _prepareMusic() async {
+    try {
+      final loops = await Isolate.run(
+        () => [
+          renderMusicLoop(MusicScene.menu),
+          renderMusicLoop(MusicScene.play),
+        ],
+      );
+      final soloud = SoLoud.instance;
+      _menuMusic = await soloud.loadMem('pourfect/music_menu.wav', loops[0]);
+      _playMusic = await soloud.loadMem('pourfect/music_play.wav', loops[1]);
+      await refreshMusicAsync();
+    } catch (error) {
+      debugPrint('[audio] music unavailable: $error');
+    }
+  }
+
+  double _levelFor(MusicScene scene) =>
+      musicVolume().clamp(0.0, 1.0) *
+      (scene == MusicScene.menu ? _menuMusicLevel : _playMusicLevel);
+
+  /// Whether somebody else's music or podcast is playing. Ours never starts
+  /// over it: the player chose that audio, and the game is the guest.
+  Future<bool> _otherAudioPlaying() async {
+    try {
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        return await AndroidAudioManager().isMusicActive();
+      }
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        return await AVAudioSession().isOtherAudioPlaying;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  @override
+  void refreshMusic() => unawaited(refreshMusicAsync());
+
+  Future<void> refreshMusicAsync() async {
+    final menu = _menuMusic;
+    final play = _playMusic;
+    if (!_ready || menu == null || play == null || _inBackground) return;
+    final soloud = SoLoud.instance;
+
+    if (!musicEnabled()) {
+      _stopMusic(fade: true);
+      return;
+    }
+
+    if (!_musicRunning) {
+      if (await _otherAudioPlaying()) return;
+      _menuHandle = soloud.play(menu, volume: 0, looping: true);
+      _playHandle = soloud.play(play, volume: 0, looping: true);
+      for (final h in [_menuHandle!, _playHandle!]) {
+        // Keep the silent loop running, so both stay in step for a crossfade.
+        soloud.setInaudibleBehavior(h, true, false);
+      }
+      _musicRunning = true;
+    }
+    _fadeToScene(const Duration(milliseconds: 900));
+  }
+
+  void _fadeToScene(Duration time) {
+    final menu = _menuHandle;
+    final play = _playHandle;
+    if (!_musicRunning || menu == null || play == null) return;
+    final soloud = SoLoud.instance;
+    try {
+      soloud.fadeVolume(
+        menu,
+        _scene == MusicScene.menu ? _levelFor(MusicScene.menu) : 0,
+        time,
+      );
+      soloud.fadeVolume(
+        play,
+        _scene == MusicScene.play ? _levelFor(MusicScene.play) : 0,
+        time,
+      );
+    } catch (_) {}
+  }
+
+  void _stopMusic({bool fade = false}) {
+    final handles = [?_menuHandle, ?_playHandle];
+    _menuHandle = null;
+    _playHandle = null;
+    _musicRunning = false;
+    final soloud = SoLoud.instance;
+    for (final h in handles) {
+      try {
+        if (fade) {
+          soloud.fadeVolume(h, 0, const Duration(milliseconds: 500));
+          soloud.scheduleStop(h, const Duration(milliseconds: 550));
+        } else {
+          unawaited(soloud.stop(h));
+        }
+      } catch (_) {}
+    }
+  }
+
+  /// Dips the music under a celebration, and brings it back after.
+  void _duck() {
+    if (!_musicRunning) return;
+    final handle = _scene == MusicScene.menu ? _menuHandle : _playHandle;
+    if (handle == null) return;
+    try {
+      SoLoud.instance.fadeVolume(
+        handle,
+        _levelFor(_scene) * 0.25,
+        const Duration(milliseconds: 120),
+      );
+    } catch (_) {}
+    _unduck?.cancel();
+    _unduck = Timer(const Duration(milliseconds: 1600), () {
+      _fadeToScene(const Duration(milliseconds: 1000));
+    });
+  }
+
+  @override
+  void setScene(MusicScene scene) {
+    if (_scene == scene) return;
+    _scene = scene;
+    _fadeToScene(const Duration(milliseconds: 900));
+  }
+
+  @override
+  void appPaused() {
+    _inBackground = true;
+    final soloud = SoLoud.instance;
+    for (final h in [?_menuHandle, ?_playHandle]) {
+      try {
+        soloud.setPause(h, true);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  void appResumed() {
+    _inBackground = false;
+    unawaited(_resumeMusic());
+  }
+
+  Future<void> _resumeMusic() async {
+    if (!_musicRunning) {
+      await refreshMusicAsync();
+      return;
+    }
+    // Somebody started their own music while we were away: ours stays off.
+    if (await _otherAudioPlaying()) {
+      _stopMusic();
+      return;
+    }
+    final soloud = SoLoud.instance;
+    for (final h in [?_menuHandle, ?_playHandle]) {
+      try {
+        soloud.setPause(h, false);
+      } catch (_) {}
+    }
+    _fadeToScene(const Duration(milliseconds: 600));
+  }
 
   @override
   Future<void> dispose() async {
     if (!_ready) return;
+    _unduck?.cancel();
+    _stopMusic();
     _ready = false;
     try {
       await SoLoud.instance.disposeAllSources();

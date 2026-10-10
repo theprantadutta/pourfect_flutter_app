@@ -12,8 +12,13 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pourfect_flutter_app/services/api/api_client.dart';
 import 'package:pourfect_flutter_app/services/api/push_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   ({PushService push, List<http.Request> calls}) build({
     PushPermission current = PushPermission.notAsked,
     PushPermission afterAsking = PushPermission.granted,
@@ -107,6 +112,9 @@ void main() {
     test('somebody who already declined is never asked again', () async {
       // A second prompt is not available on iOS at all, and nagging on Android
       // earns an uninstall rather than a reminder.
+      SharedPreferences.setMockInitialValues({
+        'pourfect.push.system_prompted.v1': true,
+      });
       var asked = false;
       final built = build(
         current: PushPermission.denied,
@@ -115,6 +123,39 @@ void main() {
 
       expect(await built.push.requestAndRegister(), isFalse);
       expect(asked, isFalse);
+    });
+
+    test(
+      'an Android install never prompted is asked, not written off',
+      () async {
+        // THE BUG THAT KEPT ANDROID 13+ SILENT. Android has no "not
+        // determined": a fresh install reports "denied" until the prompt has
+        // been shown. Read literally, nobody was ever asked.
+        var asked = false;
+        final built = build(
+          current: PushPermission.denied,
+          onAsk: () => asked = true,
+        );
+
+        expect(await built.push.permission(), PushPermission.notAsked);
+        expect(await built.push.requestAndRegister(), isTrue);
+        expect(asked, isTrue);
+        expect(built.calls, hasLength(1));
+      },
+    );
+
+    test('once the prompt has been shown, a denial stands', () async {
+      var asks = 0;
+      final built = build(
+        current: PushPermission.denied,
+        afterAsking: PushPermission.denied,
+        onAsk: () => asks++,
+      );
+
+      expect(await built.push.requestAndRegister(), isFalse);
+      expect(await built.push.refreshPermission(), PushPermission.denied);
+      expect(await built.push.requestAndRegister(), isFalse);
+      expect(asks, 1);
     });
 
     test('a granted permission with no token registers nothing', () async {

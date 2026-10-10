@@ -11,6 +11,8 @@ import '../../services/ads/ad_service.dart';
 import '../../services/analytics/analytics_service.dart';
 import '../../engine/level.dart';
 import '../../engine/move.dart';
+import '../../state/achievements.dart';
+import '../../services/audio/audio_service.dart';
 import '../../state/game_controller.dart';
 import '../../state/game_state.dart';
 import '../../state/hint_controller.dart';
@@ -24,6 +26,7 @@ import '../../state/sync_controller.dart';
 import '../theme/toy.dart';
 import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
+import '../widgets/leave_board_prompt.dart';
 import '../widgets/level_clock.dart';
 import '../widgets/toy_kit.dart';
 import '../widgets/tutorial.dart';
@@ -75,6 +78,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   /// can throw, and the one thing dispose must do here — ending the gameplay
   /// session — is the thing that must not be skipped.
   late final GameController _game;
+  late final AudioService _audio;
   late final PositionAnalyst _analyst;
 
   /// A proven dead end makes the extra tube available, so the controls redraw.
@@ -92,6 +96,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _game = ref.read(gameControllerProvider.notifier);
+    // The quieter music while a board is up; the menu loop again on the way
+    // out. Held here because dispose must not read providers.
+    _audio = ref.read(audioServiceProvider)..setScene(MusicScene.play);
     // Built now, so every position is solved while the player looks at it
     // and the Hint button already knows the answer when it is pressed.
     _analyst = ref.read(positionAnalystProvider)
@@ -101,6 +108,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   @override
   void dispose() {
+    _audio.setScene(MusicScene.menu);
     WidgetsBinding.instance.removeObserver(this);
     // THE BOARD IS GONE, SO THE SESSION IS OVER. Every route out of here ends
     // in disposal — the back affordance, a system back, a parent rebuild — and
@@ -180,6 +188,54 @@ class _GameScreenState extends ConsumerState<GameScreen>
     ref.read(playHistoryProvider.notifier).recordPlaytime(seconds: seconds);
   }
 
+  /// Moves on the board, not yet won: leaving now loses them.
+  bool get _midGame {
+    final state = ref.read(gameControllerProvider);
+    return state != null &&
+        state.movesUsed > 0 &&
+        !state.isWon &&
+        _result == null;
+  }
+
+  bool _confirmingExit = false;
+
+  /// Set once the player has said yes: lets the route pop that follows
+  /// through the PopScope instead of asking a second time.
+  bool _leaving = false;
+
+  /// Leaves at once from a fresh or finished board, and asks first from one
+  /// with moves on it.
+  Future<void> _confirmExit() async {
+    if (!_midGame) return _exit();
+    if (_confirmingExit) return;
+    _confirmingExit = true;
+    // The clock does not run while the question is up.
+    final running = ref.read(gameControllerProvider)?.isClockRunning ?? false;
+    if (running) _game.pauseClock();
+    try {
+      final leave = await confirmLeaveBoard(context);
+      if (!mounted) return;
+      if (leave) {
+        setState(() => _leaving = true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _exit();
+        });
+      } else if (running) {
+        _game.resumeClock();
+      }
+    } finally {
+      _confirmingExit = false;
+    }
+  }
+
+  /// From the win screen to the hub, past the Journey if that is where the
+  /// level was opened from. The board is finished, so nothing is lost.
+  void _goHome() {
+    _bankPlaytime();
+    _game.endSession();
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
   void _exit() {
     // Leaving an unfinished board is an abandonment. Only backgrounding was
     // ever reported, so the funnel never saw a player press back.
@@ -233,6 +289,18 @@ class _GameScreenState extends ConsumerState<GameScreen>
     } finally {
       _adOnScreen = false;
     }
+  }
+
+  /// The level a "Try for 3★" restarted, until its next clear says whether
+  /// the retry paid off.
+  int? _retryingForStars;
+
+  void _tryForStars(GameState state, int stars) {
+    _retryingForStars = state.level.id;
+    ref
+        .read(analyticsServiceProvider)
+        .log(RetryForStars(levelId: state.level.id, fromStars: stars));
+    _startLevel(state.level.id);
   }
 
   void _startLevel(int id) {
@@ -400,7 +468,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
     // rising figure rather than the same note four times.
     ref.read(audioServiceProvider).pour(fill: fill);
     if (completedTube) {
-      ref.read(audioServiceProvider).tubeComplete();
+      // The tube that finishes the board has its own, brighter cue.
+      final finished = ref.read(gameControllerProvider)?.isWon ?? false;
+      ref.read(audioServiceProvider).tubeComplete(last: finished);
       ref.read(hapticsServiceProvider).tubeCompleted();
     } else {
       ref.read(hapticsServiceProvider).ballLanded();
@@ -461,6 +531,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
           elapsedSeconds: elapsedSeconds,
         );
 
+    // Achievements that hang on this clear itself: no undo, a fast time.
+    ref
+        .read(achievementsProvider.notifier)
+        .recordClear(undosUsed: state.undosUsed, seconds: elapsedSeconds);
+
     // The SCORE gets the whole attempt; the history gets only the part it has
     // not already been given. An attempt interrupted by a phone call reaches
     // the history in two instalments, and adding the full elapsed time here
@@ -495,6 +570,17 @@ class _GameScreenState extends ConsumerState<GameScreen>
           .read(campaignBandsProvider)
           .any((band) => band.lastLevel == levelId),
     );
+
+    // The clear after a "Try for 3★": did the retry pay off? Any other level
+    // in between ends the experiment unrecorded.
+    if (_retryingForStars case final retrying?) {
+      _retryingForStars = null;
+      if (retrying == levelId) {
+        ref
+            .read(analyticsServiceProvider)
+            .log(RetryForStarsResult(levelId: levelId, stars: result.stars));
+      }
+    }
 
     setState(() {
       _result = result;
@@ -658,6 +744,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
       if (mounted) _toast('Saved — your next tube is free.');
       return;
     }
+
+    ref.read(audioServiceProvider).ui(UiCue.extraTube);
 
     // Always rewarded: unlike hints there is no free allowance, so every tube
     // is funded by a video — this one, or one banked earlier.
@@ -993,8 +1081,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
     // went unrecorded: a day spent only on a hard board broke the streak.
     // Reporting twice is harmless, since both calls latch.
     return PopScope(
+      // A board with moves on it asks before the gesture takes it away.
+      canPop: _leaving || !_midGame,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) return;
+        if (!didPop) {
+          _confirmExit();
+          return;
+        }
         _game.reportAbandon(AbandonReason.exited);
         _bankPlaytime();
       },
@@ -1083,6 +1176,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
           final playfield = ToyScaffold(
             padding: EdgeInsets.zero,
+            surface: state.level.isHard ? ToySurface.hard : ToySurface.cream,
             backdrop: raysIn > 0
                 ? WinRays(color: const Color(0x47FFC233), opacity: raysIn)
                 : null,
@@ -1099,6 +1193,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                     movesUsed: state.movesUsed,
                     minMoves: state.level.minMoves,
                     showParMeter: !_winActive,
+                    hard: state.level.isHard,
                     clock: guided
                         ? null
                         : LevelClock(
@@ -1112,8 +1207,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                                 0,
                             parSeconds: state.parSeconds,
                             isRunning: state.isClockRunning,
+                            fontSize: 12,
+                            detailed: true,
                           ),
-                    onExit: _exit,
+                    onExit: _confirmExit,
                   ),
                 ),
                 SizedBox(
@@ -1176,6 +1273,21 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 else ...[
                   if (state.isStuck && !state.isWon)
                     _StuckBanner(
+                      onUndo: () =>
+                          ref.read(gameControllerProvider.notifier).undo(),
+                    )
+                  // A proven dead end: moves remain, but none of them can
+                  // finish the board. Said for free, the moment the solver
+                  // knows. HOW FAR back to go is the paid dead-end hint's
+                  // answer (owner's call, 2026-10-10), so the banner points
+                  // at it rather than giving it away.
+                  else if (!state.isWon &&
+                      !guided &&
+                      _analyst.known(state.board) is DeadEndPosition)
+                    _StuckBanner(
+                      message:
+                          'No way out from here. Undo, or tap Hint to see '
+                          'how far back to go.',
                       onUndo: () =>
                           ref.read(gameControllerProvider.notifier).undo(),
                     ),
@@ -1246,6 +1358,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
                         : () =>
                               _advanceFrom(state.level.id, state.level.id + 1),
                     onReplay: () => _startLevel(state.level.id),
+                    onTryForStars: () => _tryForStars(state, result.stars),
+                    onHome: _goHome,
+                    assisted: state.extraTubeUsed,
                     onLevels: _exit,
                     interactive: !_skipActive,
                   ),
@@ -1278,8 +1393,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
 /// Surfaced the moment the board has no legal move left.
 class _StuckBanner extends StatelessWidget {
   final VoidCallback onUndo;
+  final String message;
 
-  const _StuckBanner({required this.onUndo});
+  const _StuckBanner({
+    required this.onUndo,
+    this.message = 'No moves left — step back and try another line.',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1293,10 +1412,7 @@ class _StuckBanner extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Text(
-                'No moves left — step back and try another line.',
-                style: Toy.ui(13, weight: FontWeight.w700),
-              ),
+              child: Text(message, style: Toy.ui(13, weight: FontWeight.w700)),
             ),
             const SizedBox(width: 8),
             Pressable(

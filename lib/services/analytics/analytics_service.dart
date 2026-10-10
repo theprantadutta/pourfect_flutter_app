@@ -351,6 +351,70 @@ final class IapPurchased extends AnalyticsEvent {
   };
 }
 
+/// The player's sound choices, once per launch: how many keep music and
+/// sound on is the number the sound design is judged by.
+final class AudioSettingsSnapshot extends AnalyticsEvent {
+  final bool sound;
+  final bool music;
+  final double soundVolume;
+  final double musicVolume;
+
+  const AudioSettingsSnapshot({
+    required this.sound,
+    required this.music,
+    required this.soundVolume,
+    required this.musicVolume,
+  });
+
+  @override
+  String get name => 'audio_settings';
+
+  @override
+  Map<String, Object> get parameters => {
+    'sound': sound ? 1 : 0,
+    'music': music ? 1 : 0,
+    'sound_volume': soundVolume,
+    'music_volume': musicVolume,
+  };
+}
+
+/// The player took the win screen's "Try for 3★" and restarted the level.
+final class RetryForStars extends AnalyticsEvent {
+  final int levelId;
+
+  /// Stars on the clear that prompted it: 1 or 2.
+  final int fromStars;
+
+  const RetryForStars({required this.levelId, required this.fromStars});
+
+  @override
+  String get name => 'retry_for_stars';
+
+  @override
+  Map<String, Object> get parameters => {
+    'level_id': levelId,
+    'from_stars': fromStars,
+  };
+}
+
+/// The next clear of a level after "Try for 3★": did the retry pay off?
+final class RetryForStarsResult extends AnalyticsEvent {
+  final int levelId;
+  final int stars;
+
+  const RetryForStarsResult({required this.levelId, required this.stars});
+
+  @override
+  String get name => 'retry_for_stars_result';
+
+  @override
+  Map<String, Object> get parameters => {
+    'level_id': levelId,
+    'stars': stars,
+    'earned_three': stars >= 3 ? 1 : 0,
+  };
+}
+
 /// The player opened a notification. The dashboard counts the same open from
 /// the server's side; this one lands in the funnel beside what they did next.
 final class NotificationOpened extends AnalyticsEvent {

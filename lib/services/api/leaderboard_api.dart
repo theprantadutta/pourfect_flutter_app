@@ -64,6 +64,10 @@ class LeaderboardApi {
   Future<ApiResult<Leaderboard>> campaign({int limit = 50}) =>
       _fetch('/api/v1/leaderboard/campaign', limit);
 
+  /// This week's event: total points, then boards cleared.
+  Future<ApiResult<Leaderboard>> event({int limit = 50}) =>
+      _fetch('/api/v1/events/current/leaderboard', limit);
+
   Future<ApiResult<Leaderboard>> _fetch(String path, int limit) async {
     final response = await _client.get(path, query: {'limit': '$limit'});
 

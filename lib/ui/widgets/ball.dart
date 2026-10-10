@@ -12,6 +12,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/widgets.dart';
 
 import '../theme/ball_palette.dart';
+import '../theme/cosmetics.dart';
 import '../theme/tokens.dart';
 import '../theme/toy.dart';
 
@@ -38,6 +39,9 @@ class Ball extends StatelessWidget {
   /// the shape rather than the color to carry the whole distinction.
   final bool boldGlyph;
 
+  /// Draws this skin instead of the one being worn — for previews.
+  final BallSkin? skin;
+
   const Ball({
     super.key,
     required this.colorId,
@@ -47,6 +51,7 @@ class Ball extends StatelessWidget {
     this.glow = 0,
     this.drop = false,
     this.boldGlyph = false,
+    this.skin,
   });
 
   @override
@@ -83,6 +88,7 @@ class Ball extends StatelessWidget {
               bold: boldGlyph,
               opacity: opacity,
               spriteSize: size,
+              skin: skin,
             ),
           ),
         ),
@@ -105,7 +111,10 @@ class BallPainter extends CustomPainter {
   /// painted into a changing rect but must not mint a new sprite every frame.
   final double? spriteSize;
 
-  const BallPainter({
+  /// A fixed skin, or null for whichever is being worn.
+  final BallSkin? skin;
+
+  BallPainter({
     required this.color,
     required this.glyph,
     this.ink = Toy.ink,
@@ -114,7 +123,8 @@ class BallPainter extends CustomPainter {
     this.bold = false,
     this.opacity = 1,
     this.spriteSize,
-  });
+    this.skin,
+  }) : super(repaint: skin == null ? wornBallSkin : null);
 
   @override
   void paint(Canvas canvas, Size size) => drawToyBall(
@@ -128,10 +138,12 @@ class BallPainter extends CustomPainter {
     bold: bold,
     opacity: opacity,
     spriteSize: spriteSize,
+    skin: skin,
   );
 
   @override
   bool shouldRepaint(BallPainter old) =>
+      old.skin != skin ||
       old.color != color ||
       old.ink != ink ||
       old.glyph != glyph ||
@@ -165,6 +177,7 @@ void drawToyBall(
   bool bold = false,
   double opacity = 1,
   double? spriteSize,
+  BallSkin? skin,
 }) {
   final base = spriteSize ?? rect.shortestSide;
   final k = base / 40;
@@ -191,6 +204,7 @@ void drawToyBall(
     ink: glyphInk,
     bold: bold,
     size: base,
+    skin: skin ?? wornBallSkin.value,
   );
   canvas.drawImageRect(
     sprite,
@@ -208,7 +222,8 @@ void drawToyBall(
 /// sizes plus the small preview and icon sizes — well under the cap — so in
 /// practice nothing is ever evicted and nothing is drawn twice.
 abstract final class _BallSprites {
-  static const _cap = 96;
+  // Room for a second skin's worth while the Collection screen previews.
+  static const _cap = 160;
   static final _cache = <String, ui.Image>{};
 
   static double get _ratio =>
@@ -220,6 +235,7 @@ abstract final class _BallSprites {
     required Color ink,
     required bool bold,
     required double size,
+    required BallSkin skin,
   }) {
     final ratio = _ratio;
     // Whole logical pixels: a sprite a fraction of a pixel off is invisible,
@@ -227,7 +243,7 @@ abstract final class _BallSprites {
     final logical = size.roundToDouble().clamp(4.0, 256.0);
     final px = (logical * ratio).ceil();
     final key =
-        '${color.toARGB32()}:${glyph.index}:${ink.toARGB32()}:$bold:$px';
+        '${color.toARGB32()}:${glyph.index}:${ink.toARGB32()}:$bold:$px:${skin.index}';
 
     final hit = _cache.remove(key);
     if (hit != null) return _cache[key] = hit;
@@ -241,6 +257,7 @@ abstract final class _BallSprites {
       glyph: glyph,
       glyphInk: ink,
       bold: bold,
+      skin: skin,
     );
     final picture = recorder.endRecording();
     final image = picture.toImageSync(px, px);
@@ -271,6 +288,7 @@ void paintToyBall(
   bool drop = false,
   bool bold = false,
   double opacity = 1,
+  BallSkin skin = BallSkin.classic,
 }) {
   final k = rect.shortestSide / 40;
   final stroke = Toy.stroke * k;
@@ -320,6 +338,14 @@ void paintToyBall(
     )
     ..restore();
 
+  if (skin != BallSkin.classic) {
+    canvas
+      ..save()
+      ..clipPath(disc);
+    _paintFinish(canvas, oval, skin, k, a);
+    canvas.restore();
+  }
+
   canvas.drawOval(
     oval,
     Paint()
@@ -341,6 +367,151 @@ void paintToyBall(
     background: a(color),
     bold: bold,
   );
+}
+
+/// A skin's finish, drawn over the ball's color and under its outline and
+/// glyph — so the glyph is never covered and the color still reads.
+void _paintFinish(
+  Canvas canvas,
+  Rect oval,
+  BallSkin skin,
+  double k,
+  Color Function(Color) a,
+) {
+  final w = oval.width;
+  final h = oval.height;
+  final c = oval.center;
+  switch (skin) {
+    case BallSkin.classic:
+      return;
+    case BallSkin.glossy:
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: c + Offset(-w * 0.2, -h * 0.24),
+          width: w * 0.42,
+          height: h * 0.24,
+        ),
+        Paint()..color = a(const Color(0xC0FFFFFF)),
+      );
+      canvas.drawCircle(
+        c + Offset(w * 0.24, -h * 0.3),
+        w * 0.05,
+        Paint()..color = a(const Color(0xB0FFFFFF)),
+      );
+    case BallSkin.striped:
+      final stripe = Paint()
+        ..color = a(const Color(0x4DFFFFFF))
+        ..strokeWidth = w * 0.11;
+      for (var i = -3; i <= 3; i++) {
+        final x = c.dx + i * w * 0.26;
+        canvas.drawLine(
+          Offset(x - h * 0.5, c.dy + h * 0.5),
+          Offset(x + h * 0.5, c.dy - h * 0.5),
+          stripe,
+        );
+      }
+    case BallSkin.glow:
+      canvas.drawOval(
+        oval.deflate(w * 0.1),
+        Paint()
+          ..color = a(const Color(0x8CFFFFFF))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.6 * k,
+      );
+    case BallSkin.speckled:
+      const colors = [
+        Color(0xFFFF5A36),
+        Color(0xFF3D8BFF),
+        Color(0xFF22C3A6),
+        Color(0xFFFFFFFF),
+        Color(0xFFA78BFA),
+      ];
+      // Round the rim, clear of the glyph in the middle.
+      for (var i = 0; i < 11; i++) {
+        final angle = i * 2 * math.pi / 11 + 0.3;
+        final ring = i.isEven ? 0.38 : 0.31;
+        final p =
+            c + Offset(math.cos(angle) * w * ring, math.sin(angle) * h * ring);
+        canvas.save();
+        canvas.translate(p.dx, p.dy);
+        canvas.rotate(angle * 1.7);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(
+              center: Offset.zero,
+              width: w * 0.12,
+              height: w * 0.045,
+            ),
+            Radius.circular(w * 0.03),
+          ),
+          Paint()..color = a(colors[i % colors.length]),
+        );
+        canvas.restore();
+      }
+    case BallSkin.marble:
+      final vein = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+      vein
+        ..color = a(const Color(0x59FFFFFF))
+        ..strokeWidth = 2.2 * k;
+      canvas.drawPath(
+        Path()
+          ..moveTo(oval.left, c.dy - h * 0.15)
+          ..cubicTo(
+            c.dx - w * 0.2,
+            c.dy - h * 0.45,
+            c.dx + w * 0.1,
+            c.dy + h * 0.2,
+            oval.right,
+            c.dy - h * 0.1,
+          ),
+        vein,
+      );
+      vein
+        ..color = a(const Color(0x26000000))
+        ..strokeWidth = 1.6 * k;
+      canvas.drawPath(
+        Path()
+          ..moveTo(oval.left, c.dy + h * 0.25)
+          ..cubicTo(
+            c.dx - w * 0.1,
+            c.dy + h * 0.05,
+            c.dx + w * 0.2,
+            c.dy + h * 0.5,
+            oval.right,
+            c.dy + h * 0.2,
+          ),
+        vein,
+      );
+    case BallSkin.pearl:
+      canvas.drawOval(
+        oval,
+        Paint()
+          ..shader = RadialGradient(
+            center: const Alignment(-0.35, -0.45),
+            radius: 0.9,
+            colors: [a(const Color(0x99FFFFFF)), a(const Color(0x00FFFFFF))],
+          ).createShader(oval),
+      );
+    case BallSkin.checker:
+      final dark = Paint()..color = a(const Color(0x22000000));
+      final light = Paint()..color = a(const Color(0x33FFFFFF));
+      final cell = w / 6;
+      for (var row = 0; row < 6; row++) {
+        for (var col = 0; col < 6; col++) {
+          canvas.drawRect(
+            Rect.fromLTWH(
+              oval.left + col * cell,
+              oval.top + row * cell,
+              cell,
+              cell,
+            ),
+            (row + col).isEven ? dark : light,
+          );
+        }
+      }
+  }
 }
 
 /// Draws [glyph] into [rect] (the disc inside its outline) in solid [ink].

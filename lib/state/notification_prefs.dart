@@ -102,8 +102,12 @@ class NotificationPrefsController extends Notifier<NotificationPrefsState> {
     return true;
   }
 
-  static const _askCountKey = 'pourfect.push.soft_ask_count.v1';
-  static const _askAtKey = 'pourfect.push.soft_ask_at.v1';
+  // v2 (2026-10-10): every offer made under v1 on Android 13+ could only
+  // say "open your settings" — the prompt itself was never raised (see
+  // PushService.permission). Those offers used up the budget without ever
+  // really asking, so the count starts again for everybody.
+  static const _askCountKey = 'pourfect.push.soft_ask_count.v2';
+  static const _askAtKey = 'pourfect.push.soft_ask_at.v2';
 
   /// Whether the hub should offer notifications now.
   ///

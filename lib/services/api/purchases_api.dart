@@ -35,11 +35,19 @@ class VerifiedPurchase {
   /// what a pending purchase, a refused token and an outage look like.
   final bool adsRevoked;
 
+  /// The product this answer is about. Null from an older server.
+  final String? productId;
+
+  /// Whether the account owns the Skin pack.
+  final bool skinPack;
+
   const VerifiedPurchase({
     required this.state,
     required this.adsRemoved,
     required this.error,
     required this.adsRevoked,
+    this.productId,
+    this.skinPack = false,
   });
 
   bool get isPurchased => state == 'purchased';
@@ -72,6 +80,8 @@ class PurchasesApi {
           adsRemoved: value['ads_removed'] as bool? ?? false,
           error: value['error'] as String?,
           adsRevoked: value['ads_revoked'] as bool? ?? false,
+          productId: value['product_id'] as String?,
+          skinPack: value['skin_pack'] as bool? ?? false,
         ),
       ),
       ApiFailure(:final kind, :final detail, :final statusCode) => ApiFailure(

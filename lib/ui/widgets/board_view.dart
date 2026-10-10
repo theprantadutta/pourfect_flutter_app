@@ -29,6 +29,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/game_state.dart';
 import '../../state/providers.dart';
 import '../theme/tokens.dart';
+import '../theme/cosmetics.dart';
 import '../theme/toy.dart';
 import 'ball.dart';
 import 'board_geometry.dart';
@@ -754,14 +755,21 @@ class _TubeShell extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ValueListenableBuilder<TubeTheme>(
+    valueListenable: wornTubeTheme,
+    builder: (context, theme, _) => _shell(context, theme),
+  );
+
+  Widget _shell(BuildContext context, TubeTheme theme) {
     final k = scale;
+    // The theme dresses only a tube at rest. Selected, legal and sorted keep
+    // their own fills on every theme, because those colors are information.
     final (fill, stroke, shadow, shadowColor) = switch (look) {
-      _TubeLook.idle => (Toy.tubeFill, Toy.ink, 4.0, Toy.ink),
+      _TubeLook.idle => (theme.glass, Toy.ink, 4.0, Toy.ink),
       _TubeLook.selected => (Toy.selectedTubeFill, Toy.tomato, 5.0, Toy.tomato),
       _TubeLook.legal => (Toy.legalTubeFill, Toy.ink, 4.0, Toy.ink),
       _TubeLook.sorted => (Toy.sortedTubeFill, Toy.ink, 4.0, Toy.ink),
-      _TubeLook.hintSource => (Toy.tubeFill, Toy.yellow, 4.0, Toy.ink),
+      _TubeLook.hintSource => (theme.glass, Toy.yellow, 4.0, Toy.ink),
       // The destination carries the message, so it is the one that breathes.
       _TubeLook.hintTarget => (
         Color.lerp(Toy.sortedTubeFill, const Color(0xFFFFE9A8), hintPulse)!,
@@ -816,12 +824,71 @@ class _TubeShell extends StatelessWidget {
                   boxShadow: Toy.hard(shadow * k, shadowColor),
                 ),
               ),
+              if (look == _TubeLook.idle && theme != TubeTheme.toy)
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: radius,
+                    child: CustomPaint(
+                      painter: TubePatternPainter(theme, scale: k),
+                    ),
+                  ),
+                ),
             ],
           ),
         );
       },
     );
   }
+}
+
+/// A tube theme's pattern, inside the glass: frost dots, wood grain.
+class TubePatternPainter extends CustomPainter {
+  final TubeTheme theme;
+  final double scale;
+
+  const TubePatternPainter(this.theme, {this.scale = 1});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final k = scale;
+    switch (theme) {
+      case TubeTheme.toy:
+      case TubeTheme.lilac:
+        return;
+      case TubeTheme.frost:
+        final dot = Paint()..color = const Color(0x553D8BFF);
+        for (var y = 10 * k; y < size.height; y += 16 * k) {
+          final odd = ((y / (16 * k)).round()).isOdd;
+          for (var x = odd ? 8 * k : 16 * k; x < size.width; x += 16 * k) {
+            canvas.drawCircle(Offset(x, y), 1.6 * k, dot);
+          }
+        }
+      case TubeTheme.wood:
+        final grain = Paint()
+          ..color = const Color(0x339C6B3A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6 * k;
+        for (var x = 7 * k; x < size.width; x += 9 * k) {
+          canvas.drawPath(
+            Path()
+              ..moveTo(x, 0)
+              ..cubicTo(
+                x + 3 * k,
+                size.height * 0.3,
+                x - 3 * k,
+                size.height * 0.6,
+                x + 1 * k,
+                size.height,
+              ),
+            grain,
+          );
+        }
+    }
+  }
+
+  @override
+  bool shouldRepaint(TubePatternPainter old) =>
+      old.theme != theme || old.scale != scale;
 }
 
 /// The bobbing ▼ over a tube that can take the held run.

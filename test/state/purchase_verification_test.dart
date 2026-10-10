@@ -82,6 +82,13 @@ class ReceiptBillingService implements BillingService {
   final finished = <String>[];
 
   @override
+  StoreProduct? productFor(String productId) => null;
+
+  @override
+  Future<PurchaseOutcome> buy(String productId, {String? accountId}) async =>
+      PurchaseOutcome.unavailable;
+
+  @override
   Future<void> finishPurchase(String token) async => finished.add(token);
 
   @override

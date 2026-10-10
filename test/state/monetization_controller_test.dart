@@ -75,6 +75,13 @@ class FakeBillingService implements BillingService {
   Future<void> settleReceipt(String token) async {}
 
   @override
+  StoreProduct? productFor(String productId) => null;
+
+  @override
+  Future<PurchaseOutcome> buy(String productId, {String? accountId}) async =>
+      PurchaseOutcome.unavailable;
+
+  @override
   Future<void> finishPurchase(String token) async {}
 
   @override

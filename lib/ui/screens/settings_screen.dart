@@ -34,6 +34,7 @@ import '../widgets/ball.dart';
 import '../widgets/rename_dialog.dart';
 import '../widgets/settings_rows.dart';
 import '../widgets/toy_kit.dart';
+import 'collection_screen.dart';
 import 'account_screen.dart';
 import 'faq_screen.dart';
 import 'game_screen.dart';
@@ -155,6 +156,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   /// Replays the guided level, with every one-time tip reset to show again.
+  void _openCollection() {
+    Navigator.of(context).push(
+      PourfectPageRoute<void>(
+        builder: (route) =>
+            CollectionScreen(onClose: () => Navigator.of(route).pop()),
+      ),
+    );
+  }
+
   Future<void> _howToPlay() async {
     await ref.read(onboardingProvider.notifier).reset();
     if (!mounted) return;
@@ -425,13 +435,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Group(
                     children: [
                       ToggleRow(
-                        icon: const Icon(Icons.music_note_rounded),
+                        icon: const Icon(Icons.volume_up_rounded),
                         iconColor: Toy.yellow,
-                        title: 'Sound',
-                        detail: 'Never pauses your music',
+                        title: 'Sound effects',
+                        detail: 'Pours, buttons and rewards',
                         value: settings.soundEnabled,
                         onChanged: controller.setSound,
                       ),
+                      if (settings.soundEnabled)
+                        VolumeRow(
+                          label: 'Effects volume',
+                          value: settings.soundVolume,
+                          onChanged: controller.setSoundVolume,
+                        ),
+                      ToggleRow(
+                        icon: const Icon(Icons.music_note_rounded),
+                        iconColor: Toy.lilac,
+                        iconInk: Colors.white,
+                        title: 'Music',
+                        detail: 'Never plays over your own music',
+                        value: settings.musicEnabled,
+                        onChanged: controller.setMusic,
+                      ),
+                      if (settings.musicEnabled)
+                        VolumeRow(
+                          label: 'Music volume',
+                          value: settings.musicVolume,
+                          onChanged: controller.setMusicVolume,
+                        ),
                       ToggleRow(
                         icon: const Icon(Icons.vibration_rounded),
                         iconColor: Toy.pink,
@@ -551,6 +582,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         detail: 'Tell other players what you think',
                         onTap: _rate,
                       ),
+                      ActionRow(
+                        icon: const Icon(Icons.palette_rounded),
+                        iconColor: Toy.mint,
+                        title: 'Collection',
+                        detail: 'Ball skins and tube themes',
+                        onTap: _openCollection,
+                      ),
                       _RemoveAdsRow(
                         adsRemoved: money.adsRemoved,
                         price: ref
@@ -565,7 +603,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ActionRow(
                         icon: const Icon(Icons.replay_rounded),
                         title: 'Restore purchases',
-                        detail: 'If you bought Remove Ads before',
+                        detail: 'Remove Ads or the Skin pack',
                         onTap: _restore,
                       ),
                     ],

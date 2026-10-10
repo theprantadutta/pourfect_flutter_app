@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
+import '../../services/audio/audio_service.dart';
 import '../theme/toy.dart';
 
 class Pressable extends ConsumerStatefulWidget {
@@ -33,12 +34,16 @@ class Pressable extends ConsumerStatefulWidget {
   /// child's ToyBox casts; a flat child can leave the default.
   final double depth;
 
+  /// The sound of pressing it. A plain tap unless the button means more.
+  final UiCue cue;
+
   const Pressable({
     super.key,
     required this.child,
     required this.onPressed,
     this.semanticLabel,
     this.depth = Toy.pressDepth,
+    this.cue = UiCue.tap,
   });
 
   @override
@@ -75,7 +80,7 @@ class _PressableState extends ConsumerState<Pressable>
     _down = value;
     if (value) {
       _press.forward();
-      ref.read(audioServiceProvider).select();
+      ref.read(audioServiceProvider).ui(widget.cue);
     } else {
       _press.reverse();
     }

@@ -21,6 +21,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../theme/toy.dart';
+import 'streak_glyphs.dart';
 import 'toy_kit.dart';
 
 class DailyCard extends StatelessWidget {
@@ -40,6 +41,13 @@ class DailyCard extends StatelessWidget {
   final VoidCallback onOpenDaily;
   final VoidCallback onOpenLeaderboard;
 
+  /// The daily streak, once the server has said. Shown as a flame beside the
+  /// title when there is one to show.
+  final int? streak;
+
+  /// Opens the streak. The flame is its own tap target, like the rank.
+  final VoidCallback? onOpenStreak;
+
   const DailyCard({
     super.key,
     required this.played,
@@ -48,6 +56,8 @@ class DailyCard extends StatelessWidget {
     required this.rank,
     required this.onOpenDaily,
     required this.onOpenLeaderboard,
+    this.streak,
+    this.onOpenStreak,
   });
 
   @override
@@ -93,9 +103,23 @@ class DailyCard extends StatelessWidget {
                   // No number after it. The server has no daily index to
                   // report, and a count invented on the client would disagree
                   // with the challenge screen the moment either one changed.
-                  Text(
-                    'Daily Pour',
-                    style: Toy.display(21, color: Colors.white, height: 1.1),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Daily Pour',
+                          style: Toy.display(
+                            21,
+                            color: Colors.white,
+                            height: 1.1,
+                          ),
+                        ),
+                      ),
+                      if ((streak ?? 0) > 0) ...[
+                        const SizedBox(width: 8),
+                        _StreakChip(streak: streak!, onPressed: onOpenStreak),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 2),
                   detail,
@@ -109,6 +133,34 @@ class DailyCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The flame and the day count, on a white pill.
+class _StreakChip extends StatelessWidget {
+  final int streak;
+  final VoidCallback? onPressed;
+
+  const _StreakChip({required this.streak, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => Pressable(
+    onPressed: onPressed,
+    semanticLabel: '$streak-day streak',
+    child: ToyBox(
+      color: Toy.card,
+      radius: 12,
+      shadow: 2,
+      padding: const EdgeInsets.fromLTRB(6, 2, 8, 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const StreakFlame(size: 16),
+          const SizedBox(width: 4),
+          Text('$streak', style: Toy.numbers(13)),
+        ],
+      ),
+    ),
+  );
 }
 
 /// RANK, tilted, and its own tap target: the card opens the challenge and the

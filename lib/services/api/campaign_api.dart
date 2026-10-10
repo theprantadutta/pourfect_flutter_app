@@ -185,6 +185,9 @@ class CampaignApi {
           minMoves: minMoves,
           difficultyScore: (json['difficulty_score'] as num?)?.toDouble() ?? 0,
           forcedMoveRatio: (json['forced_move_ratio'] as num?)?.toDouble() ?? 0,
+          // The server's flag, not this phone's rule: it can see whole blocks
+          // of ten this phone has not downloaded yet.
+          isHard: json['is_hard'] as bool? ?? false,
         ),
       ),
       bandIndex: bandIndex,

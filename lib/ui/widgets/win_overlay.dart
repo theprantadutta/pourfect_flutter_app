@@ -340,6 +340,16 @@ class WinResult extends StatefulWidget {
   final VoidCallback onReplay;
   final VoidCallback onLevels;
 
+  /// Restarts for three stars. Offered on any clear short of three; null
+  /// falls back to [onReplay].
+  final VoidCallback? onTryForStars;
+
+  /// Straight back to the hub. Null hides the button.
+  final VoidCallback? onHome;
+
+  /// The clear used a bought extra tube, which caps it at two stars.
+  final bool assisted;
+
   /// True once the sequence has finished or been skipped — nothing on this
   /// screen accepts taps before that. See the skip layer in GameScreen.
   final bool interactive;
@@ -368,6 +378,9 @@ class WinResult extends StatefulWidget {
     required this.onReplay,
     required this.onLevels,
     required this.interactive,
+    this.onTryForStars,
+    this.assisted = false,
+    this.onHome,
   });
 
   @override
@@ -458,7 +471,12 @@ class _WinResultState extends State<WinResult>
                     _chips(beatPar: beatPar, newFastest: newFastest),
                     const SizedBox(height: 18),
                     _worldBar(),
-                    const SizedBox(height: 24),
+                    if (widget.stars < 3) ...[
+                      const SizedBox(height: 14),
+                      _tryForStars(),
+                      const SizedBox(height: 14),
+                    ] else
+                      const SizedBox(height: 24),
                     _cta(),
                   ],
                 ),
@@ -723,6 +741,51 @@ class _WinResultState extends State<WinResult>
     );
   }
 
+  /// "Par N, you took M. Try for 3★?" — the cheapest replay hook there is:
+  /// the player already knows the board.
+  Widget _tryForStars() {
+    final p = widget.profile;
+    final t = _s(p.cta.at, p.cta.length);
+    final short = widget.movesUsed - widget.minMoves;
+    final message = widget.assisted
+        ? 'Three stars need a clear without the extra tube.'
+        : short > 0
+        ? 'Par ${widget.minMoves}, you took ${widget.movesUsed}. '
+              '${short == 1 ? 'One move' : '$short moves'} from 3★.'
+        : 'Par ${widget.minMoves}. Three stars are in reach.';
+    return Opacity(
+      opacity: t,
+      child: ToyBox(
+        radius: 18,
+        shadow: 4,
+        padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                message,
+                style: Toy.ui(13.5, weight: FontWeight.w700, height: 1.25),
+              ),
+            ),
+            const SizedBox(width: 10),
+            ToyButton(
+              label: 'TRY FOR 3★',
+              onPressed: widget.onTryForStars ?? widget.onReplay,
+              color: Toy.yellow,
+              textColor: Toy.ink,
+              height: 42,
+              radius: 14,
+              shadow: 3,
+              fontSize: 15,
+              compact: true,
+              semanticLabel: 'Replay this level for three stars',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _cta() {
     final p = widget.profile;
     final t = _s(p.cta.at, p.cta.length);
@@ -747,6 +810,23 @@ class _WinResultState extends State<WinResult>
                 ),
               ),
             ),
+            if (widget.onHome case final home?) ...[
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 64,
+                child: Pressable(
+                  onPressed: home,
+                  semanticLabel: 'Back to the home screen',
+                  child: const ToyBox(
+                    height: 64,
+                    radius: Toy.rControl,
+                    shadow: 5,
+                    alignment: Alignment.center,
+                    child: Icon(Icons.home_rounded, size: 30, color: Toy.ink),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(width: 12),
             Expanded(
               child: AnimatedBuilder(

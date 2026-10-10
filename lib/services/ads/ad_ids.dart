@@ -90,6 +90,15 @@ abstract final class AdIds {
   static String get rewardedLevelSkip =>
       _rewarded(_androidRewardedLevelSkip, _iosRewardedLevelSkip);
 
+  /// The streak freeze rides on the level-skip unit, which is live but has no
+  /// feature behind it (see RewardedPlacement.isReachable). Reusing it needs
+  /// no new AdMob setup; give the freeze its own unit here if the reports
+  /// should name it.
+  static String get rewardedStreakFreeze => rewardedLevelSkip;
+
+  /// Doubling a star chest: the same spare unit, for the same reason.
+  static String get rewardedChestDouble => rewardedLevelSkip;
+
   static String _rewarded(String android, String ios) {
     if (kUsingTestAdIds) {
       return _isIOS ? _testIosRewarded : _testAndroidRewarded;
@@ -129,5 +138,8 @@ abstract final class IapIds {
   /// being sure before the first upload.
   static const removeAds = 'remove_ads';
 
-  static const all = <String>{removeAds};
+  /// The paid ball skins and tube themes.
+  static const skinPack = 'skin_pack';
+
+  static const all = <String>{removeAds, skinPack};
 }

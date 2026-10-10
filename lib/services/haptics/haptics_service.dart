@@ -43,9 +43,16 @@ class PlatformHapticsService implements HapticsService {
     if (enabled()) HapticFeedback.lightImpact();
   }
 
+  /// A double tap — firm, then a light echo — so a sorted tube is felt as an
+  /// event, not as one more ball landing.
   @override
   void tubeCompleted() {
-    if (enabled()) HapticFeedback.mediumImpact();
+    if (!enabled()) return;
+    HapticFeedback.mediumImpact();
+    Future<void>.delayed(
+      const Duration(milliseconds: 70),
+      () => enabled() ? HapticFeedback.lightImpact() : null,
+    );
   }
 
   @override

@@ -14,6 +14,8 @@
 /// anything else, which is why nothing here is on the path to a campaign level.
 library;
 
+import 'package:flutter/foundation.dart';
+
 import '../../engine/board.dart';
 import '../../engine/level.dart';
 import 'api_client.dart';
@@ -87,6 +89,12 @@ class DailyResult {
 
   final int totalPlayers;
 
+  /// The longest streak ever, after this submission.
+  final int bestDailyStreak;
+
+  /// Streak freezes held after this submission.
+  final int streakFreezes;
+
   const DailyResult({
     required this.stars,
     required this.moves,
@@ -94,7 +102,77 @@ class DailyResult {
     required this.dailyStreak,
     required this.rank,
     required this.totalPlayers,
+    this.bestDailyStreak = 0,
+    this.streakFreezes = 0,
   });
+}
+
+/// The daily streak, as the server keeps it, and a calendar of days.
+///
+/// The server is the only authority here: freezes are spent and given by days
+/// passing, which this device cannot see happen.
+@immutable
+class StreakInfo {
+  /// Played days in the unbroken run. 0 once broken.
+  final int current;
+  final int best;
+  final int freezes;
+  final int maxFreezes;
+
+  /// Whether a rewarded video would add a freeze right now.
+  final bool canEarnFreeze;
+
+  /// The Monday the next free freeze arrives.
+  final DateTime nextWeeklyFreezeOn;
+
+  /// The server's day, which is the daily's day (UTC).
+  final DateTime today;
+
+  /// UTC days with a completed daily, within the range asked for.
+  final Set<DateTime> played;
+
+  /// UTC days a freeze covered, within the range asked for.
+  final Set<DateTime> frozen;
+
+  const StreakInfo({
+    required this.current,
+    required this.best,
+    required this.freezes,
+    required this.maxFreezes,
+    required this.canEarnFreeze,
+    required this.nextWeeklyFreezeOn,
+    required this.today,
+    required this.played,
+    required this.frozen,
+  });
+
+  static StreakInfo? fromJson(Map<String, Object?> body) {
+    final today = _day(body['today']);
+    final next = _day(body['next_weekly_freeze_on']);
+    if (today == null || next == null) return null;
+    Set<DateTime> days(Object? list) => {
+      if (list is List)
+        for (final d in list) ?_day(d),
+    };
+    return StreakInfo(
+      current: (body['current'] as num?)?.toInt() ?? 0,
+      best: (body['best'] as num?)?.toInt() ?? 0,
+      freezes: (body['freezes'] as num?)?.toInt() ?? 0,
+      maxFreezes: (body['max_freezes'] as num?)?.toInt() ?? 2,
+      canEarnFreeze: body['can_earn_freeze'] as bool? ?? false,
+      nextWeeklyFreezeOn: next,
+      today: today,
+      played: days(body['played']),
+      frozen: days(body['frozen']),
+    );
+  }
+
+  static DateTime? _day(Object? value) {
+    final parsed = DateTime.tryParse(value is String ? value : '');
+    return parsed == null
+        ? null
+        : DateTime.utc(parsed.year, parsed.month, parsed.day);
+  }
 }
 
 class DailyApi {
@@ -134,6 +212,8 @@ class DailyApi {
           dailyStreak: (value['daily_streak'] as num?)?.toInt() ?? 0,
           rank: (value['rank'] as num?)?.toInt(),
           totalPlayers: (value['total_players'] as num?)?.toInt() ?? 0,
+          bestDailyStreak: (value['best_daily_streak'] as num?)?.toInt() ?? 0,
+          streakFreezes: (value['streak_freezes'] as num?)?.toInt() ?? 0,
         ),
       ),
       ApiFailure(:final kind, :final detail, :final statusCode) => ApiFailure(
@@ -143,6 +223,40 @@ class DailyApi {
       ),
     };
   }
+
+  /// The streak, settled to today, with the calendar from [from] to [to]
+  /// (UTC days, at most 62). Defaults to the last six weeks.
+  Future<ApiResult<StreakInfo>> streak({DateTime? from, DateTime? to}) async {
+    final query = [
+      if (from != null) 'from=${_dateOnly(from)}',
+      if (to != null) 'to=${_dateOnly(to)}',
+    ].join('&');
+    final response = await _client.get(
+      '/api/v1/daily/streak${query.isEmpty ? '' : '?$query'}',
+    );
+    return _streakResult(response);
+  }
+
+  /// A rewarded video finished: one more freeze, if there is room.
+  Future<ApiResult<StreakInfo>> earnFreeze() async =>
+      _streakResult(await _client.post('/api/v1/daily/streak/freeze', {}));
+
+  static ApiResult<StreakInfo> _streakResult(
+    ApiResult<Map<String, Object?>> response,
+  ) => switch (response) {
+    ApiOk(:final value) => switch (StreakInfo.fromJson(value)) {
+      final info? => ApiOk(info),
+      null => const ApiFailure(
+        ApiFailureKind.server,
+        detail: 'streak was malformed',
+      ),
+    },
+    ApiFailure(:final kind, :final detail, :final statusCode) => ApiFailure(
+      kind,
+      detail: detail,
+      statusCode: statusCode,
+    ),
+  };
 
   /// `yyyy-mm-dd`, which is what a `DateOnly` deserializes from.
   static String _dateOnly(DateTime date) =>

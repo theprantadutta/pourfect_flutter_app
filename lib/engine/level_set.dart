@@ -10,6 +10,8 @@ library;
 
 import 'dart:typed_data';
 
+import 'hard_levels.dart';
+
 import 'board.dart';
 import 'level.dart';
 
@@ -212,7 +214,23 @@ abstract final class LevelSetCodec {
       );
     }
 
-    return LevelSet(levelSetVersion: levelSetVersion, levels: levels);
+    // Hard levels are a property of the campaign, not of one level: the
+    // hardest of each block of ten. Worked out here, once, from the same
+    // numbers the server holds.
+    final hard = pickHardLevels([for (final c in levels) c.level]);
+    return LevelSet(
+      levelSetVersion: levelSetVersion,
+      levels: [
+        for (final c in levels)
+          hard.contains(c.id)
+              ? CampaignLevel(
+                  level: c.level.copyWith(isHard: true),
+                  bandIndex: c.bandIndex,
+                  isBreather: c.isBreather,
+                )
+              : c,
+      ],
+    );
   }
 
   /// Rounds a value onto the wire's fixed-point grid.
@@ -233,5 +251,6 @@ abstract final class LevelSetCodec {
     minMoves: level.minMoves,
     difficultyScore: _quantise(level.difficultyScore, scoreScale) / scoreScale,
     forcedMoveRatio: _quantise(level.forcedMoveRatio, ratioScale) / ratioScale,
+    isHard: level.isHard,
   );
 }

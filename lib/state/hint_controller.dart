@@ -32,6 +32,7 @@ import '../engine/move.dart';
 import '../engine/rules.dart';
 import '../engine/solver.dart';
 import '../services/analytics/analytics_service.dart';
+import '../services/audio/audio_service.dart';
 import 'game_state.dart';
 import 'providers.dart';
 
@@ -393,6 +394,7 @@ class HintService {
     }
 
     controller.showHint(move);
+    _ref.read(audioServiceProvider).ui(UiCue.hint);
     return HintOutcome.resolved;
   }
 

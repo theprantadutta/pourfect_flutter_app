@@ -12,6 +12,8 @@
 /// so rather than as an error anywhere near a level.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,6 +22,7 @@ import '../services/api/daily_api.dart';
 import '../services/api/leaderboard_api.dart';
 import 'account_controller.dart';
 import 'providers.dart';
+import 'streak_controller.dart';
 
 @immutable
 class DailyState {
@@ -99,6 +102,8 @@ class DailyController extends Notifier<DailyState> {
           challenge: value,
           result: sameDay ? state.result : null,
         );
+        // A new day can have spent a freeze or broken the streak overnight.
+        unawaited(ref.read(streakProvider.notifier).refresh());
       case ApiFailure(:final kind):
         state = DailyState(loading: false, failure: kind);
         debugPrint('[daily] unavailable: $kind');
@@ -132,6 +137,11 @@ class DailyController extends Notifier<DailyState> {
       movesUsed: movesUsed,
       durationSeconds: durationSeconds,
     );
+
+    if (result case ApiOk()) {
+      // The streak just moved; the calendar should show today stamped.
+      unawaited(ref.read(streakProvider.notifier).refresh());
+    }
 
     if (result case ApiOk(:final value)) {
       // Only if the board this answers for is still the one on offer. A slow

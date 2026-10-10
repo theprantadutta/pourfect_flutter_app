@@ -101,6 +101,12 @@ abstract interface class BillingService {
   /// account from Play's own notifications.
   Future<PurchaseOutcome> buyRemoveAds({String? accountId});
 
+  /// Any product the app sells, as the store describes it, or null.
+  StoreProduct? productFor(String productId);
+
+  /// Buys [productId] (see `IapIds`). Remove Ads also has [buyRemoveAds].
+  Future<PurchaseOutcome> buy(String productId, {String? accountId});
+
   /// Re-reads past purchases. Play requires a user-visible way to do this.
   Future<void> restorePurchases();
 
@@ -169,7 +175,7 @@ class PlayBillingService implements BillingService {
 
   bool _adsRemoved = false;
   bool _revoked = false;
-  StoreProduct? _product;
+  final Map<String, StoreProduct> _products = {};
   bool _available = false;
 
   final List<PurchaseReceipt> _pendingReceipts = [];
@@ -189,7 +195,10 @@ class PlayBillingService implements BillingService {
   Stream<bool> get adsRemovedChanges => _changes.stream;
 
   @override
-  StoreProduct? get removeAdsProduct => _product;
+  StoreProduct? get removeAdsProduct => _products[IapIds.removeAds];
+
+  @override
+  StoreProduct? productFor(String productId) => _products[productId];
 
   @override
   Future<void> init() async {
@@ -222,18 +231,23 @@ class PlayBillingService implements BillingService {
         type: ProductQueryType.InApp,
       );
       for (final details in products) {
-        if (details.id == IapIds.removeAds) {
-          _product = StoreProduct(
+        // A product with no price is not on sale — Play answers like this
+        // before a product is created and active. Kept out, so the store
+        // buttons read "not available" instead of showing an empty price.
+        if (details.displayPrice.trim().isEmpty) continue;
+        if (IapIds.all.contains(details.id)) {
+          _products[details.id] = StoreProduct(
             id: details.id,
             title: details.title,
             price: details.displayPrice,
           );
         }
       }
-      if (_product == null) {
-        // Expected until the product is Active in Play Console and the account
+      final missing = IapIds.all.difference(_products.keys.toSet());
+      if (missing.isNotEmpty) {
+        // Expected until a product is Active in Play Console and the account
         // is on a testing track — not an error worth surfacing to a player.
-        debugPrint('[iap] product not found: ${IapIds.removeAds}');
+        debugPrint('[iap] products not found: $missing');
       }
 
       // Surfaces a purchase made on another device, one that completed after
@@ -255,11 +269,14 @@ class PlayBillingService implements BillingService {
       // what the store's own refund list says, and it is newer by definition.
       _setEntitlement(!_revoked && (prefs.getBool(_entitlementKey) ?? false));
 
-      for (final token in prefs.getStringList(_pendingKey) ?? const []) {
+      // `product|token`; a bare token is from before there were two
+      // products, when it could only have been Remove Ads.
+      for (final entry in prefs.getStringList(_pendingKey) ?? const []) {
+        final split = entry.indexOf('|');
         _pendingReceipts.add(
           PurchaseReceipt(
-            productId: IapIds.removeAds,
-            token: token,
+            productId: split < 0 ? IapIds.removeAds : entry.substring(0, split),
+            token: split < 0 ? entry : entry.substring(split + 1),
             restored: true,
           ),
         );
@@ -319,10 +336,9 @@ class PlayBillingService implements BillingService {
   Future<void> _persistPending() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(
-        _pendingKey,
-        [for (final r in _pendingReceipts) r.token],
-      );
+      await prefs.setStringList(_pendingKey, [
+        for (final r in _pendingReceipts) '${r.productId}|${r.token}',
+      ]);
     } catch (_) {}
   }
 
@@ -366,7 +382,7 @@ class PlayBillingService implements BillingService {
   }
 
   void _onPurchase(Purchase purchase, {required bool restored}) {
-    if (purchase.productId != IapIds.removeAds) return;
+    if (!IapIds.all.contains(purchase.productId)) return;
 
     switch (purchase.purchaseState) {
       case PurchaseState.Pending:
@@ -390,7 +406,12 @@ class PlayBillingService implements BillingService {
     // where a refund would otherwise be undone on every launch. The receipt
     // still goes to the server below: if the refund was itself wrong, the
     // server's verdict is what turns the entitlement back on.
-    if (!_revoked) _persistEntitlement(true);
+    //
+    // Remove Ads only. The Skin pack is the server's to grant: its skins are
+    // listed from the server's answer, which the verification refreshes.
+    if (purchase.productId == IapIds.removeAds && !_revoked) {
+      _persistEntitlement(true);
+    }
 
     // Offered to the server on every delivery, including the reconcile at
     // launch. The local entitlement is granted either way — a player who has
@@ -456,8 +477,13 @@ class PlayBillingService implements BillingService {
   @override
   Future<PurchaseOutcome> buyRemoveAds({String? accountId}) async {
     if (_adsRemoved) return PurchaseOutcome.alreadyOwned;
+    return buy(IapIds.removeAds, accountId: accountId);
+  }
+
+  @override
+  Future<PurchaseOutcome> buy(String productId, {String? accountId}) async {
     if (!_available) return PurchaseOutcome.unavailable;
-    if (_product == null) return PurchaseOutcome.unavailable;
+    if (_products[productId] == null) return PurchaseOutcome.unavailable;
 
     // One purchase flow at a time. A second tap while the store sheet is open
     // would otherwise replace the completer the first call is waiting on, and
@@ -474,9 +500,9 @@ class PlayBillingService implements BillingService {
     try {
       await _iap.requestPurchase(
         RequestPurchaseProps.inApp((
-          apple: RequestPurchaseIosProps(sku: IapIds.removeAds),
+          apple: RequestPurchaseIosProps(sku: productId),
           google: RequestPurchaseAndroidProps(
-            skus: const [IapIds.removeAds],
+            skus: [productId],
             // Ties the purchase to the account that made it, so Play's
             // real-time notifications can be matched to a player even when
             // the app never reports the purchase itself. An opaque server id,
@@ -547,6 +573,13 @@ class NoopBillingService implements BillingService {
 
   @override
   Future<PurchaseOutcome> buyRemoveAds({String? accountId}) async =>
+      PurchaseOutcome.unavailable;
+
+  @override
+  StoreProduct? productFor(String productId) => null;
+
+  @override
+  Future<PurchaseOutcome> buy(String productId, {String? accountId}) async =>
       PurchaseOutcome.unavailable;
 
   @override

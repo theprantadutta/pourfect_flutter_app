@@ -81,12 +81,14 @@ void main() {
     });
   });
 
-  group('the purchase product id', () {
-    test('is a single stable identifier', () {
+  group('the purchase product ids', () {
+    test('are stable, and match the server catalogue', () {
       // A Play product id can never be changed or reused once created, so a
-      // typo here is permanent. It is worth one line to pin it.
+      // typo here is permanent. It is worth a line each to pin them — and the
+      // API's ProductCatalogue allowlists exactly these two.
       expect(IapIds.removeAds, 'remove_ads');
-      expect(IapIds.all, {IapIds.removeAds});
+      expect(IapIds.skinPack, 'skin_pack');
+      expect(IapIds.all, {IapIds.removeAds, IapIds.skinPack});
     });
   });
 }

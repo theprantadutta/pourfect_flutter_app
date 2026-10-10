@@ -11,6 +11,7 @@
 library;
 
 import 'board.dart';
+import 'hard_levels.dart';
 
 /// Star thresholds, as multiples of [Level.minMoves].
 ///
@@ -85,10 +86,14 @@ double timeMultiplierFor({
 /// the solution was, and how the clock went. Stars are NOT part of this and
 /// are not affected by it — a player who takes their time still earns every
 /// star their moves deserve, and only the score reflects the clock.
+///
+/// A [hard] level (see `hard_levels.dart`) is worth [kHardPointsMultiplier]
+/// times as much, here and on the server alike.
 int pointsFor({
   required int minMoves,
   required int movesUsed,
   required int elapsedSeconds,
+  bool hard = false,
 }) {
   if (movesUsed <= 0 || minMoves <= 0) return 0;
   final base = kPointsPerOptimalMove * minMoves;
@@ -97,7 +102,8 @@ int pointsFor({
     parSeconds: parSecondsFor(minMoves),
     elapsedSeconds: elapsedSeconds,
   );
-  return (base * efficiency * time).round();
+  final bonus = hard ? kHardPointsMultiplier : 1.0;
+  return (base * efficiency * time * bonus).round();
 }
 
 /// A shipped, solver-verified level.
@@ -129,12 +135,18 @@ final class Level {
   /// it rather than regenerating from scratch.
   final double forcedMoveRatio;
 
+  /// The hardest level of its block of ten: badged, and worth
+  /// [kHardPointsMultiplier] times the points. Assigned when the campaign
+  /// loads (see `hard_levels.dart`), never stored in the level asset.
+  final bool isHard;
+
   const Level({
     required this.id,
     required this.board,
     required this.minMoves,
     required this.difficultyScore,
     required this.forcedMoveRatio,
+    this.isHard = false,
   });
 
   /// Balls per tube.
@@ -164,6 +176,7 @@ final class Level {
         minMoves: minMoves,
         movesUsed: movesUsed,
         elapsedSeconds: elapsedSeconds,
+        hard: isHard,
       );
 
   Map<String, Object?> toJson() => {
@@ -196,12 +209,13 @@ final class Level {
     );
   }
 
-  Level copyWith({int? id}) => Level(
+  Level copyWith({int? id, bool? isHard}) => Level(
     id: id ?? this.id,
     board: board,
     minMoves: minMoves,
     difficultyScore: difficultyScore,
     forcedMoveRatio: forcedMoveRatio,
+    isHard: isHard ?? this.isHard,
   );
 
   @override

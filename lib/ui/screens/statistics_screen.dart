@@ -29,6 +29,7 @@ import '../../state/providers.dart';
 import '../format.dart';
 import '../theme/ball_palette.dart';
 import '../theme/toy.dart';
+import '../widgets/achievements_view.dart';
 import '../widgets/toy_kit.dart';
 
 class StatisticsScreen extends ConsumerStatefulWidget {
@@ -63,7 +64,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
             const SizedBox(height: 12),
             // Ink, not tomato: here the tabs only switch a view.
             ToyTabs(
-              labels: const ['Overview', 'Levels'],
+              labels: const ['Overview', 'Levels', 'Badges'],
               index: _tab,
               onChanged: (i) => setState(() => _tab = i),
               selectedColor: Toy.ink,
@@ -79,12 +80,14 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                       history: history,
                       levels: levels,
                     )
-                  : _Levels(
+                  : _tab == 1
+                  ? _Levels(
                       key: const PageStorageKey('stats-levels'),
                       progress: progress,
                       levels: levels,
                       bands: ref.watch(campaignBandsProvider),
-                    ),
+                    )
+                  : const AchievementsView(),
             ),
           ],
         ],
