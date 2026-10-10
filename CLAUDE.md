@@ -518,9 +518,11 @@ along its optimal line, so following a hint never waits. `_onHint` asks
 `HintService.check()` FIRST, then spends a free hint or a video. It used to
 play the video and solve afterwards, so a player on a board with no way
 forward watched an ad to be told "no hint". A proven dead end (moves left,
-no finish: `Unsolvable`, never `SolveUnknown`) is answered free: "No way to
-finish from here. Undo N moves", with an Undo N action counted from the
-undo stack. A hint already on screen is not sold twice, and tapping the
+no finish: `Unsolvable`, never `SolveUnknown`) gets the dead-end hint, "No
+way to finish from here. Undo N moves", with an Undo N action counted from
+the undo stack. It is paid for like any hint (free hint, then video): it was
+free at first, and the owner put it behind the price on 2026-10-10. Only an
+undecided position is answered for nothing. A hint already on screen is not sold twice, and tapping the
 hinted source keeps the hint (it used to clear it). Pinned by
 `position_analyst_test`, `hint_follow_test` and the dead-end case in
 `hint_settlement_test`.
@@ -981,19 +983,19 @@ produce. It also cannot sync honestly: the server rejects any result below the
 proven optimum, and a skip has no move count at all — so it would need a new
 field on the progress contract to survive to a second device.
 
-### The tube is offered only once par is spent
+### When the tube is offered, and what an assisted clear scores
 
-`GameState.canOfferExtraTube` requires `movesUsed >= level.minMoves`, and that
-is **not** a difficulty judgement. `Scoring.IsPlausible` rejects any submission
-below the proven optimum as impossible, and an extra tube genuinely can make a
-board solvable in fewer moves than the original optimum — so a tube handed over
-on move two can produce a clear the server refuses, and the win never reaches
-the account. Spending par first means the final count cannot land under it.
+Owner's call, 2026-10-10: offered more often. `GameState.canOfferExtraTube`
+is true when the player is past par, stuck (no legal move), or in a proven dead
+end (the screen passes `deadEnd:` from `PositionAnalyst.known`, and redraws on
+`PositionAnalyst.deadEnds`), up to `kMaxExtraTubes` (2) per attempt.
 
-That is what makes this work with no backend change, no relaxed floor and no
-fabricated number, and stars need no special case either: past par is at most
-two stars by `starsFor`, so an assisted clear scores like the imperfect solve
-it is.
+Because the tube can now come before par, **an assisted clear is recorded at
+`GameState.recordedMoves`**: at least par + 1, which is two stars at most by
+`starsFor`. `Scoring.IsPlausible` rejects any submission below the proven
+optimum, and a spare tube genuinely can beat it, so recording the raw count
+would lose the win on the server. With the bump there is still no backend
+change and no relaxed floor; the board on screen shows the real moves.
 
 ### Granting rewrites the undo stack
 

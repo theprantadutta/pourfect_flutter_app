@@ -75,6 +75,17 @@ class _GameScreenState extends ConsumerState<GameScreen>
   /// can throw, and the one thing dispose must do here — ending the gameplay
   /// session — is the thing that must not be skipped.
   late final GameController _game;
+  late final PositionAnalyst _analyst;
+
+  /// A proven dead end makes the extra tube available, so the controls redraw.
+  void _onDeadEnd() {
+    if (mounted) setState(() {});
+  }
+
+  /// Whether the extra tube may be offered on [state] right now.
+  bool _canOfferTube(GameState state) => state.canOfferExtraTube(
+    deadEnd: _analyst.known(state.board) is DeadEndPosition,
+  );
 
   @override
   void initState() {
@@ -83,7 +94,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
     _game = ref.read(gameControllerProvider.notifier);
     // Built now, so every position is solved while the player looks at it
     // and the Hint button already knows the answer when it is pressed.
-    ref.read(positionAnalystProvider);
+    _analyst = ref.read(positionAnalystProvider)
+      ..deadEnds.addListener(_onDeadEnd);
     _win = AnimationController(vsync: this)..addListener(_onWinTick);
   }
 
@@ -96,6 +108,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     // still in flight lands on the position the player walked away from,
     // reports success, and is charged for a hint nobody ever saw.
     _game.endSession();
+    _analyst.deadEnds.removeListener(_onDeadEnd);
     _win.dispose();
     _guideIdleTimer?.cancel();
     _tipTimer?.cancel();
@@ -417,7 +430,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       }
     }
     if (state != null && state.isWon && _result == null) {
-      _beginWinSequence(state.level.id, state.movesUsed);
+      _beginWinSequence(state.level.id, state.recordedMoves);
     }
   }
 
@@ -581,7 +594,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   Future<void> _onExtraTube() async {
     final money = ref.read(monetizationProvider.notifier);
     final state = ref.read(gameControllerProvider);
-    if (state == null || !state.canOfferExtraTube) return;
+    if (state == null || !_canOfferTube(state)) return;
 
     final levelId = state.level.id;
     final session = _game.sessionId;
@@ -599,8 +612,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
       if (!await _confirmWatchAd(
         title: 'Watch a video for an extra tube?',
         body:
-            'One more empty tube for this level. Your stars still depend on '
-            'how many moves you take.',
+            'One more empty tube for this level. A level finished with an '
+            'extra tube earns up to two stars.',
       )) {
         _game.resumeClock();
         return;
@@ -662,9 +675,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
   /// THE ORDER HERE IS THE WHOLE POINT. First the game checks there IS a hint
   /// (usually already known: the position was solved while the player looked
   /// at it). Only then is anything spent, a free hint or a video, and only a
-  /// hint that reaches the board keeps what was spent. A position with no
-  /// way forward is answered in words, for free: watching a video to be told
-  /// "no hint" is the worst trade this screen could offer.
+  /// hint that reaches the board keeps what was spent.
+  ///
+  /// A position with no way forward gets the most useful hint there is:
+  /// how many undos take it back to one that can still be finished. That IS a
+  /// hint, so it is paid for like one (owner's call, 2026-10-10); it used to
+  /// be free, which made it the one hint nobody ever had to pay for. Only a
+  /// position the solver could not decide is answered for nothing.
   Future<void> _onHint() async {
     final hints = ref.read(hintServiceProvider);
     final current = ref.read(gameControllerProvider);
@@ -684,8 +701,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     if (!mounted) return;
     switch (check.availability) {
       case HintAvailability.deadEnd:
-        _toastDeadEnd(check.stepsBack);
-        return;
+        break;
       case HintAvailability.unavailable:
         _toast('No hint for this position. Nothing was used.');
         return;
@@ -782,6 +798,22 @@ class _GameScreenState extends ConsumerState<GameScreen>
     }
 
     final wasRewarded = spentCredit;
+
+    // The dead-end hint is already known; delivering it is showing it, on
+    // the board it was worked out for. Anything else gets the money back.
+    if (check.availability == HintAvailability.deadEnd) {
+      final stillThere =
+          _game.isCurrentSession(session) &&
+          ref.read(gameControllerProvider)?.board == current.board;
+      if (!stillThere || !mounted) {
+        if (spentFreeHint) await money.refundFreeHint();
+        if (spentCredit) await money.grantHintCredit();
+        return;
+      }
+      _toastDeadEnd(check.stepsBack);
+      return;
+    }
+
     final outcome = await hints.request(wasRewarded: wasRewarded);
 
     // NO `mounted` CHECK HERE, deliberately.
@@ -847,12 +879,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
     }
   }
 
-  /// Says there is no way to finish from here, and how far back there is.
-  ///
-  /// Free, always: it is not a hint, it is the game being honest about the
-  /// board. A player shuffling balls on a board that cannot be finished is
-  /// exactly the "what did I miss" the stuck banner exists to prevent, one
-  /// step earlier.
+  /// Says there is no way to finish from here, and how far back there is: the
+  /// hint for a dead end, paid for like any other (see [_onHint]).
   void _toastDeadEnd(int? stepsBack) {
     final game = ref.read(gameControllerProvider.notifier);
     if (stepsBack == null) {
@@ -1152,11 +1180,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
                           ref.read(gameControllerProvider.notifier).undo(),
                     ),
                   BoardControls(
-                    // Hidden until par is spent — see
-                    // GameState.canOfferExtraTube for why that particular
-                    // moment, which is about what the server will accept rather
-                    // than about difficulty.
-                    onExtraTube: state.canOfferExtraTube ? _onExtraTube : null,
+                    // Offered to a player who is stuck, in a dead end, or past
+                    // par — see GameState.canOfferExtraTube.
+                    onExtraTube: _canOfferTube(state) ? _onExtraTube : null,
                     onUndo: state.canUndo
                         ? () => ref.read(gameControllerProvider.notifier).undo()
                         : null,

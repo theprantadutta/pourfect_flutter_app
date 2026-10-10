@@ -341,20 +341,13 @@ void main() {
   });
 
   group('a position with no way forward', () {
-    testWidgets('is said out loud, before any video, and costs nothing', (
-      tester,
-    ) async {
-      // The report this answers: the Hint button showed its video badge on a
-      // board that could no longer be finished, and pressing it did nothing
-      // at all. The alert had stopped appearing (the screen has no Scaffold
-      // for a SnackBar), and the video came before the check anyway.
+    // "Undo 2 moves to get back on track" IS a hint, and the most useful one
+    // there is. It was free until 2026-10-10; the owner put it behind the
+    // same price as any other hint.
+    testWidgets('spends a free hint, and says how far to undo', (tester) async {
       late DeadEndHintService deadEnd;
       final scope = containerWith((ref) => deadEnd = DeadEndHintService(ref));
       addTearDown(scope.dispose);
-      final money = scope.read(monetizationProvider.notifier);
-      for (var i = 0; i < kFreeHints; i++) {
-        await money.consumeFreeHint();
-      }
 
       await openBoard(tester, scope);
       await tapHint(tester);
@@ -367,13 +360,37 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Undo 2'), findsOneWidget);
-      expect(find.text('Watch'), findsNothing, reason: 'a video was offered');
-      expect(deadEnd.requests, 0);
-      expect(scope.read(monetizationProvider).hasHintCredit, isFalse);
+      expect(deadEnd.requests, 0, reason: 'nothing to solve: it is known');
+      expect(
+        scope.read(monetizationProvider).freeHintsRemaining,
+        kFreeHints - 1,
+      );
 
-      // Let the message time out, so no timer outlives the test.
       await tester.pump(const Duration(seconds: 7));
       await tester.pump(const Duration(milliseconds: 300));
+    });
+
+    testWidgets('asks for a video once the free hints are gone', (
+      tester,
+    ) async {
+      final scope = containerWith((ref) => DeadEndHintService(ref));
+      addTearDown(scope.dispose);
+      final money = scope.read(monetizationProvider.notifier);
+      for (var i = 0; i < kFreeHints; i++) {
+        await money.consumeFreeHint();
+      }
+
+      await openBoard(tester, scope);
+      await tapHint(tester);
+
+      expect(find.text('Watch'), findsOneWidget);
+      expect(
+        find.text(
+          'No way to finish from here. Undo 2 moves to get back on track.',
+        ),
+        findsNothing,
+        reason: 'the answer was given before the video',
+      );
     });
   });
 

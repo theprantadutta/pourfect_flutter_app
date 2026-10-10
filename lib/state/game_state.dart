@@ -48,6 +48,9 @@ class PourEvent {
   });
 }
 
+/// Extra tubes one attempt may buy.
+const int kMaxExtraTubes = 2;
+
 /// Everything about the level currently being played.
 @immutable
 class GameState {
@@ -111,16 +114,13 @@ class GameState {
   /// True if the player has opened this level before in this session.
   final bool isRetry;
 
-  /// An extra empty tube has been granted for this attempt.
-  ///
-  /// **At most one, and the limit is the feature.** A second tube makes almost
-  /// any board in this campaign fall apart on its own, and a player who can buy
-  /// their way past the difficulty curve is a player the curve was tuned for
-  /// nothing.
+  /// Extra empty tubes granted for this attempt, at most [kMaxExtraTubes].
   ///
   /// Per ATTEMPT, not per level: restarting gives the board back as it was
   /// generated, so it gives the offer back too.
-  final bool extraTubeUsed;
+  final int extraTubesUsed;
+
+  bool get extraTubeUsed => extraTubesUsed > 0;
 
   /// The move count can never be undone below this.
   ///
@@ -150,7 +150,7 @@ class GameState {
     required this.runningSince,
     required this.bankedSeconds,
     required this.isRetry,
-    required this.extraTubeUsed,
+    required this.extraTubesUsed,
     this.movesFloor = 0,
   });
 
@@ -177,29 +177,35 @@ class GameState {
     runningSince: now,
     bankedSeconds: 0,
     isRetry: isRetry,
-    extraTubeUsed: false,
+    extraTubesUsed: 0,
   );
 
   bool get isWon => board.isWon;
 
   /// Whether an extra tube may be offered right now.
   ///
-  /// **`movesUsed >= level.minMoves` is not a difficulty judgement — it is what
-  /// keeps an assisted solve submittable.** The server rejects any result below
-  /// the proven optimum as impossible (`Scoring.IsPlausible`), and an extra
-  /// tube genuinely can make a board solvable in fewer moves than the original
-  /// optimum. Offering the tube only once par is already spent means the final
-  /// count cannot land under it, so the floor never has to be relaxed, no
-  /// number is ever fabricated to get past it, and the client and server go on
-  /// agreeing about what a legal result looks like.
+  /// To somebody who is struggling: past par, or stuck (no legal move), or in
+  /// a proven dead end ([deadEnd], which the position analyst knows). Up to
+  /// [kMaxExtraTubes] an attempt. Owner's call, 2026-10-10: offered more
+  /// often than the old once-after-par, so help (and the video behind it)
+  /// reaches the player who gets stuck early.
+  bool canOfferExtraTube({bool deadEnd = false}) =>
+      extraTubesUsed < kMaxExtraTubes &&
+      !isWon &&
+      (movesUsed >= level.minMoves || isStuck || deadEnd);
+
+  /// The move count this attempt is RECORDED with, if it is won now.
   ///
-  /// It also happens to be the right moment on its own terms: help belongs
-  /// with somebody who is struggling, not with somebody on move two.
-  ///
-  /// Stars need no special case either. Past par is at most two stars by
-  /// `starsFor`, so an assisted clear scores like the imperfect solve it is.
-  bool get canOfferExtraTube =>
-      !extraTubeUsed && !isWon && movesUsed >= level.minMoves;
+  /// An assisted clear (one that used a bought tube) counts at least par + 1,
+  /// which `starsFor` turns into at most two stars. Two reasons, one rule:
+  /// a spare tube can genuinely finish a board in fewer moves than its proven
+  /// optimum, and the server rejects any count under that optimum as
+  /// impossible, so an honest assisted clear would never reach the account;
+  /// and three stars mean the board was beaten as dealt. The board on screen
+  /// still shows the moves the player actually made.
+  int get recordedMoves => extraTubeUsed && movesUsed <= level.minMoves
+      ? level.minMoves + 1
+      : movesUsed;
 
   /// True while the clock is counting.
   bool get isClockRunning => runningSince != null;
@@ -239,7 +245,7 @@ class GameState {
   bool get canUndo => undoStack.isNotEmpty;
 
   /// Stars this attempt would earn if finished now.
-  int get stars => level.stars(movesUsed);
+  int get stars => level.stars(recordedMoves);
 
   /// Rough progress through the optimal solution, 0-1. Reported on abandon so
   /// "bounced immediately" and "hit a wall near the end" stay distinguishable.
@@ -268,7 +274,7 @@ class GameState {
     Duration? elapsedBefore,
     DateTime? Function()? runningSince,
     int? bankedSeconds,
-    bool? extraTubeUsed,
+    int? extraTubesUsed,
     int? movesFloor,
   }) => GameState(
     level: level,
@@ -287,7 +293,7 @@ class GameState {
     runningSince: runningSince == null ? this.runningSince : runningSince(),
     bankedSeconds: bankedSeconds ?? this.bankedSeconds,
     isRetry: isRetry,
-    extraTubeUsed: extraTubeUsed ?? this.extraTubeUsed,
+    extraTubesUsed: extraTubesUsed ?? this.extraTubesUsed,
     movesFloor: movesFloor ?? this.movesFloor,
   );
 }

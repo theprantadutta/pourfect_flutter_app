@@ -5,9 +5,9 @@
 //
 // An assisted solve must still be SUBMITTABLE. The server rejects anything
 // below the proven optimum as impossible, and an extra tube genuinely can make
-// a board solvable in fewer moves than the original optimum — so the offer is
-// gated on par already being spent, and the floor never has to be relaxed or
-// lied to.
+// a board solvable in fewer moves than the original optimum — so an assisted
+// clear is recorded at par + 1 at least (two stars at most), whenever in the
+// attempt the tube was bought.
 //
 // Undo must stay free and unlimited. The tube is added to every board in the
 // history as well as the live one, because otherwise a single undo hands back
@@ -19,6 +19,7 @@ import 'package:pourfect_flutter_app/engine/board.dart';
 import 'package:pourfect_flutter_app/services/ads/ad_service.dart';
 import 'package:pourfect_flutter_app/engine/level.dart';
 import 'package:pourfect_flutter_app/state/game_controller.dart';
+import 'package:pourfect_flutter_app/state/game_state.dart';
 import 'package:pourfect_flutter_app/state/providers.dart';
 
 void main() {
@@ -54,26 +55,17 @@ void main() {
   }
 
   group('when it may be offered', () {
-    test('not before par has been spent', () async {
-      // THE RULE THAT KEEPS AN ASSISTED SOLVE LEGAL. A tube handed over on
-      // move two can produce a clear under the proven optimum, which the
-      // server rejects outright — the win would simply never reach the
-      // account.
+    test('not early to a player who can still move', () {
       final container = harness();
-      final game = started(container, levelWith(minMoves: 6));
+      started(container, levelWith(minMoves: 6));
 
-      expect(container.read(gameControllerProvider)!.movesUsed, isZero);
-      expect(
-        container.read(gameControllerProvider)!.canOfferExtraTube,
-        isFalse,
-        reason: 'offered before the floor could no longer be breached',
-      );
-      expect(game, isNotNull);
+      final state = container.read(gameControllerProvider)!;
+      expect(state.movesUsed, isZero);
+      expect(state.isStuck, isFalse);
+      expect(state.canOfferExtraTube(), isFalse);
     });
 
     test('offered on the exact move par is reached, and not before', () {
-      // The boundary itself, because off-by-one here is the difference between
-      // an assisted clear the server accepts and one it silently rejects.
       final container = harness();
       started(container, levelWith(minMoves: 2));
       final game = container.read(gameControllerProvider.notifier);
@@ -83,7 +75,7 @@ void main() {
       game.tapTube(2);
       expect(container.read(gameControllerProvider)!.movesUsed, 1);
       expect(
-        container.read(gameControllerProvider)!.canOfferExtraTube,
+        container.read(gameControllerProvider)!.canOfferExtraTube(),
         isFalse,
         reason: 'offered one move short of par',
       );
@@ -91,13 +83,43 @@ void main() {
       game.tapTube(1);
       game.tapTube(0);
       expect(container.read(gameControllerProvider)!.movesUsed, 2);
-      expect(container.read(gameControllerProvider)!.canOfferExtraTube, isTrue);
+      expect(
+        container.read(gameControllerProvider)!.canOfferExtraTube(),
+        isTrue,
+      );
     });
 
-    test('never twice in one attempt', () {
-      // A second tube makes almost any board in this campaign fall apart on
-      // its own, and a curve that can be bought past is a curve tuned for
-      // nothing.
+    test('offered before par in a proven dead end', () {
+      // Owner's call, 2026-10-10: help goes to whoever is stuck, at any move.
+      final container = harness();
+      started(container, levelWith(minMoves: 6));
+
+      final state = container.read(gameControllerProvider)!;
+      expect(state.canOfferExtraTube(deadEnd: true), isTrue);
+    });
+
+    test('offered before par with no legal move left', () {
+      final container = harness();
+      started(
+        container,
+        Level(
+          id: 1,
+          minMoves: 6,
+          difficultyScore: 20,
+          forcedMoveRatio: 0.1,
+          board: Board.fromLists([
+            [0, 1],
+            [1, 0],
+          ], capacity: 2),
+        ),
+      );
+
+      final state = container.read(gameControllerProvider)!;
+      expect(state.isStuck, isTrue);
+      expect(state.canOfferExtraTube(), isTrue);
+    });
+
+    test('at most $kMaxExtraTubes in one attempt', () {
       final container = harness();
       started(container, levelWith(minMoves: 1));
 
@@ -105,15 +127,16 @@ void main() {
       game.tapTube(0);
       game.tapTube(2);
 
-      expect(game.grantExtraTube(), isTrue);
-      expect(
-        container.read(gameControllerProvider)!.canOfferExtraTube,
-        isFalse,
-      );
+      for (var i = 0; i < kMaxExtraTubes; i++) {
+        expect(game.grantExtraTube(), isTrue);
+      }
+      final state = container.read(gameControllerProvider)!;
+      expect(state.extraTubesUsed, kMaxExtraTubes);
+      expect(state.canOfferExtraTube(deadEnd: true), isFalse);
       expect(game.grantExtraTube(), isFalse);
     });
 
-    test('a restart takes the tube back and offers it again', () {
+    test('a restart takes the tubes back and offers them again', () {
       // Per attempt, not per level: restarting hands back the board as it was
       // generated, so it hands back the offer too.
       final container = harness();
@@ -132,7 +155,44 @@ void main() {
 
       final afterRestart = container.read(gameControllerProvider)!;
       expect(afterRestart.board.tubeCount, level.board.tubeCount);
-      expect(afterRestart.extraTubeUsed, isFalse);
+      expect(afterRestart.extraTubesUsed, isZero);
+    });
+  });
+
+  group('an assisted clear', () {
+    test('is recorded at par + 1 at least, so it earns two stars at most', () {
+      // THE RULE THAT KEEPS AN ASSISTED SOLVE LEGAL. The server rejects a count
+      // under the proven optimum, and a spare tube can beat it.
+      final container = harness();
+      started(container, levelWith(minMoves: 6));
+      final game = container.read(gameControllerProvider.notifier);
+      expect(game.grantExtraTube(), isTrue);
+
+      final state = container.read(gameControllerProvider)!;
+      expect(state.movesUsed, isZero);
+      expect(state.recordedMoves, state.level.minMoves + 1);
+      expect(state.stars, lessThanOrEqualTo(2));
+    });
+
+    test('keeps its own count once it is already past par', () {
+      final container = harness();
+      started(container, levelWith(minMoves: 1));
+      final game = container.read(gameControllerProvider.notifier);
+      game.tapTube(0);
+      game.tapTube(2);
+      game.tapTube(1);
+      game.tapTube(0);
+      game.grantExtraTube();
+
+      final state = container.read(gameControllerProvider)!;
+      expect(state.recordedMoves, state.movesUsed);
+    });
+
+    test('an unassisted attempt records exactly what it played', () {
+      final container = harness();
+      started(container, levelWith(minMoves: 6));
+      final state = container.read(gameControllerProvider)!;
+      expect(state.recordedMoves, state.movesUsed);
     });
   });
 
@@ -206,11 +266,9 @@ void main() {
     });
 
     test('undoing past the grant cannot finish under par', () {
-      // The tube is offered only once par is spent, so the final count
-      // cannot land under the proven optimum, which the server rejects as
-      // impossible. Undo used to take the count back to zero with the spare
-      // tube still in place, and a clear then scored three stars in fewer
-      // moves than the board allows.
+      // Undo used to take the count back to zero with the spare tube still
+      // in place, and a clear then scored three stars in fewer moves than
+      // the board allows. The floor still holds the count at the grant.
       final container = harness();
       started(container, levelWith(minMoves: 1));
 

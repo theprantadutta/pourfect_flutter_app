@@ -115,6 +115,10 @@ class PositionAnalyst {
   final Map<Board, List<Completer<PositionVerdict>>> _waiters = {};
   bool _running = false;
 
+  /// Ticks whenever a board is proven a dead end, so a screen that offers
+  /// help to a stuck player can redraw the moment the proof lands.
+  final ValueNotifier<int> deadEnds = ValueNotifier(0);
+
   /// The verdict for [board], if it is already known.
   PositionVerdict? known(Board board) => _known[board];
 
@@ -193,7 +197,9 @@ class PositionAnalyst {
         // Already won; nothing to hint, and never asked for.
         return const UndecidedPosition();
       case Unsolvable():
-        return _known[board] = const DeadEndPosition();
+        _known[board] = const DeadEndPosition();
+        deadEnds.value++;
+        return const DeadEndPosition();
       case SolveUnknown():
         return _known[board] = const UndecidedPosition();
     }

@@ -230,7 +230,11 @@ class GameController extends Notifier<GameState?> {
   /// did.
   bool grantExtraTube() {
     final current = state;
-    if (current == null || current.extraTubeUsed || current.isWon) return false;
+    if (current == null ||
+        current.extraTubesUsed >= kMaxExtraTubes ||
+        current.isWon) {
+      return false;
+    }
 
     Board withSpare(Board board) =>
         Board([...board.tubes, Tube(const [], board.capacity)]);
@@ -238,7 +242,7 @@ class GameController extends Notifier<GameState?> {
     state = current.copyWith(
       board: withSpare(current.board),
       undoStack: [for (final board in current.undoStack) withSpare(board)],
-      extraTubeUsed: true,
+      extraTubesUsed: current.extraTubesUsed + 1,
       movesFloor: current.movesUsed,
       // The hint pointed at a board that no longer exists, and its move may
       // now be the wrong one entirely.
