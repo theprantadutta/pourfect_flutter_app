@@ -10,10 +10,10 @@ import firebase_analytics
 import firebase_auth
 import firebase_core
 import firebase_messaging
+import flutter_inapp_purchase
 import flutter_local_notifications
 import flutter_soloud
 import google_sign_in_ios
-import in_app_purchase_storekit
 import in_app_review
 import package_info_plus
 import refresh_rate
@@ -27,10 +27,10 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FLTFirebaseAuthPlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseAuthPlugin"))
   FLTFirebaseCorePlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseCorePlugin"))
   FLTFirebaseMessagingPlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseMessagingPlugin"))
+  FlutterInappPurchasePlugin.register(with: registry.registrar(forPlugin: "FlutterInappPurchasePlugin"))
   FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))
   FlutterSoloudPlugin.register(with: registry.registrar(forPlugin: "FlutterSoloudPlugin"))
   FLTGoogleSignInPlugin.register(with: registry.registrar(forPlugin: "FLTGoogleSignInPlugin"))
-  InAppPurchasePlugin.register(with: registry.registrar(forPlugin: "InAppPurchasePlugin"))
   InAppReviewPlugin.register(with: registry.registrar(forPlugin: "InAppReviewPlugin"))
   FPPPackageInfoPlusPlugin.register(with: registry.registrar(forPlugin: "FPPPackageInfoPlusPlugin"))
   RefreshRatePlugin.register(with: registry.registrar(forPlugin: "RefreshRatePlugin"))

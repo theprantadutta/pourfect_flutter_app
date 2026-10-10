@@ -142,6 +142,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       // Backing out is a normal choice, not a failure, and must never be
       // reported as an error.
       PurchaseOutcome.cancelled => null,
+      PurchaseOutcome.pending =>
+        'Payment pending. Ads will switch off once it clears.',
       PurchaseOutcome.unavailable =>
         'The store is not available on this device right now.',
       PurchaseOutcome.failed =>

@@ -367,7 +367,9 @@ class MonetizationController extends Notifier<MonetizationState> {
     final billing = ref.read(billingServiceProvider);
     final analytics = ref.read(analyticsServiceProvider);
 
-    final outcome = await billing.buyRemoveAds();
+    final outcome = await billing.buyRemoveAds(
+      accountId: ref.read(authServiceProvider).current?.userId,
+    );
 
     if (outcome == PurchaseOutcome.purchased) {
       analytics.log(
@@ -394,7 +396,12 @@ class MonetizationController extends Notifier<MonetizationState> {
       case ApiOk(:final value):
         // The server has answered, so this receipt is settled either way and
         // stops being retried. What it settles TO is the interesting part.
-        await ref.read(billingServiceProvider).settleReceipt(receipt.token);
+        final billing = ref.read(billingServiceProvider);
+        await billing.settleReceipt(receipt.token);
+        // Acknowledged only once the server has checked it — see
+        // BillingService.finishPurchase. The server acknowledges too; this is
+        // the backstop for the case where its own call failed.
+        if (value.isPurchased) await billing.finishPurchase(receipt.token);
 
         if (value.adsRemoved) {
           await applyServerEntitlement(granted: true);

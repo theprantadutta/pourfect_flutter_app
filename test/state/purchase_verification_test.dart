@@ -52,7 +52,7 @@ class ReceiptBillingService implements BillingService {
   StoreProduct? get removeAdsProduct => null;
 
   @override
-  Future<PurchaseOutcome> buyRemoveAds() async => PurchaseOutcome.unavailable;
+  Future<PurchaseOutcome> buyRemoveAds({String? accountId}) async => PurchaseOutcome.unavailable;
 
   @override
   Future<void> init() async {}
@@ -77,6 +77,12 @@ class ReceiptBillingService implements BillingService {
   @override
   Future<void> settleReceipt(String token) async =>
       queued.removeWhere((r) => r.token == token);
+
+  /// Tokens acknowledged on the device, in order.
+  final finished = <String>[];
+
+  @override
+  Future<void> finishPurchase(String token) async => finished.add(token);
 
   @override
   Future<void> dispose() async {
@@ -195,6 +201,47 @@ void main() {
 
       expect(built.calls, hasLength(1));
       expect(built.container.read(monetizationProvider).adsRemoved, isTrue);
+    });
+  });
+
+  group('the purchase is acknowledged on the device', () {
+    // Play refunds a purchase nobody acknowledges within three days. That is
+    // the right outcome for a token our server could not verify, so the
+    // device only acknowledges once the server has said "purchased".
+    Future<List<String>> finishedAfter(http.Response response) async {
+      final built = harness(handler: (_) async => response);
+      built.container.read(monetizationProvider);
+      built.billing.deliver(receipt);
+      await settle();
+      return built.billing.finished;
+    }
+
+    test('once the server has verified it', () async {
+      expect(await finishedAfter(http.Response(verdict(), 200)), [
+        'play-token-123',
+      ]);
+    });
+
+    test('not while payment is pending', () async {
+      expect(
+        await finishedAfter(
+          http.Response(verdict(state: 'pending', adsRemoved: false), 200),
+        ),
+        isEmpty,
+      );
+    });
+
+    test('not when the server could not verify it', () async {
+      expect(
+        await finishedAfter(
+          http.Response(verdict(state: 'unknown', adsRemoved: false), 200),
+        ),
+        isEmpty,
+      );
+    });
+
+    test('not during an outage', () async {
+      expect(await finishedAfter(http.Response('down', 503)), isEmpty);
     });
   });
 

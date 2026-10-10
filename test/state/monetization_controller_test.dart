@@ -48,7 +48,7 @@ class FakeBillingService implements BillingService {
   );
 
   @override
-  Future<PurchaseOutcome> buyRemoveAds() async {
+  Future<PurchaseOutcome> buyRemoveAds({String? accountId}) async {
     emit(true);
     return PurchaseOutcome.purchased;
   }
@@ -73,6 +73,9 @@ class FakeBillingService implements BillingService {
 
   @override
   Future<void> settleReceipt(String token) async {}
+
+  @override
+  Future<void> finishPurchase(String token) async {}
 
   @override
   Future<void> dispose() async {

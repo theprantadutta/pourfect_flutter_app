@@ -66,7 +66,7 @@ dependencies:
   # services/, so the network or the store can change without touching game
   # code. See generated/ad_config.md.
   google_mobile_ads: ^9.1.0
-  in_app_purchase: ^3.2.0
+  flutter_inapp_purchase: ^10.6.1
   http: ^1.6.0
   firebase_auth: ^6.6.1
   # Sign-in is an UPGRADE from anonymous, never a migration: Firebase keeps the
