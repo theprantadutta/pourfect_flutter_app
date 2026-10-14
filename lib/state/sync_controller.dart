@@ -290,13 +290,21 @@ class SyncController extends Notifier<SyncState> {
 
         progress.mergeFromServer(value.progress);
 
-        // A grant the session predates: applied the moment the server says
-        // so. Only ever a GRANT, for the reason given above: false is also
-        // what a pending purchase and an older server look like.
+        // A grant the session predates, applied the moment the server says
+        // so. A bare false is never acted on (it is also what a pending
+        // purchase and an older server look like); a REFUND is, and this is
+        // where it arrives: the store stops listing a refunded purchase, so no
+        // receipt is ever verified again, and the session that would say so
+        // is renewed monthly. Owner's report, 2026-10-14: refunded in Play
+        // Console, server revoked within minutes, phone kept Remove Ads.
         if (value.adsRemoved) {
           await ref
               .read(monetizationProvider.notifier)
               .applyServerEntitlement(granted: true);
+        } else if (value.adsRevoked) {
+          await ref
+              .read(monetizationProvider.notifier)
+              .applyServerEntitlement(granted: false, revoked: true);
         }
 
         // Only the submitted REVISIONS are acknowledged. A level whose

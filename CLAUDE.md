@@ -1416,6 +1416,13 @@ outlives the facts in it: after a refund it still said `adsRemoved: true`, and
 the next sync read that stale true and handed the entitlement back.
 `AuthService.recordEntitlement` is called by every authoritative change.
 
+**A refund arrives with the next SYNC** (2026-10-14). Refunded in Play
+Console, the server revoked within minutes, and the phone kept Remove Ads:
+Play stops listing a refunded purchase, so no receipt was ever verified again,
+and `ads_revoked` rode only on the session, renewed monthly. Every sync now
+carries `ads_revoked` (server `AdsRevocation`: a refunded Remove Ads purchase
+and no entitlement), and `SyncController` applies it like a verify verdict.
+
 **"No session" is not "no account".** Deletion with an unauthenticated session
 used to wipe locally, sign out and report success — destroying the credentials
 needed to retry while the server account stayed. It now reports

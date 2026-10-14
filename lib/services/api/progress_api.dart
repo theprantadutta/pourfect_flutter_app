@@ -46,6 +46,7 @@ class SyncOutcome {
     required this.progress,
     this.resetGeneration = 0,
     this.adsRemoved = false,
+    this.adsRevoked = false,
   });
 
   /// Whether the account owns Remove Ads, as of this sync.
@@ -55,6 +56,14 @@ class SyncOutcome {
   /// another phone) did not reach this one until it expired. Older servers
   /// do not send it, which reads as false and changes nothing.
   final bool adsRemoved;
+
+  /// Remove Ads was REFUNDED, and nothing else entitles the account to it.
+  ///
+  /// The one "no" this app acts on (a bare false in [adsRemoved] is also what
+  /// a pending purchase or an older server looks like). Carried on every sync
+  /// because the store stops listing a refunded purchase, so the app never
+  /// gets a receipt to ask about, and sign-in comes round once a month.
+  final bool adsRevoked;
 }
 
 class ProgressApi {
@@ -161,6 +170,7 @@ class ProgressApi {
     progress: _rows(body['progress']),
     resetGeneration: (body['reset_generation'] as num?)?.toInt() ?? 0,
     adsRemoved: body['ads_removed'] as bool? ?? false,
+    adsRevoked: body['ads_revoked'] as bool? ?? false,
   );
 
   static List<LevelProgress> _rows(Object? raw) {

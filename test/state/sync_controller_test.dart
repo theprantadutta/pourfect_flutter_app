@@ -630,5 +630,31 @@ void main() {
 
       expect(built.container.read(monetizationProvider).adsRemoved, isTrue);
     });
+
+    test(
+      'a refund arrives with the next sync and takes Remove Ads away',
+      () async {
+        // Owner's report, 2026-10-14: refunded in Play Console, the server
+        // revoked it within minutes, and the phone kept Remove Ads, because the
+        // store stops listing a refunded purchase (no receipt to verify) and
+        // the session that carries ads_revoked is renewed once a month.
+        final built = harness(
+          handler: authThen((request) async {
+            final body = jsonDecode(syncBody(const [])) as Map<String, Object?>;
+            return http.Response(
+              jsonEncode({...body, 'ads_removed': false, 'ads_revoked': true}),
+              200,
+            );
+          }),
+        );
+        built.container
+            .read(monetizationProvider.notifier)
+            .debugSet(adsRemoved: true);
+
+        await built.container.read(syncControllerProvider.notifier).syncNow();
+
+        expect(built.container.read(monetizationProvider).adsRemoved, isFalse);
+      },
+    );
   });
 }
