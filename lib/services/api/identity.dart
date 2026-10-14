@@ -36,6 +36,12 @@ enum IdentityOutcome {
   /// be shown as one.
   cancelled,
 
+  /// Google itself refused: Play Services rejected the build (an unregistered
+  /// signing key arrives as a "cancel" carrying DEVELOPER_ERROR / 10), or it
+  /// handed back no ID token. Used to read "could not reach the server" or,
+  /// worse, nothing at all, so a player whose sign-in failed was never told.
+  googleFailed,
+
   /// The credential is already a different Firebase account. Continuing means
   /// abandoning the progress on the current anonymous one.
   credentialBelongsToAnotherAccount,
@@ -202,7 +208,7 @@ class FirebaseIdentity implements Identity {
       final idToken = account.authentication.idToken;
       if (idToken == null) {
         debugPrint('[identity] Google returned no ID token');
-        return const IdentityResult(IdentityOutcome.unavailable);
+        return const IdentityResult(IdentityOutcome.googleFailed);
       }
 
       return await _linkOrSignIn(
@@ -229,19 +235,20 @@ class FirebaseIdentity implements Identity {
           'description=${error.description} details=${error.details}',
         );
         debugPrint('[identity] raw: $error');
-        return const IdentityResult(IdentityOutcome.cancelled);
+        return IdentityResult(
+          refusedByPlay(error)
+              ? IdentityOutcome.googleFailed
+              : IdentityOutcome.cancelled,
+        );
       }
       debugPrint('[identity] google sign-in failed: ${error.code}');
       return IdentityResult(
-        IdentityOutcome.unavailable,
+        IdentityOutcome.googleFailed,
         message: error.description,
       );
     } catch (error) {
       debugPrint('[identity] google sign-in failed: $error');
-      return IdentityResult(
-        IdentityOutcome.unavailable,
-        message: '$error',
-      );
+      return IdentityResult(IdentityOutcome.googleFailed, message: '$error');
     }
   }
 
@@ -307,15 +314,31 @@ class FirebaseIdentity implements Identity {
       return const IdentityResult.ok();
     } on GoogleSignInException catch (error) {
       if (error.code == GoogleSignInExceptionCode.canceled) {
-        return const IdentityResult(IdentityOutcome.cancelled);
+        return IdentityResult(
+          refusedByPlay(error)
+              ? IdentityOutcome.googleFailed
+              : IdentityOutcome.cancelled,
+        );
       }
       return IdentityResult(
-        IdentityOutcome.unavailable,
+        IdentityOutcome.googleFailed,
         message: error.description,
       );
     } on FirebaseAuthException catch (error) {
       return _mapError(error);
     }
+  }
+
+  /// A "cancel" that was really Play Services refusing this build.
+  ///
+  /// The platform reports both as RESULT_CANCELED; only the status it carries
+  /// tells them apart. DEVELOPER_ERROR (status 10) is the misconfigured
+  /// signing key, the one that broke production sign-in once already.
+  @visibleForTesting
+  static bool refusedByPlay(GoogleSignInException error) {
+    final text = '${error.description} ${error.details}'.toUpperCase();
+    return text.contains('DEVELOPER_ERROR') ||
+        RegExp(r'(^|[^0-9])10([^0-9]|$)').hasMatch(text);
   }
 
   @override

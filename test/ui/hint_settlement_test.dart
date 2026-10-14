@@ -350,15 +350,20 @@ void main() {
       addTearDown(scope.dispose);
 
       await openBoard(tester, scope);
+      // The dead end is not given away: no tube is offered until the hint is
+      // bought (owner's call, 2026-10-14).
+      expect(find.text('+ Tube'), findsNothing);
       await tapHint(tester);
       await tester.pump(const Duration(milliseconds: 250));
 
       expect(
         find.text(
-          'No way to finish from here. Undo 2 moves to get back on track.',
+          'No way to finish from here. Undo 2 moves to get back on track. '
+          'Or tap + Tube for a spare tube.',
         ),
         findsOneWidget,
       );
+      expect(find.text('+ Tube'), findsOneWidget);
       expect(find.text('Undo 2'), findsOneWidget);
       expect(deadEnd.requests, 0, reason: 'nothing to solve: it is known');
       expect(
@@ -366,7 +371,7 @@ void main() {
         kFreeHints - 1,
       );
 
-      await tester.pump(const Duration(seconds: 7));
+      await tester.pump(const Duration(seconds: 9));
       await tester.pump(const Duration(milliseconds: 300));
     });
 

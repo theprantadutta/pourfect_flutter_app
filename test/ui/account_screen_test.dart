@@ -279,7 +279,8 @@ void main() {
         findsNothing,
         reason: 'blamed the network for a console setting',
       );
-      expect(find.textContaining('not available right now'), findsOneWidget);
+      // Under the form AND in a toast the keyboard cannot cover.
+      expect(find.textContaining('not available right now'), findsNWidgets(2));
     },
   );
 
@@ -301,7 +302,11 @@ void main() {
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    expect(find.text('That email and password do not match.'), findsOneWidget);
+    // Under the form AND in a toast the keyboard cannot cover.
+    expect(
+      find.text('That email and password do not match.'),
+      findsNWidgets(2),
+    );
     // Firebase's own wording is written for developers and names internals.
     expect(find.textContaining('FIREBASE_INTERNAL'), findsNothing);
   });
@@ -335,6 +340,45 @@ void main() {
     expect(find.textContaining('3 solved levels'), findsOneWidget);
   });
 
+  testWidgets('a Google refusal is SAID, not swallowed', (tester) async {
+    // Play refusing the build arrives as a "cancel"; identity.dart reports it
+    // as googleFailed, and this screen must say so.
+    await pump(
+      tester,
+      identity: StubIdentity(
+        result: const IdentityResult(IdentityOutcome.googleFailed),
+      ),
+    );
+
+    await tester.tap(find.text('Continue with Google'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Google sign-in did not work'),
+      findsNWidgets(2),
+    );
+    expect(find.textContaining('reach the server'), findsNothing);
+  });
+
+  testWidgets('a cancel is acknowledged, quietly and not in red', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      identity: StubIdentity(
+        result: const IdentityResult(IdentityOutcome.cancelled),
+      ),
+    );
+
+    await tester.tap(find.text('Continue with Google'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Sign-in cancelled. Nothing changed.'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('a reset says the same thing for any address', (tester) async {
     final stub = StubIdentity(
       result: const IdentityResult(IdentityOutcome.noSuchAccount),
@@ -352,7 +396,10 @@ void main() {
 
     // "No account with that address" is what somebody probing for registered
     // emails is hoping to hear.
-    expect(find.textContaining('If that email has an account'), findsOneWidget);
+    expect(
+      find.textContaining('If that email has an account'),
+      findsNWidgets(2),
+    );
     expect(find.textContaining('do not match'), findsNothing);
   });
 

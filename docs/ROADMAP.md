@@ -436,6 +436,9 @@ line here: date, item, what shipped, anything left over.
   (unpriced products are dropped), zero-streak title, event rank wording.
 - 2026-10-10: item 6 shipped. A proven dead end shows the stuck banner with
   "No way out from here. Undo, or tap Hint to see how far back to go."
+- 2026-10-14: item 6 REVERSED by the owner: the free warning gave the answer
+  away. No banner and no tube for a dead end until the player buys the hint;
+  the paid message then says how far to undo and offers + Tube.
 - 2026-10-10: NOTIFICATIONS FIX (not a roadmap item, found while checking why
   the owner never got any). Production showed 5 of 55 players with a push
   token. Cause: on Android 13+ Firebase reports "denied" for an install that

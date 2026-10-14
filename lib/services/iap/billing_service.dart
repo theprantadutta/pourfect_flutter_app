@@ -231,6 +231,12 @@ class PlayBillingService implements BillingService {
         type: ProductQueryType.InApp,
       );
       for (final details in products) {
+        // What Play actually returned, so a missing product says WHY it is
+        // missing rather than just that it is.
+        debugPrint(
+          '[iap] store returned ${details.id} '
+          'price="${details.displayPrice}" title="${details.title}"',
+        );
         // A product with no price is not on sale — Play answers like this
         // before a product is created and active. Kept out, so the store
         // buttons read "not available" instead of showing an empty price.

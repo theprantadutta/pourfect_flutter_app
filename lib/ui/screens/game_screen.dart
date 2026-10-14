@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/ads/ad_service.dart';
 import '../../services/analytics/analytics_service.dart';
+import '../../engine/board.dart';
 import '../../engine/level.dart';
 import '../../engine/move.dart';
 import '../../state/achievements.dart';
@@ -79,17 +80,20 @@ class _GameScreenState extends ConsumerState<GameScreen>
   /// session — is the thing that must not be skipped.
   late final GameController _game;
   late final AudioService _audio;
-  late final PositionAnalyst _analyst;
 
-  /// A proven dead end makes the extra tube available, so the controls redraw.
-  void _onDeadEnd() {
-    if (mounted) setState(() {});
-  }
+  /// The board the player PAID to be told is a dead end (the dead-end hint).
+  ///
+  /// The background solver knows a dead end the moment it is reached, and
+  /// this screen used to say so for free: a banner, and the tube button
+  /// appearing. Both told the player their last move was wrong before they
+  /// had asked. Owner's call, 2026-10-14: finding that out is what Hint is
+  /// for, and Hint is paid. So nothing changes on screen until the hint is
+  /// bought, and after that the tube is on offer for that position.
+  Board? _deadEndShown;
 
   /// Whether the extra tube may be offered on [state] right now.
-  bool _canOfferTube(GameState state) => state.canOfferExtraTube(
-    deadEnd: _analyst.known(state.board) is DeadEndPosition,
-  );
+  bool _canOfferTube(GameState state) =>
+      state.canOfferExtraTube(deadEnd: _deadEndShown == state.board);
 
   @override
   void initState() {
@@ -101,8 +105,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     _audio = ref.read(audioServiceProvider)..setScene(MusicScene.play);
     // Built now, so every position is solved while the player looks at it
     // and the Hint button already knows the answer when it is pressed.
-    _analyst = ref.read(positionAnalystProvider)
-      ..deadEnds.addListener(_onDeadEnd);
+    ref.read(positionAnalystProvider);
     _win = AnimationController(vsync: this)..addListener(_onWinTick);
   }
 
@@ -116,7 +119,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
     // still in flight lands on the position the player walked away from,
     // reports success, and is charged for a hint nobody ever saw.
     _game.endSession();
-    _analyst.deadEnds.removeListener(_onDeadEnd);
     _win.dispose();
     _guideIdleTimer?.cancel();
     _tipTimer?.cancel();
@@ -898,6 +900,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         if (spentCredit) await money.grantHintCredit();
         return;
       }
+      setState(() => _deadEndShown = current.board);
       _toastDeadEnd(check.stepsBack);
       return;
     }
@@ -971,31 +974,37 @@ class _GameScreenState extends ConsumerState<GameScreen>
   /// hint for a dead end, paid for like any other (see [_onHint]).
   void _toastDeadEnd(int? stepsBack) {
     final game = ref.read(gameControllerProvider.notifier);
+    // The paid hint is also where the spare tube is offered: the + Tube button
+    // appears with this message (see _deadEndShown), and the message says so.
+    final state = ref.read(gameControllerProvider);
+    final tube = state != null && _canOfferTube(state)
+        ? ' Or tap + Tube for a spare tube.'
+        : '';
     if (stepsBack == null) {
       showToyToast(
         context,
-        'No way to finish from here. Restart to try another line.',
+        'No way to finish from here. Restart to try another line.$tube',
         actionLabel: 'Restart',
         onAction: () {
           final state = ref.read(gameControllerProvider);
           if (state == null || !mounted) return;
           _restart(state);
         },
-        duration: const Duration(seconds: 6),
+        duration: Duration(seconds: tube.isEmpty ? 6 : 8),
       );
       return;
     }
     final moves = stepsBack == 1 ? '1 move' : '$stepsBack moves';
     showToyToast(
       context,
-      'No way to finish from here. Undo $moves to get back on track.',
+      'No way to finish from here. Undo $moves to get back on track.$tube',
       actionLabel: 'Undo $stepsBack',
       onAction: () {
         for (var i = 0; i < stepsBack; i++) {
           if (!game.undo()) break;
         }
       },
-      duration: const Duration(seconds: 6),
+      duration: Duration(seconds: tube.isEmpty ? 6 : 8),
     );
   }
 
@@ -1275,22 +1284,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                     _StuckBanner(
                       onUndo: () =>
                           ref.read(gameControllerProvider.notifier).undo(),
-                    )
-                  // A proven dead end: moves remain, but none of them can
-                  // finish the board. Said for free, the moment the solver
-                  // knows. HOW FAR back to go is the paid dead-end hint's
-                  // answer (owner's call, 2026-10-10), so the banner points
-                  // at it rather than giving it away.
-                  else if (!state.isWon &&
-                      !guided &&
-                      _analyst.known(state.board) is DeadEndPosition)
-                    _StuckBanner(
-                      message:
-                          'No way out from here. Undo, or tap Hint to see '
-                          'how far back to go.',
-                      onUndo: () =>
-                          ref.read(gameControllerProvider.notifier).undo(),
                     ),
+                  // No banner for a dead end that still has legal moves: the
+                  // solver knows, the player does not, and telling them is
+                  // the paid hint's job (see _deadEndShown).
                   BoardControls(
                     // Offered to a player who is stuck, in a dead end, or past
                     // par — see GameState.canOfferExtraTube.
@@ -1393,12 +1390,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
 /// Surfaced the moment the board has no legal move left.
 class _StuckBanner extends StatelessWidget {
   final VoidCallback onUndo;
-  final String message;
 
-  const _StuckBanner({
-    required this.onUndo,
-    this.message = 'No moves left — step back and try another line.',
-  });
+  const _StuckBanner({required this.onUndo});
+
+  static const message = 'No moves left — step back and try another line.';
 
   @override
   Widget build(BuildContext context) {

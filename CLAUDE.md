@@ -986,9 +986,16 @@ field on the progress contract to survive to a second device.
 ### When the tube is offered, and what an assisted clear scores
 
 Owner's call, 2026-10-10: offered more often. `GameState.canOfferExtraTube`
-is true when the player is past par, stuck (no legal move), or in a proven dead
-end (the screen passes `deadEnd:` from `PositionAnalyst.known`, and redraws on
-`PositionAnalyst.deadEnds`), up to `kMaxExtraTubes` (2) per attempt.
+is true when the player is past par, stuck (no legal move), or in a dead end
+they PAID to be told about, up to `kMaxExtraTubes` (2) per attempt.
+
+**A dead end is never revealed for free** (owner's call, 2026-10-14). The
+solver knows one the moment it is reached, and the screen used to show a
+banner and the + Tube button at once, which told the player their last move
+was wrong before they asked. Now nothing changes until they tap Hint and pay
+(free hint, then a video): the message says how far to undo and offers the
+tube, which appears for that position only (`_deadEndShown`). The "No moves
+left" banner stays, because a board with no legal move is visible anyway.
 
 Because the tube can now come before par, **an assisted clear is recorded at
 `GameState.recordedMoves`**: at least par + 1, which is two stars at most by
@@ -1243,6 +1250,15 @@ text, rather than only as an error after the attempt.
 **A sign-in that worked says so.** The screen used to pop without a word, and
 testers could not tell success from a flow that had quietly given up. The
 messenger is taken BEFORE the pop, so the bar lands on the screen underneath.
+
+**So does every one that did not** (owner's report, 2026-10-14: a failing
+sign-in showed nothing). Failures were one line of red text above the button,
+under the keyboard, and a Google failure was silent: Play refusing the build
+(DEVELOPER_ERROR / status 10) arrives as a cancel. Now `_settle` hides the
+keyboard and toasts every outcome (signed in, the reason it failed, or
+"Sign-in cancelled. Nothing changed."), keeping the reason under the form too.
+`IdentityOutcome.googleFailed` is Google's own refusal, told apart from a real
+cancel by `FirebaseIdentity.refusedByPlay`.
 
 **Password reset never reveals whether an address is registered.** The screen
 says the same sentence either way; only the log distinguishes them. "No account

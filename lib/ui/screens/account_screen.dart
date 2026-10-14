@@ -77,8 +77,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     int solved,
   ) => switch (outcome) {
     IdentityOutcome.ok => null,
-    // Backing out of the Google sheet is a decision, not a failure.
+    // Backing out of the Google sheet is a decision, not a failure: said
+    // plainly, never in red (see _settle).
     IdentityOutcome.cancelled => null,
+    IdentityOutcome.googleFailed =>
+      'Google sign-in did not work on this phone. Try again, or use email '
+          'below.',
 
     // THE REINSTALL CASE IS THE COMMON ONE AND USED TO READ AS A THREAT.
     //
@@ -244,8 +248,22 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     _settle(result);
   }
 
+  /// EVERY ATTEMPT ENDS IN WORDS. Success, failure and cancel alike.
+  ///
+  /// Failures used to be one line of small red text above the Sign in
+  /// button, and on a phone the keyboard sits right on top of it, so a
+  /// sign-in that failed looked exactly like one that did nothing. A Google
+  /// failure was worse: Play refusing the build arrives as a "cancel", which
+  /// said nothing at all. Now the keyboard is put away, the reason stays
+  /// under the form, and a toast says it where it cannot be covered.
   void _settle(IdentityResult result) {
     if (!mounted) return;
+    FocusScope.of(context).unfocus();
+
+    if (result.outcome == IdentityOutcome.cancelled) {
+      showToyToast(context, 'Sign-in cancelled. Nothing changed.');
+      return;
+    }
 
     if (result.isOk) {
       // SAID OUT LOUD. The screen used to close without a word, and testers
@@ -259,18 +277,17 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       );
       return;
     }
-    setState(
-      () => _problem = _explain(
-        result.outcome,
-        ref.read(progressProvider).length,
-      ),
-    );
+    final problem = _explain(result.outcome, ref.read(progressProvider).length);
+    setState(() => _problem = problem);
+    if (problem != null) showToyToast(context, problem);
   }
 
   Future<void> _resetPassword() async {
     final email = _email.text.trim();
     if (email.isEmpty) {
-      setState(() => _problem = 'Enter your email first.');
+      const ask = 'Enter your email first, then tap Forgot your password.';
+      setState(() => _problem = ask);
+      showToyToast(context, ask);
       return;
     }
 
@@ -282,6 +299,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     setState(
       () => _problem =
           'If that email has an account, a reset link is on its way.',
+    );
+    showToyToast(
+      context,
+      'If that email has an account, a reset link is on its way.',
     );
   }
 
