@@ -74,6 +74,17 @@ class FakeIdentity implements Identity {
   /// difference from linking, and a fake that kept the uid would hide the bug
   /// the switch handling exists to prevent.
   @override
+  Future<IdentityResult> continueWithApple() async =>
+      const IdentityResult(IdentityOutcome.unavailable);
+
+  @override
+  Future<IdentityResult> signInToExistingAppleAccount() async =>
+      const IdentityResult(IdentityOutcome.unavailable);
+
+  @override
+  Future<bool> revokeAppleIfLinked() async => false;
+
+  @override
   Future<IdentityResult> signInToExistingGoogleAccount() async {
     if (next.isOk) uid = 'uid-existing';
     return _apply('existingGoogle');

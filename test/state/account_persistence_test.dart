@@ -63,6 +63,17 @@ class LateIdentity implements Identity {
       const IdentityResult.ok();
 
   @override
+  Future<IdentityResult> continueWithApple() async =>
+      const IdentityResult(IdentityOutcome.unavailable);
+
+  @override
+  Future<IdentityResult> signInToExistingAppleAccount() async =>
+      const IdentityResult(IdentityOutcome.unavailable);
+
+  @override
+  Future<bool> revokeAppleIfLinked() async => false;
+
+  @override
   Future<IdentityResult> signInToExistingGoogleAccount() async =>
       const IdentityResult.ok();
 

@@ -14,6 +14,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -83,6 +84,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     IdentityOutcome.googleFailed =>
       'Google sign-in did not work on this phone. Try again, or use email '
           'below.',
+    IdentityOutcome.appleFailed =>
+      'Apple sign-in did not work on this phone. Check you are signed in to '
+          'your Apple Account in Settings, or use email below.',
 
     // THE REINSTALL CASE IS THE COMMON ONE AND USED TO READ AS A THREAT.
     //
@@ -145,6 +149,22 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         confirmLabel: 'Use that account',
         onConfirmed: () =>
             ref.read(accountProvider.notifier).useExistingGoogleAccount(),
+      );
+      return;
+    }
+    _settle(result);
+  }
+
+  Future<void> _apple() async {
+    setState(() => _problem = null);
+    final result = await ref.read(accountProvider.notifier).continueWithApple();
+
+    // The same reclaim question Google asks; see _google.
+    if (result.outcome == IdentityOutcome.credentialBelongsToAnotherAccount) {
+      await _offerExistingAccount(
+        confirmLabel: 'Use that account',
+        onConfirmed: () =>
+            ref.read(accountProvider.notifier).useExistingAppleAccount(),
       );
       return;
     }
@@ -528,6 +548,25 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Apple FIRST on iOS, and in Apple's own black: guideline 4.8
+              // wants it offered at least as prominently as Google, and the
+              // HIG asks for the Apple logo on black or white, not a toy
+              // color. Android has no Apple sign-in.
+              if (defaultTargetPlatform == TargetPlatform.iOS) ...[
+                ToyButton(
+                  label: 'Continue with Apple',
+                  icon: const Icon(Icons.apple, color: Colors.white, size: 22),
+                  color: Colors.black,
+                  textColor: Colors.white,
+                  height: 52,
+                  radius: 16,
+                  shadow: 4,
+                  compact: true,
+                  fontSize: 16,
+                  onPressed: account.busy ? null : _apple,
+                ),
+                const SizedBox(height: 12),
+              ],
               ToyButton.secondary(
                 label: 'Continue with Google',
                 icon: const _GoogleMark(),

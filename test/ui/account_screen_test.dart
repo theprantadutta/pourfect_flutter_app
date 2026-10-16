@@ -50,6 +50,17 @@ class StubIdentity implements Identity {
   }
 
   @override
+  Future<IdentityResult> continueWithApple() async =>
+      const IdentityResult(IdentityOutcome.unavailable);
+
+  @override
+  Future<IdentityResult> signInToExistingAppleAccount() async =>
+      const IdentityResult(IdentityOutcome.unavailable);
+
+  @override
+  Future<bool> revokeAppleIfLinked() async => false;
+
+  @override
   Future<IdentityResult> signInToExistingGoogleAccount() async {
     calls.add('existingGoogle');
     return existingAccountResult ?? result;

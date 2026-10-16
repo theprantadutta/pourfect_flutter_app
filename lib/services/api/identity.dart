@@ -32,8 +32,8 @@ import 'app_env.dart';
 enum IdentityOutcome {
   ok,
 
-  /// The player backed out of the Google sheet. Not an error, and must never
-  /// be shown as one.
+  /// The player backed out of the Google or Apple sheet. Not an error, and
+  /// must never be shown as one.
   cancelled,
 
   /// Google itself refused: Play Services rejected the build (an unregistered
@@ -41,6 +41,11 @@ enum IdentityOutcome {
   /// handed back no ID token. Used to read "could not reach the server" or,
   /// worse, nothing at all, so a player whose sign-in failed was never told.
   googleFailed,
+
+  /// Apple refused, or the sheet failed for a reason other than a cancel:
+  /// Sign in with Apple missing from the App ID, the Apple provider switched
+  /// off in Firebase, or no Apple Account signed in on the device.
+  appleFailed,
 
   /// The credential is already a different Firebase account. Continuing means
   /// abandoning the progress on the current anonymous one.
@@ -134,6 +139,27 @@ abstract class Identity {
   /// given no way through it. **Abandons the anonymous account's progress** —
   /// Firebase cannot merge two uids — so callers must say so first.
   Future<IdentityResult> signInToExistingGoogleAccount();
+
+  /// Links Apple to the current anonymous account, or signs in with it.
+  ///
+  /// iOS only. App Review requires it alongside any other social login
+  /// (guideline 4.8), and it follows exactly the rules Google does: link when
+  /// anonymous so the uid and every star survive, sign in when not.
+  Future<IdentityResult> continueWithApple();
+
+  /// Signs into the Apple account a credential already belongs to. The Apple
+  /// half of [signInToExistingGoogleAccount], for the same reason.
+  Future<IdentityResult> signInToExistingAppleAccount();
+
+  /// Revokes the app's Apple tokens for the current user, which App Review
+  /// requires when an account that signed in with Apple is deleted.
+  ///
+  /// Asks Apple for a fresh authorization first — the only way to get the
+  /// code the revocation needs — so the player sees the Apple sheet once
+  /// more. Best-effort and never throws: false if the user is not an Apple
+  /// user, backed out, or the revocation failed. Deletion carries on either
+  /// way; it must never be blocked by Apple.
+  Future<bool> revokeAppleIfLinked();
 
   /// Creates an email account, linking it to the current anonymous one.
   Future<IdentityResult> createWithEmail(String email, String password);
@@ -329,6 +355,105 @@ class FirebaseIdentity implements Identity {
     }
   }
 
+  /// Apple's provider. Name and email are asked for because Apple only ever
+  /// hands them over on the FIRST authorization; asking later gets nothing.
+  static AppleAuthProvider _appleProvider() => AppleAuthProvider()
+    ..addScope('email')
+    ..addScope('name');
+
+  @override
+  Future<IdentityResult> continueWithApple() async {
+    if (!isReady) return const IdentityResult(IdentityOutcome.unavailable);
+
+    final user = _firebase.currentUser;
+    try {
+      // The same rule as Google's _linkOrSignIn, through the provider API:
+      // the native Apple sheet hands Firebase its credential directly, so
+      // there is no token for us to carry between the two.
+      if (user != null && user.isAnonymous) {
+        await user.linkWithProvider(_appleProvider());
+      } else {
+        await _firebase.signInWithProvider(_appleProvider());
+      }
+      return const IdentityResult.ok();
+    } on FirebaseAuthException catch (error) {
+      return _mapAppleError(error);
+    } catch (error) {
+      debugPrint('[identity] apple sign-in failed: $error');
+      return IdentityResult(IdentityOutcome.appleFailed, message: '$error');
+    }
+  }
+
+  @override
+  Future<IdentityResult> signInToExistingAppleAccount() async {
+    if (!isReady) return const IdentityResult(IdentityOutcome.unavailable);
+
+    try {
+      // signIn, never link — see signInToExistingGoogleAccount. Shows the
+      // Apple sheet again, which is also the last chance to back out.
+      await _firebase.signInWithProvider(_appleProvider());
+      return const IdentityResult.ok();
+    } on FirebaseAuthException catch (error) {
+      return _mapAppleError(error);
+    } catch (error) {
+      debugPrint('[identity] apple sign-in failed: $error');
+      return IdentityResult(IdentityOutcome.appleFailed, message: '$error');
+    }
+  }
+
+  @override
+  Future<bool> revokeAppleIfLinked() async {
+    if (!isReady) return false;
+    final user = _firebase.currentUser;
+    if (user == null ||
+        !user.providerData.any((p) => p.providerId == 'apple.com')) {
+      return false;
+    }
+
+    try {
+      final credential = await user.reauthenticateWithProvider(
+        AppleAuthProvider(),
+      );
+      final code = credential.additionalUserInfo?.authorizationCode;
+      if (code == null) {
+        debugPrint('[identity] apple gave no authorization code to revoke');
+        return false;
+      }
+      // Needs the Apple provider's Services ID, team, key id and private key
+      // filled in under Firebase Console -> Authentication -> Apple. Without
+      // them Firebase refuses, which is logged and does not stop deletion.
+      await _firebase.revokeTokenWithAuthorizationCode(code);
+      debugPrint('[identity] apple tokens revoked');
+      return true;
+    } catch (error) {
+      debugPrint('[identity] apple revocation skipped: $error');
+      return false;
+    }
+  }
+
+  /// Apple's codes. The credential-in-use family is the same decision it is
+  /// for Google; `canceled` is the firebase_auth iOS plugin's word for the
+  /// player closing the Apple sheet.
+  static IdentityResult _mapAppleError(FirebaseAuthException error) {
+    if (error.code == 'canceled' || error.code == 'web-context-canceled') {
+      return const IdentityResult(IdentityOutcome.cancelled);
+    }
+    if (error.code == 'credential-already-in-use' ||
+        error.code == 'email-already-in-use' ||
+        error.code == 'account-exists-with-different-credential') {
+      return IdentityResult(
+        IdentityOutcome.credentialBelongsToAnotherAccount,
+        message: error.message,
+      );
+    }
+    final mapped = _mapError(error);
+    // Anything the email mapping does not know is Apple's own refusal, not a
+    // network problem — say so, the way googleFailed does for Google.
+    return mapped.outcome == IdentityOutcome.unavailable
+        ? IdentityResult(IdentityOutcome.appleFailed, message: error.message)
+        : mapped;
+  }
+
   /// A "cancel" that was really Play Services refusing this build.
   ///
   /// The platform reports both as RESULT_CANCELED; only the status it carries
@@ -493,6 +618,17 @@ class OfflineIdentity implements Identity {
   @override
   Future<IdentityResult> signInToExistingGoogleAccount() async =>
       const IdentityResult(IdentityOutcome.unavailable);
+
+  @override
+  Future<IdentityResult> continueWithApple() async =>
+      const IdentityResult(IdentityOutcome.unavailable);
+
+  @override
+  Future<IdentityResult> signInToExistingAppleAccount() async =>
+      const IdentityResult(IdentityOutcome.unavailable);
+
+  @override
+  Future<bool> revokeAppleIfLinked() async => false;
 
   @override
   Future<IdentityResult> createWithEmail(String email, String password) async =>

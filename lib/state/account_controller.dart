@@ -221,6 +221,11 @@ class AccountController extends Notifier<AccountState> {
   Future<IdentityResult> continueWithGoogle() =>
       _run((identity) => identity.continueWithGoogle());
 
+  /// Sign in with Apple. Same link-or-sign-in rules, same session re-exchange,
+  /// same account-switch handling as Google — it goes through [_run] too.
+  Future<IdentityResult> continueWithApple() =>
+      _run((identity) => identity.continueWithApple());
+
   Future<IdentityResult> createAccount(String email, String password) =>
       _run((identity) => identity.createWithEmail(email.trim(), password));
 
@@ -348,6 +353,10 @@ class AccountController extends Notifier<AccountState> {
   Future<IdentityResult> useExistingGoogleAccount() =>
       _run((identity) => identity.signInToExistingGoogleAccount());
 
+  /// The Apple half of [useExistingGoogleAccount].
+  Future<IdentityResult> useExistingAppleAccount() =>
+      _run((identity) => identity.signInToExistingAppleAccount());
+
   /// Deletes the account: the server row first, then the Firebase identity.
   ///
   /// The order is the whole point. The database is the act of record, so if
@@ -384,6 +393,12 @@ class AccountController extends Notifier<AccountState> {
         debugPrint('[account] deletion needs a session; keeping credentials');
         return AccountDeletion.notAuthenticated;
       }
+
+      // BEFORE the server row goes, because the server deletes the Firebase
+      // user as well, and Apple's re-authorization needs that user to exist.
+      // App Review requires the revocation for Sign in with Apple accounts;
+      // it is best-effort and never stands between somebody and deletion.
+      await ref.read(identityProvider).revokeAppleIfLinked();
 
       final result = await ref.read(usersApiProvider).deleteAccount();
       if (!result.isOk) {
