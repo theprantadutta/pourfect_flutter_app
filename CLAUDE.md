@@ -893,9 +893,11 @@ splits them per device.
   backend.** Not yet against production: deploy, let `level-world-generate`
   publish, then play past 150 on the A24 from the store build.
 
-- **No Sign in with Apple.** Android-only for now, so it costs nothing yet — but
-  it blocks the first iOS submission, because Apple requires it alongside any
-  other social login.
+- **Sign in with Apple has not been seen on a device.** Built 2026-10-16
+  (`continueWithApple`, iOS only, black, above Google). Needs the Apple
+  provider enabled in Firebase; account deletion also revokes Apple's tokens
+  (`revokeAppleIfLinked`), which needs the provider's Services ID, key id and
+  private key filled in there too, or it is skipped with a log line.
 - **No IAP product exists yet.** The Play and App Store product ids and the
   Play license key are still blank in `generated/ad_config.md`, so Remove Ads
   shows an em dash instead of a price. That is the correct degraded state, not
@@ -994,8 +996,14 @@ solver knows one the moment it is reached, and the screen used to show a
 banner and the + Tube button at once, which told the player their last move
 was wrong before they asked. Now nothing changes until they tap Hint and pay
 (free hint, then a video): the message says how far to undo and offers the
-tube, which appears for that position only (`_deadEndShown`). The "No moves
-left" banner stays, because a board with no legal move is visible anyway.
+tube, which appears for that position only (`_deadEndShown`).
+
+**The board with NO legal move left follows the same rule** (owner's call,
+2026-10-16). Its "No moves left" banner and the + Tube button that appeared
+with it were the last two things telling a player their move was wrong
+before they asked. Both are gone; Hint finds that board a dead end like any
+other (pinned in `position_analyst_test`), and Undo and Restart are always
+on screen, so silence never traps anybody.
 
 Because the tube can now come before par, **an assisted clear is recorded at
 `GameState.recordedMoves`**: at least par + 1, which is two stars at most by
@@ -1272,9 +1280,12 @@ case is an orphaned login that provisions a fresh empty account. Reversed, a
 failure destroys the login while the row survives and nobody can ever reach or
 delete their own data again.
 
-**Apple is not built yet.** The backend enum already has it, and it becomes
-mandatory the moment an iOS build ships with Google on it — App Store review
-rejects any app offering a social login without Sign in with Apple.
+**Apple follows the same rules as Google** (2026-10-16): link when
+anonymous, sign in when not, the same reclaim dialog on
+`credential-already-in-use`, through Firebase's native Apple provider (no
+extra package). Deleting an Apple account revokes its tokens first, BEFORE
+the server row goes, because the server deletes the Firebase user and Apple's
+re-authorization needs it.
 
 ## Reclaiming an account must not read as a threat
 
@@ -1543,6 +1554,30 @@ before and after). `Toy.maxContentWidth` (680dp) centres content on a big
 tablet only. **`android:appCategory="game"` keeps the portrait lock**:
 Android 16 ignores orientation on screens ≥ 600dp unless the app declares
 itself a game, and the tablet used to run this board sideways.
+
+**iPads draw the phone layout scaled up (2026-10-16), `ui/ui_scale.dart`.**
+`UiScale` sits in `MaterialApp.builder`. On a screen whose shortest side is
+600 or more it lays the app out on a phone-like canvas (`kTabletCanvas`,
+600x880 at most) and draws it scaled to fill the glass: a 13-inch iPad runs
+at about 1.56x, so type, cards, dialogs and toasts all grow together instead
+of sitting phone-sized in a 680dp column. The pixel ratio grows with it, and
+the ball sprite cache rasters at `UiScale.current`, so nothing is upscaled
+soft. Three rules:
+
+- **A phone is never touched.** Under 600dp the factor is exactly 1 and the
+  wrapper is a keyed passthrough with no MediaQuery override and no
+  transform. Verified by pixel-diffing six iPhone 17 screens before and
+  after (identical except the live countdowns), and pinned by
+  `test/ui/ui_scale_test.dart`. The 601dp Galaxy Tab A9 stays at 1 too
+  (under 1.05 is left alone).
+- **`Toy.tabletScale` divides out the UI scale**, so the hub preview and the
+  win card are not enlarged twice. **`Toy.boardScale`** is the playing
+  board's own, and does use the bigger canvas: `BoardGeometry` fits the
+  board to its space anyway, so it only lifts the ceiling. Both equal
+  `tabletScale` wherever nothing is scaled.
+- **Drive it with `idb` in points of the REAL screen.** The transform maps
+  hit tests, so a tap lands where it is drawn. Space taps about 2.5s apart
+  on the board: a tap during a pour animation is dropped.
 
 **The daily has no number.** The mockup says "Daily Pour #17"; nothing on the
 server or the client numbers dailies, so the card says "Daily Pour" rather than
