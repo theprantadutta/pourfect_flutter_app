@@ -40,6 +40,7 @@ import 'ui/theme/tokens.dart';
 import 'ui/theme/toy.dart';
 import 'ui/theme/typography.dart';
 import 'ui/transitions.dart';
+import 'ui/ui_scale.dart';
 import 'ui/widgets/splash_handoff.dart';
 import 'ui/widgets/toy_kit.dart';
 import 'ui/widgets/update_prompt.dart';
@@ -57,6 +58,9 @@ class PourfectApp extends StatelessWidget {
       // One theme. Toybox replaced the original dark direction outright; there
       // is no dark variant to fall back to or keep in sync.
       theme: _buildTheme(tokens),
+      // Tablets draw the phone layout scaled up; a phone passes straight
+      // through. See ui_scale.dart.
+      builder: (context, child) => UiScale(child: child!),
       home: const _Shell(),
     );
   }

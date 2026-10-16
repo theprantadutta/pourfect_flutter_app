@@ -15,6 +15,7 @@ import '../theme/ball_palette.dart';
 import '../theme/cosmetics.dart';
 import '../theme/tokens.dart';
 import '../theme/toy.dart';
+import '../ui_scale.dart';
 
 /// A single ball, painted at [size].
 class Ball extends StatelessWidget {
@@ -226,8 +227,12 @@ abstract final class _BallSprites {
   static const _cap = 160;
   static final _cache = <String, ui.Image>{};
 
+  // Times the tablet UI scale: a sprite drawn at a logical size is shown
+  // that much bigger on a tablet, and rastered at the bare ratio it would be
+  // stretched and soft. Exactly the screen's ratio on a phone.
   static double get _ratio =>
-      ui.PlatformDispatcher.instance.implicitView?.devicePixelRatio ?? 3;
+      (ui.PlatformDispatcher.instance.implicitView?.devicePixelRatio ?? 3) *
+      UiScale.current;
 
   static ui.Image get({
     required Color color,

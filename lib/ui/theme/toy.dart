@@ -22,6 +22,8 @@ import 'dart:ui' show PointMode;
 
 import 'package:flutter/services.dart';
 
+import '../ui_scale.dart';
+
 abstract final class Toy {
   // ---- ink and ground ------------------------------------------------------
 
@@ -185,10 +187,29 @@ abstract final class Toy {
   /// level sat small in the middle of a big empty screen. Only the things
   /// that draw balls read this; a phone (shortest side under 600dp) gets 1,
   /// so its layout is untouched.
+  ///
+  /// Measured on the SCREEN, not the scaled canvas: where [UiScale] is
+  /// already drawing everything bigger, only what is left of the board's
+  /// enlargement is applied on top, so the balls are never enlarged twice.
   static double tabletScale(BuildContext context) {
-    final shortest = MediaQuery.sizeOf(context).shortestSide;
+    final ui = UiScale.of(context);
+    final shortest = MediaQuery.sizeOf(context).shortestSide * ui;
     if (shortest < 600) return 1;
-    return (shortest / 411).clamp(1.0, 1.6);
+    return ((shortest / 411).clamp(1.0, 1.6) / ui).clamp(1.0, 1.6);
+  }
+
+  /// [tabletScale] for the PLAYING board, which may use more of a scaled
+  /// tablet's canvas than anything else.
+  ///
+  /// The hub preview and the win card sit inside layouts that were tuned
+  /// around their size, so they keep [tabletScale]. The board is the hero of
+  /// its screen and `BoardGeometry` fits it to whatever space it is given, so
+  /// this only lifts its ceiling: without it a 13-inch iPad played a
+  /// phone-sized board in a sea of cream. Identical to [tabletScale]
+  /// wherever [UiScale] is not drawing — every phone included.
+  static double boardScale(BuildContext context) {
+    if (UiScale.of(context) == 1) return tabletScale(context);
+    return (MediaQuery.sizeOf(context).shortestSide / 411).clamp(1.0, 1.6);
   }
 
   /// The widest any screen's content gets. Wider than every phone and the
