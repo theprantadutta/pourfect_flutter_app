@@ -15,6 +15,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -52,7 +53,8 @@ class ReceiptBillingService implements BillingService {
   StoreProduct? get removeAdsProduct => null;
 
   @override
-  Future<PurchaseOutcome> buyRemoveAds({String? accountId}) async => PurchaseOutcome.unavailable;
+  Future<PurchaseOutcome> buyRemoveAds({String? accountId}) async =>
+      PurchaseOutcome.unavailable;
 
   @override
   Future<void> init() async {}
@@ -159,7 +161,34 @@ void main() {
   );
 
   group('a receipt reaches the server', () {
-    test('with the product and the token, and nothing else', () async {
+    test(
+      'with the product, the token and the platform, and nothing else',
+      () async {
+        final built = harness(
+          handler: (_) async => http.Response(verdict(), 200),
+        );
+        built.container.read(monetizationProvider);
+
+        built.billing.deliver(receipt);
+        await settle();
+
+        final call = built.calls.single;
+        expect(call.url.path, '/api/v1/purchases/verify');
+        expect(jsonDecode(call.body), {
+          'product_id': 'remove_ads',
+          'purchase_token': 'play-token-123',
+          'platform': 'android',
+        });
+      },
+    );
+
+    test('naming iOS on iOS, where the token is an App Store JWS', () async {
+      // The server cannot tell a Play token from a signed transaction by
+      // looking, and sending an App Store receipt to Google Play is how every
+      // iOS purchase would fail verification.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
       final built = harness(
         handler: (_) async => http.Response(verdict(), 200),
       );
@@ -168,12 +197,7 @@ void main() {
       built.billing.deliver(receipt);
       await settle();
 
-      final call = built.calls.single;
-      expect(call.url.path, '/api/v1/purchases/verify');
-      expect(jsonDecode(call.body), {
-        'product_id': 'remove_ads',
-        'purchase_token': 'play-token-123',
-      });
+      expect(jsonDecode(built.calls.single.body)['platform'], 'ios');
     });
 
     test('and a confirmed entitlement is applied', () async {

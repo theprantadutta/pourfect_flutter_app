@@ -80,6 +80,7 @@ dependencies:
   timezone: ^0.11.1
   in_app_update: ^5.0.0
   refresh_rate: ^2.0.1
+  app_tracking_transparency: ^2.0.7
 
 dev_dependencies:
   flutter_test:

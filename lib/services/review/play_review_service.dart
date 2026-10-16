@@ -3,6 +3,18 @@ import 'package:in_app_review/in_app_review.dart';
 
 import 'review_service.dart';
 
+/// Pourfect's numeric App Store id: App Store Connect → the app → App
+/// Information → Apple ID. iOS cannot find a listing from the bundle id the
+/// way Android finds one from the package name.
+///
+/// EMPTY UNTIL THE LISTING EXISTS, and while it is empty Settings hides
+/// "Rate Pourfect" on iOS rather than offer a row that can only fail.
+const kAppStoreId = '';
+
+/// Whether "Rate Pourfect" has a listing to open on this platform.
+bool get canOpenStoreListing =>
+    defaultTargetPlatform != TargetPlatform.iOS || kAppStoreId.isNotEmpty;
+
 /// The real one, on Play's In-App Review API.
 class PlayReviewService implements ReviewService {
   PlayReviewService({InAppReview? review})
@@ -41,9 +53,10 @@ class PlayReviewService implements ReviewService {
   @override
   Future<bool> openStoreListing() async {
     try {
-      // No appStoreId: Android finds the listing from the package name. iOS
-      // needs one and has no listing yet, so it lands in the catch below.
-      await _review.openStoreListing();
+      // Android finds the listing from the package name; iOS needs the id.
+      await _review.openStoreListing(
+        appStoreId: kAppStoreId.isEmpty ? null : kAppStoreId,
+      );
       return true;
     } catch (error) {
       debugPrint('[review] could not open the store listing: $error');

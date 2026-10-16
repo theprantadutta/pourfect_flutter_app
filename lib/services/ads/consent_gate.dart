@@ -20,7 +20,9 @@ library;
 
 import 'dart:async';
 
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class ConsentGate {
@@ -56,6 +58,12 @@ class ConsentGate {
         }
       });
 
+      // iOS App Tracking Transparency, AFTER the consent form and BEFORE the
+      // first ad request — the order Google documents. Without it AdMob runs
+      // with no advertising id on iOS, and Apple rejects an app whose privacy
+      // label declares tracking it never asked for.
+      await _requestTrackingIfUndetermined();
+
       canRequestAds = await ConsentInformation.instance.canRequestAds();
       privacyOptionsRequired =
           await ConsentInformation.instance.getPrivacyOptionsRequirementStatus() ==
@@ -82,6 +90,45 @@ class ConsentGate {
       canRequestAds = await ConsentInformation.instance.canRequestAds();
     } catch (error) {
       debugPrint('[consent] privacy options failed: $error');
+    }
+  }
+
+  /// Shows the system tracking prompt once, on iOS, if it has never been
+  /// answered.
+  ///
+  /// iOS DROPS the request silently when the app is not active — the dialog
+  /// never appears and the status stays undetermined. At launch the consent
+  /// form (or nothing) has just been on screen, so this waits for the app to
+  /// be resumed rather than trusting the call to land.
+  ///
+  /// Whatever the answer, ads are still requested: ATT decides whether the
+  /// advertising id is available, not whether ads may be shown.
+  Future<void> _requestTrackingIfUndetermined() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
+    try {
+      final status = await AppTrackingTransparency.trackingAuthorizationStatus;
+      if (status != TrackingStatus.notDetermined) return;
+
+      await _untilResumed();
+      final answer = await AppTrackingTransparency.requestTrackingAuthorization();
+      debugPrint('[consent] tracking: $answer');
+    } catch (error) {
+      debugPrint('[consent] tracking request failed: $error');
+    }
+  }
+
+  Future<void> _untilResumed() async {
+    final binding = WidgetsBinding.instance;
+    if (binding.lifecycleState == AppLifecycleState.resumed) return;
+    final resumed = Completer<void>();
+    final listener = AppLifecycleListener(onResume: () {
+      if (!resumed.isCompleted) resumed.complete();
+    });
+    try {
+      // Bounded: a launch that never resumes must not hold up ads forever.
+      await resumed.future.timeout(const Duration(seconds: 10), onTimeout: () {});
+    } finally {
+      listener.dispose();
     }
   }
 

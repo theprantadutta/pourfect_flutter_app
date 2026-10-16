@@ -18,6 +18,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/analytics/analytics_service.dart';
 import '../../services/iap/billing_service.dart';
+import '../../services/review/play_review_service.dart'
+    show canOpenStoreListing;
 import '../../state/account_controller.dart';
 import '../../services/api/push_service.dart';
 import '../../state/monetization_controller.dart';
@@ -357,8 +359,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body:
           'This removes your account, your stars, your streak and your '
           'leaderboard entry, on this phone and on our server. It cannot be '
-          'undone.\n\nRemove Ads is not affected — it belongs to your Google '
-          'Play account, and restores if you play again.',
+          'undone.\n\nRemove Ads is not affected — it belongs to the store '
+          'account you bought it with, and restores if you play again.',
       cancelLabel: 'Keep it',
       confirmLabel: 'Delete everything',
       destructive: true,
@@ -575,13 +577,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         detail: 'Stars, hints, the clock and more',
                         onTap: _openQuestions,
                       ),
-                      ActionRow(
-                        icon: const Icon(Icons.star_rounded),
-                        iconColor: Toy.pink,
-                        title: 'Rate Pourfect',
-                        detail: 'Tell other players what you think',
-                        onTap: _rate,
-                      ),
+                      if (canOpenStoreListing)
+                        ActionRow(
+                          icon: const Icon(Icons.star_rounded),
+                          iconColor: Toy.pink,
+                          title: 'Rate Pourfect',
+                          detail: 'Tell other players what you think',
+                          onTap: _rate,
+                        ),
                       ActionRow(
                         icon: const Icon(Icons.palette_rounded),
                         iconColor: Toy.mint,

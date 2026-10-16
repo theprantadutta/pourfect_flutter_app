@@ -69,8 +69,9 @@ class StoreProduct {
 class PurchaseReceipt {
   final String productId;
 
-  /// Play's purchase token. On Android this is what
-  /// `serverVerificationData` holds; on iOS it will be the transaction id.
+  /// Play's purchase token on Android. On iOS, the StoreKit 2 signed
+  /// transaction (a JWS), which the server verifies against Apple's root
+  /// certificate and files under its original transaction id.
   final String token;
 
   /// True when the store replayed a purchase we already had, rather than one
@@ -486,6 +487,10 @@ class PlayBillingService implements BillingService {
     return buy(IapIds.removeAds, accountId: accountId);
   }
 
+  static final _uuid = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  );
+
   @override
   Future<PurchaseOutcome> buy(String productId, {String? accountId}) async {
     if (!_available) return PurchaseOutcome.unavailable;
@@ -506,7 +511,13 @@ class PlayBillingService implements BillingService {
     try {
       await _iap.requestPurchase(
         RequestPurchaseProps.inApp((
-          apple: RequestPurchaseIosProps(sku: productId),
+          apple: RequestPurchaseIosProps(
+            sku: productId,
+            // Apple's counterpart of obfuscatedAccountId: lets an App Store
+            // Server Notification name the account that bought. StoreKit only
+            // accepts a UUID, which our server ids are.
+            appAccountToken: _uuid.hasMatch(accountId ?? '') ? accountId : null,
+          ),
           google: RequestPurchaseAndroidProps(
             skus: [productId],
             // Ties the purchase to the account that made it, so Play's

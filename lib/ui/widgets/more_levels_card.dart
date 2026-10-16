@@ -28,8 +28,8 @@ class MoreLevelsCard extends ConsumerWidget {
     final (title, body) = switch (worlds) {
       CampaignWorldsState(updateRequired: true) => (
         'Update for more levels',
-        'A new world is out, and it needs the latest Pourfect. Update from '
-            'the Play Store to keep pouring.',
+        'A new world is out, and it needs the latest Pourfect. Update the '
+            'game to keep pouring.',
       ),
       CampaignWorldsState(fetch: WorldsFetch.fetching) => (
         'New levels on the way',

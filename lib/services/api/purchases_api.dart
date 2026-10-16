@@ -13,6 +13,8 @@
 ///    entitlement back.
 library;
 
+import 'package:flutter/foundation.dart';
+
 import 'api_client.dart';
 import 'api_result.dart';
 
@@ -71,6 +73,11 @@ class PurchasesApi {
     final response = await _client.post('/api/v1/purchases/verify', {
       'product_id': productId,
       'purchase_token': purchaseToken,
+      // The server cannot tell a Play token from an App Store JWS by looking,
+      // and an absent field means android for every build before this one.
+      'platform': defaultTargetPlatform == TargetPlatform.iOS
+          ? 'ios'
+          : 'android',
     });
 
     return switch (response) {
