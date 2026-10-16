@@ -66,6 +66,19 @@ void main() {
     expect(await analyst().verdictFor(deadEnd), isA<DeadEndPosition>());
   });
 
+  test('a board with NO legal move left is a dead end the hint reveals', () async {
+    // Owner's call, 2026-10-16: the "No moves left" banner and the instant
+    // + Tube are gone, so Hint is the only thing that tells this player. It
+    // has to find the dead end, not answer "no hint for this position".
+    final noMoves = Board.fromLists([
+      [0, 1],
+      [1, 0],
+    ], capacity: 2);
+    expect(legalMoves(noMoves), isEmpty);
+
+    expect(await analyst().verdictFor(noMoves), isA<DeadEndPosition>());
+  });
+
   test('one solve settles every position along the optimal finish', () async {
     final a = analyst();
     final first = await a.verdictFor(start) as SolvablePosition;

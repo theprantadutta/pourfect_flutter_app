@@ -184,15 +184,20 @@ class GameState {
 
   /// Whether an extra tube may be offered right now.
   ///
-  /// To somebody who is struggling: past par, or stuck (no legal move), or in
-  /// a proven dead end ([deadEnd], which the position analyst knows). Up to
-  /// [kMaxExtraTubes] an attempt. Owner's call, 2026-10-10: offered more
-  /// often than the old once-after-par, so help (and the video behind it)
-  /// reaches the player who gets stuck early.
+  /// To somebody who is struggling: past par, or in a dead end the paid hint
+  /// has revealed ([deadEnd]: the screen passes it only once the hint is
+  /// bought). Up to [kMaxExtraTubes] an attempt. Owner's call, 2026-10-10:
+  /// offered more often than the old once-after-par, so help (and the video
+  /// behind it) reaches the player who gets stuck early.
+  ///
+  /// NOT on [isStuck] by itself. Owner's call, 2026-10-16: the button
+  /// appearing the moment a move left no legal move told the player that
+  /// move was wrong before they asked. A board with no move left is a dead
+  /// end like any other, and finding that out is what Hint is for.
   bool canOfferExtraTube({bool deadEnd = false}) =>
       extraTubesUsed < kMaxExtraTubes &&
       !isWon &&
-      (movesUsed >= level.minMoves || isStuck || deadEnd);
+      (movesUsed >= level.minMoves || deadEnd);
 
   /// The move count this attempt is RECORDED with, if it is won now.
   ///
@@ -236,10 +241,12 @@ class GameState {
   int pointsAt(DateTime now) =>
       level.points(movesUsed: movesUsed, elapsedSeconds: elapsedSecondsAt(now));
 
-  /// No legal move remains and the level is unfinished. The UI must surface
-  /// this immediately and offer undo or restart — leaving a player stuck on a
-  /// dead board wondering what they missed is how a relaxing game earns a
-  /// one-star review.
+  /// No legal move remains and the level is unfinished.
+  ///
+  /// The screen does NOT announce this (owner's call, 2026-10-16): it is a
+  /// dead end, and dead ends are revealed by the paid hint, which then says
+  /// how far to undo and offers the spare tube. Undo and Restart stay on the
+  /// screen throughout, so nobody is ever trapped by the silence.
   bool get isStuck => isDead(board);
 
   bool get canUndo => undoStack.isNotEmpty;

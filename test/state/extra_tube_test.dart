@@ -98,7 +98,10 @@ void main() {
       expect(state.canOfferExtraTube(deadEnd: true), isTrue);
     });
 
-    test('offered before par with no legal move left', () {
+    test('NOT offered before par just because no legal move is left', () {
+      // Owner's call, 2026-10-16: the button appearing the moment a move left
+      // no legal move told the player that move was wrong. A board with no
+      // move left is a dead end, and the paid hint is what reveals it.
       final container = harness();
       started(
         container,
@@ -116,7 +119,9 @@ void main() {
 
       final state = container.read(gameControllerProvider)!;
       expect(state.isStuck, isTrue);
-      expect(state.canOfferExtraTube(), isTrue);
+      expect(state.canOfferExtraTube(), isFalse);
+      // ...and offered once the hint has revealed it.
+      expect(state.canOfferExtraTube(deadEnd: true), isTrue);
     });
 
     test('at most $kMaxExtraTubes in one attempt', () {

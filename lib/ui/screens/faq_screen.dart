@@ -7,7 +7,7 @@
 /// - stars: `starsFor` (3 at par, 2 within 1.5x, 1 for any finish)
 /// - the clock: `parSecondsFor`, and it moves points only, never stars
 /// - hints: `kFreeHints`, and the credit kept when a hint cannot resolve
-/// - the extra tube: `GameState.canOfferExtraTube`, stuck or past par, two at most
+/// - the extra tube: `GameState.canOfferExtraTube`, past par or after a dead-end hint, two at most
 /// - music: no audio focus is ever requested (verified on Android)
 ///
 /// No contact address. There is none confirmed, and an invented one on a help
@@ -82,8 +82,9 @@ const List<(String, List<Faq>)> kFaqSections = [
       (
         question: 'What is the + Tube button?',
         answer:
-            'When you are stuck, or your moves reach par, you can watch a '
-            'video for an extra empty tube, up to two per attempt. Undo will '
+            'When your moves reach par, or a hint shows there is no way to '
+            'finish, you can watch a video for an extra empty tube, up to two '
+            'per attempt. Undo will '
             'not take it away. A level finished with an extra tube earns up '
             'to two stars.',
       ),
@@ -145,8 +146,8 @@ const List<(String, List<Faq>)> kFaqSections = [
       (
         question: 'I reinstalled. Where did Remove ads go?',
         answer:
-            'It belongs to your Google Play account and usually comes back '
-            'on its own. If not, tap Settings → Restore purchases.',
+            'It belongs to the store account you bought it with and usually '
+            'comes back on its own. If not, tap Settings → Restore purchases.',
       ),
       (
         question: 'Will the game stop my music?',

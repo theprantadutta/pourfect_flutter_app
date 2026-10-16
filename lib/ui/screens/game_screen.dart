@@ -89,6 +89,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
   /// had asked. Owner's call, 2026-10-14: finding that out is what Hint is
   /// for, and Hint is paid. So nothing changes on screen until the hint is
   /// bought, and after that the tube is on offer for that position.
+  ///
+  /// The same now holds for a board with NO legal move left (2026-10-16):
+  /// its "No moves left" banner and its instant tube button went too.
   Board? _deadEndShown;
 
   /// Whether the extra tube may be offered on [state] right now.
@@ -1280,17 +1283,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
                     opacity: (elapsed / 180).clamp(0.0, 1.0),
                   )
                 else ...[
-                  if (state.isStuck && !state.isWon)
-                    _StuckBanner(
-                      onUndo: () =>
-                          ref.read(gameControllerProvider.notifier).undo(),
-                    ),
-                  // No banner for a dead end that still has legal moves: the
-                  // solver knows, the player does not, and telling them is
-                  // the paid hint's job (see _deadEndShown).
+                  // No banner for a dead end, with legal moves left or none:
+                  // telling the player their last move was wrong is the paid
+                  // hint's job (see _deadEndShown). Owner's call, 2026-10-16,
+                  // extending 2026-10-14's to the board with no move left.
                   BoardControls(
-                    // Offered to a player who is stuck, in a dead end, or past
-                    // par — see GameState.canOfferExtraTube.
+                    // Offered past par, or in a dead end the hint revealed —
+                    // see GameState.canOfferExtraTube.
                     onExtraTube: _canOfferTube(state) ? _onExtraTube : null,
                     onUndo: state.canUndo
                         ? () => ref.read(gameControllerProvider.notifier).undo()
@@ -1384,49 +1383,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
   int _hintBadge() {
     final money = ref.watch(monetizationProvider);
     return money.freeHintsRemaining + money.hintCredits;
-  }
-}
-
-/// Surfaced the moment the board has no legal move left.
-class _StuckBanner extends StatelessWidget {
-  final VoidCallback onUndo;
-
-  const _StuckBanner({required this.onUndo});
-
-  static const message = 'No moves left — step back and try another line.';
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-      child: ToyBox(
-        color: Toy.tomatoTint,
-        radius: Toy.rButton,
-        shadow: 3,
-        padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(message, style: Toy.ui(13, weight: FontWeight.w700)),
-            ),
-            const SizedBox(width: 8),
-            Pressable(
-              onPressed: onUndo,
-              depth: 2,
-              child: ToyBox(
-                radius: Toy.rChip,
-                shadow: 2,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                child: Text('Undo', style: Toy.ui(14, weight: FontWeight.w800)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
