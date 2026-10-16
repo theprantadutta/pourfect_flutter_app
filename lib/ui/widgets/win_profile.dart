@@ -135,4 +135,14 @@ class WinProfile {
   bool get isFull => rays != null;
 
   Duration get duration => Duration(milliseconds: total);
+
+  /// How long the moves chip counts up: a little longer than the chips slide
+  /// in, but never past [total].
+  ///
+  /// It used to be `chips.length + 200` flat, which on the brief profile ran
+  /// to 1220ms of an 1150ms sequence. The count was still climbing when the
+  /// result settled, so every brief win froze about 93% of the way: "9
+  /// moves" in the chip beside "you took 10" in the caption under it.
+  int get movesCountUp =>
+      (chips.length + 200).clamp(1, total - chips.at).toInt();
 }

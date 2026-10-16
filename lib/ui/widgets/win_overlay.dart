@@ -629,7 +629,7 @@ class _WinResultState extends State<WinResult>
 
     final sticker = _s(p.sticker.at, p.sticker.length);
     final shownMoves =
-        (Curves.easeOut.transform(_s(p.chips.at, p.chips.length + 200)) *
+        (Curves.easeOut.transform(_s(p.chips.at, p.movesCountUp)) *
                 widget.movesUsed)
             .round();
 
