@@ -7,9 +7,10 @@ import 'review_service.dart';
 /// Information → Apple ID. iOS cannot find a listing from the bundle id the
 /// way Android finds one from the package name.
 ///
-/// EMPTY UNTIL THE LISTING EXISTS, and while it is empty Settings hides
-/// "Rate Pourfect" on iOS rather than offer a row that can only fail.
-const kAppStoreId = '';
+/// Set from App Store Connect on 2026-10-18. Were it ever emptied, Settings
+/// would hide "Rate Pourfect" on iOS rather than offer a row that can only
+/// fail.
+const kAppStoreId = '6824137375';
 
 /// Whether "Rate Pourfect" has a listing to open on this platform.
 bool get canOpenStoreListing =>
