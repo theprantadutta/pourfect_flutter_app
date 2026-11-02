@@ -906,6 +906,24 @@ splits them per device.
   and its display plumbing is shared with rewarded video, which IS verified on
   hardware — but nobody has yet played to level 10 in a release build and
   watched one appear. Do that before the first public track.
+- **For the next macOS/iOS session: AdMob can't authorize the iOS app, because
+  the App Store listing has no developer website.** Found 2026-11-02 after
+  2.5.0 went live. AdMob's app-ads.txt tab says "We didn't find a developer
+  website in your app listing on App Store". The app-ads.txt file itself is
+  fine: `https://pourfect.pranta.dev/app-ads.txt` and
+  `https://pranta.dev/app-ads.txt` both serve the `pub-9242904787767394` line.
+  What's missing is the **Marketing URL** on the version page (Distribution →
+  iOS App → version → Product Page Information, next to Support URL). It is
+  NOT on the App Information page, and Apple locks it once a version is live.
+  To fix it:
+  1. Make `https://pourfect.pranta.dev/marketing` a real page first. It returns
+     404 today, and the site root returns the API's JSON, which Apple review
+     may reject as a broken Marketing URL. It would be a small landing page in
+     the API (`Program.cs`, next to the `/app-ads.txt` route).
+  2. Create the next iOS version in App Store Connect (the + beside "iOS App")
+     and set Marketing URL to `https://pourfect.pranta.dev/marketing`.
+  3. Ship that build. Once it's live, press **Check for updates** in AdMob.
+  Play needs nothing; its listing already has a website.
 
 ## Ads — live ids, gated on build mode
 
