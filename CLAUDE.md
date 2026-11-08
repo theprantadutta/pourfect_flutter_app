@@ -920,8 +920,12 @@ splits them per device.
      2026-11-08 in the API (`wwwroot/marketing.html`, also served at `/`,
      with `/support` beside it; see the backend's CLAUDE.md, "Public
      pages"). Check it answers 200 once that API is deployed.
-  2. Create the next iOS version in App Store Connect (the + beside "iOS App")
-     and set Marketing URL to `https://pourfect.pranta.dev/marketing`.
+  2. **When deploying the next iOS build**, create its version in App Store
+     Connect (the + beside "iOS App") and, on that version page under
+     Product Page Information, set both URLs to the pages the API now
+     serves:
+     - Marketing URL: `https://pourfect.pranta.dev/marketing`
+     - Support URL: `https://pourfect.pranta.dev/support`
   3. Ship that build. Once it's live, press **Check for updates** in AdMob.
   Play needs nothing; its listing already has a website.
 
