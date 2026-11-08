@@ -920,7 +920,7 @@ splits them per device.
      2026-11-08 in the API (`wwwroot/marketing.html`, also served at `/`,
      with `/support` beside it; see the backend's CLAUDE.md, "Public
      pages"). Check it answers 200 once that API is deployed.
-  2. **When deploying the next iOS build**, create its version in App Store
+  2. **When deploying the next IPA for iOS**, create its version in App Store
      Connect (the + beside "iOS App") and, on that version page under
      Product Page Information, set both URLs to the pages the API now
      serves:
