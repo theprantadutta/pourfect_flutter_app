@@ -916,10 +916,10 @@ splits them per device.
   iOS App → version → Product Page Information, next to Support URL). It is
   NOT on the App Information page, and Apple locks it once a version is live.
   To fix it:
-  1. Make `https://pourfect.pranta.dev/marketing` a real page first. It returns
-     404 today, and the site root returns the API's JSON, which Apple review
-     may reject as a broken Marketing URL. It would be a small landing page in
-     the API (`Program.cs`, next to the `/app-ads.txt` route).
+  1. Make `https://pourfect.pranta.dev/marketing` a real page first. Built
+     2026-11-08 in the API (`wwwroot/marketing.html`, also served at `/`,
+     with `/support` beside it; see the backend's CLAUDE.md, "Public
+     pages"). Check it answers 200 once that API is deployed.
   2. Create the next iOS version in App Store Connect (the + beside "iOS App")
      and set Marketing URL to `https://pourfect.pranta.dev/marketing`.
   3. Ship that build. Once it's live, press **Check for updates** in AdMob.
