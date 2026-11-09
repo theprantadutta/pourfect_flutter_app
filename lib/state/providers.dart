@@ -20,6 +20,7 @@ import '../services/ads/ad_service.dart';
 import '../services/ads/admob_ad_service.dart';
 import '../services/analytics/analytics_service.dart';
 import '../services/analytics/firebase_analytics_service.dart';
+import '../services/analytics/pending_abandon.dart';
 import '../services/iap/billing_service.dart';
 import '../services/audio/audio_service.dart';
 import '../services/audio/soloud_audio_service.dart';
@@ -370,6 +371,12 @@ final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
   if (!firebaseReady) return const NoopAnalyticsService();
   return FirebaseAnalyticsService(debugLog: kDebugMode);
 });
+
+/// Where a backgrounded level's abandon waits to see if the player returns.
+/// See pending_abandon.dart.
+final pendingAbandonStoreProvider = Provider<PendingAbandonStore>(
+  (ref) => const PrefsPendingAbandonStore(),
+);
 
 final hapticsServiceProvider = Provider<HapticsService>(
   (ref) => PlatformHapticsService(

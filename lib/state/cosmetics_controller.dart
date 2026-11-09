@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/ads/ad_ids.dart';
+import '../services/analytics/analytics_service.dart';
 import '../services/api/api_result.dart';
 import '../services/api/cosmetics_api.dart';
 import '../services/iap/billing_service.dart';
@@ -125,12 +126,27 @@ class CosmeticsController extends Notifier<CosmeticsState> {
 
   /// Opens the store for the Skin pack. The pack's skins appear once the
   /// purchase is verified (see the monetization controller), not here.
-  Future<PurchaseOutcome> buySkinPack() => ref
-      .read(billingServiceProvider)
-      .buy(
-        IapIds.skinPack,
-        accountId: ref.read(authServiceProvider).current?.userId,
-      );
+  Future<PurchaseOutcome> buySkinPack() async {
+    final billing = ref.read(billingServiceProvider);
+    final outcome = await billing.buy(
+      IapIds.skinPack,
+      accountId: ref.read(authServiceProvider).current?.userId,
+    );
+    if (outcome == PurchaseOutcome.purchased) {
+      final product = billing.productFor(IapIds.skinPack);
+      ref
+          .read(analyticsServiceProvider)
+          .log(
+            IapPurchased(
+              productId: IapIds.skinPack,
+              placement: 'collection',
+              price: product?.amount,
+              currency: product?.currency,
+            ),
+          );
+    }
+    return outcome;
+  }
 }
 
 final cosmeticsProvider = NotifierProvider<CosmeticsController, CosmeticsState>(

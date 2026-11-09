@@ -29,6 +29,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/analytics/analytics_service.dart';
 import 'progress_repository.dart';
 import 'providers.dart';
 
@@ -163,6 +164,11 @@ class ReviewPrompter extends Notifier<ReviewState> {
     // this is the only way to tell the ask was reached rather than declined by
     // one of the rules above.
     debugPrint('[review] asking (ask ${state.askCount} of $kMaxReviewAsks)');
+    ref
+        .read(analyticsServiceProvider)
+        .log(
+          ReviewPromptShown(levelsSolved: ref.read(progressProvider).length),
+        );
 
     try {
       await service.request();

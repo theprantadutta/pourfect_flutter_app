@@ -30,6 +30,17 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-9242904787767394~3712054804"/>
 
+        <!-- Analytics and Crashlytics: on for release builds, off for debug
+             and profile. The value comes from build.gradle.kts. It has to be
+             here as well as in Dart because first_open and session_start are
+             logged natively, before Flutter starts. -->
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="${firebaseTelemetry}" />
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="${firebaseTelemetry}" />
+
         <!-- The status-bar icon for the evening daily reminder.
 
              Android IGNORES the color in a notification icon: it keeps the

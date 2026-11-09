@@ -12,6 +12,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/analytics/analytics_service.dart';
 import '../../services/api/api_result.dart';
 import '../../services/api/events_api.dart';
 import '../../services/audio/audio_service.dart';
@@ -66,6 +67,7 @@ class _EventScreenState extends ConsumerState<EventScreen> {
   Future<void> _play(WeeklyEventInfo event, EventBoard board) async {
     await Navigator.of(context).push(
       PourfectPageRoute<void>(
+        settings: const RouteSettings(name: '/event/play'),
         builder: (route) => EventPlayScreen(
           event: event,
           board: board,
@@ -391,7 +393,11 @@ class _EventPlayScreenState extends ConsumerState<EventPlayScreen>
     _audio = ref.read(audioServiceProvider)..setScene(MusicScene.play);
     ref.read(positionAnalystProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _game.startLevel(widget.board.asLevel, levelSetVersion: 0);
+      _game.startLevel(
+        widget.board.asLevel,
+        levelSetVersion: 0,
+        mode: PlayMode.event,
+      );
     });
   }
 
@@ -653,6 +659,7 @@ class _EventPlayScreenState extends ConsumerState<EventPlayScreen>
                   onRestart: () => _game.startLevel(
                     widget.board.asLevel,
                     levelSetVersion: 0,
+                    mode: PlayMode.event,
                   ),
                   onHint: _onHint,
                   hintBusy: state?.hintPending ?? false,

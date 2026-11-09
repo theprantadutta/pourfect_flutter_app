@@ -39,10 +39,38 @@ class FirebaseAnalyticsService implements AnalyticsService {
     // malformed parameter or an uninitialised Firebase app are all survivable;
     // a crash mid-pour is not.
     try {
-      await _analytics.logEvent(name: event.name, parameters: event.parameters);
+      switch (event) {
+        // `screen_view` is a reserved name: logEvent refuses it, and only
+        // logScreenView reaches the Pages and screens report.
+        case ScreenView(:final screenName):
+          await _analytics.logScreenView(
+            screenName: screenName,
+            screenClass: screenName,
+          );
+        default:
+          await _analytics.logEvent(
+            name: event.name,
+            parameters: event.parameters,
+          );
+      }
     } catch (error, stack) {
       developer.log(
         'failed to log ${event.name}',
+        name: 'analytics',
+        error: error,
+        stackTrace: stack,
+      );
+    }
+  }
+
+  @override
+  Future<void> setUserProperty(String name, String? value) async {
+    if (debugLog) debugPrint('[analytics] user property $name = $value');
+    try {
+      await _analytics.setUserProperty(name: name, value: value);
+    } catch (error, stack) {
+      developer.log(
+        'failed to set $name',
         name: 'analytics',
         error: error,
         stackTrace: stack,

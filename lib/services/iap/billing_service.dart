@@ -54,10 +54,17 @@ class StoreProduct {
   final String title;
   final String price;
 
+  /// The price as a number and its ISO currency, for analytics. The store
+  /// may leave the number out, so [price] stays the one to display.
+  final double? amount;
+  final String? currency;
+
   const StoreProduct({
     required this.id,
     required this.title,
     required this.price,
+    this.amount,
+    this.currency,
   });
 }
 
@@ -247,6 +254,8 @@ class PlayBillingService implements BillingService {
             id: details.id,
             title: details.title,
             price: details.displayPrice,
+            amount: details.price,
+            currency: details.currency.isEmpty ? null : details.currency,
           );
         }
       }

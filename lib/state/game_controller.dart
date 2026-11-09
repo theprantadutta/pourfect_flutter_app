@@ -12,6 +12,7 @@ import '../engine/level.dart';
 import '../engine/move.dart';
 import '../engine/rules.dart';
 import '../services/analytics/analytics_service.dart';
+import '../services/analytics/pending_abandon.dart';
 import '../services/haptics/haptics_service.dart';
 import 'game_state.dart';
 import 'providers.dart';
@@ -62,6 +63,13 @@ class GameController extends Notifier<GameState?> {
   /// is then backgrounded.
   bool _terminalLogged = false;
 
+  /// Which kind of board is being played, stamped on every funnel event.
+  PlayMode _mode = PlayMode.campaign;
+
+  /// The abandon parked by backgrounding, waiting to see if the player comes
+  /// back. See pending_abandon.dart.
+  LevelAbandon? _parkedAbandon;
+
   @override
   GameState? build() => null;
 
@@ -85,8 +93,23 @@ class GameController extends Notifier<GameState?> {
   HapticsService get _haptics => ref.read(hapticsServiceProvider);
 
   /// Opens [level] for play.
-  void startLevel(Level level, {required int levelSetVersion}) {
-    final isRetry = !_seenLevels.add(level.id);
+  ///
+  /// [mode] says which kind of board it is. Everything that is not the
+  /// campaign must say so, or its boards land in the campaign's funnel.
+  void startLevel(
+    Level level, {
+    required int levelSetVersion,
+    PlayMode mode = PlayMode.campaign,
+  }) {
+    // A parked abandon still here means the player never came back to that
+    // board before opening another, so it really was abandoned.
+    _sendParkedAbandon();
+    _mode = mode;
+    // Seen-levels is per mode: a daily's board id says nothing about the
+    // campaign level with the same number.
+    final isRetry = !_seenLevels.add(
+      level.id * PlayMode.values.length + mode.index,
+    );
     _terminalLogged = false;
     // A new board is a new session: an answer asked for on the previous one
     // must not arrive and decorate this one.
@@ -105,6 +128,7 @@ class GameController extends Notifier<GameState?> {
         colorCount: level.colorCount,
         minMoves: level.minMoves,
         isRetry: isRetry,
+        mode: mode,
       ),
     );
   }
@@ -313,6 +337,7 @@ class GameController extends Notifier<GameState?> {
         colorCount: current.level.colorCount,
         minMoves: current.level.minMoves,
         isRetry: true,
+        mode: _mode,
       ),
     );
   }
@@ -404,36 +429,53 @@ class GameController extends Notifier<GameState?> {
     final current = state;
     if (current == null || current.isWon || _terminalLogged) return;
 
-    if (current.movesUsed == 0 && reason == AbandonReason.backgrounded) {
+    if (reason == AbandonReason.backgrounded) {
       // Opened and immediately backgrounded with no move made. That is a
       // session event, not a level abandonment, and counting it would smear
       // noise across every level's funnel.
+      if (current.movesUsed == 0) return;
+      // PARKED, NOT SENT. Most trips to the background end with the player
+      // coming back, and sending now made those runs report an abandon and a
+      // completion both. Coming back discards it ([reportResumed]); a process
+      // that dies first leaves it on disk for the next launch to send.
+      if (_parkedAbandon != null) return;
+      final abandon = _abandonFor(current, reason);
+      _parkedAbandon = abandon;
+      _pendingStore.save(abandon);
       return;
     }
-    _logAbandon(current, reason);
-  }
 
-  /// The player came back to a level they had backgrounded.
-  ///
-  /// Backgrounding logs an abandonment and latches the terminal flag, which is
-  /// right up to the moment they return and finish the board: the flag then
-  /// suppressed `level_complete` for the rest of that run, so a level that WAS
-  /// completed produced no completion event at all. The per-level funnel
-  /// exists to find levels that lose players, and silently dropping the
-  /// successes makes every backgrounded level look worse than it is.
-  ///
-  /// Clearing the latch means such a run reports both an abandon and a
-  /// complete. That is the truthful record of what happened — they did leave,
-  /// and they did come back — and it is far better than losing half of it.
-  void reportResumed() {
-    final current = state;
-    if (current == null || current.isWon) return;
-    _terminalLogged = false;
-  }
-
-  void _logAbandon(GameState state, AbandonReason reason) {
+    // Any other ending supersedes a parked one: it is the same run, and this
+    // is how it actually ended.
+    _discardParkedAbandon();
     _terminalLogged = true;
-    _analytics.log(
+    _analytics.log(_abandonFor(current, reason));
+  }
+
+  /// The player came back to a level they had backgrounded. Whatever was
+  /// parked never happened: they are still playing.
+  void reportResumed() {
+    _discardParkedAbandon();
+  }
+
+  PendingAbandonStore get _pendingStore =>
+      ref.read(pendingAbandonStoreProvider);
+
+  void _discardParkedAbandon() {
+    if (_parkedAbandon == null) return;
+    _parkedAbandon = null;
+    _pendingStore.clear();
+  }
+
+  void _sendParkedAbandon() {
+    final parked = _parkedAbandon;
+    if (parked == null) return;
+    _parkedAbandon = null;
+    _pendingStore.clear();
+    _analytics.log(parked);
+  }
+
+  LevelAbandon _abandonFor(GameState state, AbandonReason reason) =>
       LevelAbandon(
         levelId: state.level.id,
         levelSetVersion: state.levelSetVersion,
@@ -442,14 +484,22 @@ class GameController extends Notifier<GameState?> {
         durationSeconds: state.elapsedSecondsAt(DateTime.now()),
         reason: reason,
         progress: state.progress,
-      ),
-    );
+        mode: _mode,
+      );
+
+  void _logAbandon(GameState state, AbandonReason reason) {
+    _discardParkedAbandon();
+    _terminalLogged = true;
+    _analytics.log(_abandonFor(state, reason));
   }
 
   void _logComplete() {
     final current = state;
     if (current == null || _terminalLogged) return;
     _terminalLogged = true;
+    // Won without the resume being reported (it can race the win): the
+    // parked abandon is plainly wrong now.
+    _discardParkedAbandon();
 
     _analytics.log(
       LevelComplete(
@@ -461,6 +511,7 @@ class GameController extends Notifier<GameState?> {
         durationSeconds: current.elapsedSecondsAt(DateTime.now()),
         hintsUsed: current.hintsUsed,
         undosUsed: current.undosUsed,
+        mode: _mode,
       ),
     );
   }

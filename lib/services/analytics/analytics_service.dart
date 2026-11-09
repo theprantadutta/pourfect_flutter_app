@@ -24,6 +24,15 @@ sealed class AnalyticsEvent {
   Map<String, Object> get parameters;
 }
 
+/// Which kind of board an event belongs to.
+///
+/// The daily, the weekly event and Zen all run on the same game controller as
+/// the campaign, and every one of them used to report as level_set_version 0
+/// with its own made-up level id. Mixed into the campaign funnel, a daily's
+/// board looked like a campaign level nobody ever finished. `mode` keeps them
+/// apart: filter on mode = campaign for the per-level funnel.
+enum PlayMode { campaign, daily, event, zen }
+
 /// A player opened a level. The denominator of every funnel.
 final class LevelStart extends AnalyticsEvent {
   final int levelId;
@@ -35,12 +44,15 @@ final class LevelStart extends AnalyticsEvent {
   /// look. Mixing the two would hide exactly the levels people bounce off.
   final bool isRetry;
 
+  final PlayMode mode;
+
   const LevelStart({
     required this.levelId,
     required this.levelSetVersion,
     required this.colorCount,
     required this.minMoves,
     required this.isRetry,
+    this.mode = PlayMode.campaign,
   });
 
   @override
@@ -53,6 +65,7 @@ final class LevelStart extends AnalyticsEvent {
     'color_count': colorCount,
     'min_moves': minMoves,
     'is_retry': isRetry ? 1 : 0,
+    'mode': mode.name,
   };
 }
 
@@ -66,6 +79,7 @@ final class LevelComplete extends AnalyticsEvent {
   final int durationSeconds;
   final int hintsUsed;
   final int undosUsed;
+  final PlayMode mode;
 
   const LevelComplete({
     required this.levelId,
@@ -76,6 +90,7 @@ final class LevelComplete extends AnalyticsEvent {
     required this.durationSeconds,
     required this.hintsUsed,
     required this.undosUsed,
+    this.mode = PlayMode.campaign,
   });
 
   @override
@@ -94,6 +109,7 @@ final class LevelComplete extends AnalyticsEvent {
     // Efficiency relative to optimal. Makes "levels people only just scrape
     // through" queryable without recomputing the ratio in the console.
     'move_ratio': minMoves == 0 ? 0.0 : moves / minMoves,
+    'mode': mode.name,
   };
 }
 
@@ -131,6 +147,8 @@ final class LevelAbandon extends AnalyticsEvent {
   /// need different fixes, so the funnel has to tell them apart.
   final double progress;
 
+  final PlayMode mode;
+
   const LevelAbandon({
     required this.levelId,
     required this.levelSetVersion,
@@ -139,7 +157,29 @@ final class LevelAbandon extends AnalyticsEvent {
     required this.durationSeconds,
     required this.reason,
     required this.progress,
+    this.mode = PlayMode.campaign,
   });
+
+  /// The inverse of [parameters], for the abandon that has to survive the
+  /// process being killed while backgrounded (see `pending_abandon.dart`).
+  /// Null for anything unreadable: a stored abandon from an older build is
+  /// dropped rather than sent half-filled.
+  static LevelAbandon? fromParameters(Map<String, Object?> json) {
+    try {
+      return LevelAbandon(
+        levelId: json['level_id']! as int,
+        levelSetVersion: json['level_set_version']! as int,
+        moves: json['moves']! as int,
+        minMoves: json['min_moves']! as int,
+        durationSeconds: json['duration_seconds']! as int,
+        reason: AbandonReason.values.byName(json['reason']! as String),
+        progress: (json['progress']! as num).toDouble(),
+        mode: PlayMode.values.byName(json['mode']! as String),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   String get name => 'level_abandon';
@@ -153,6 +193,7 @@ final class LevelAbandon extends AnalyticsEvent {
     'duration_seconds': durationSeconds,
     'reason': reason.name,
     'progress': progress,
+    'mode': mode.name,
   };
 }
 
@@ -339,7 +380,22 @@ final class IapPurchased extends AnalyticsEvent {
   final String productId;
   final String placement;
 
-  const IapPurchased({required this.productId, required this.placement});
+  /// The store's price and ISO currency, when the store gave one. Sent as
+  /// GA's `value` and `currency`, so the event carries what it was worth.
+  ///
+  /// Deliberately NOT GA's `purchase` event. Firebase already logs
+  /// `in_app_purchase` from the store itself, and that is what fills the
+  /// revenue cards; a second revenue event for the same sale would count it
+  /// twice.
+  final double? price;
+  final String? currency;
+
+  const IapPurchased({
+    required this.productId,
+    required this.placement,
+    this.price,
+    this.currency,
+  });
 
   @override
   String get name => 'iap_purchased';
@@ -348,6 +404,11 @@ final class IapPurchased extends AnalyticsEvent {
   Map<String, Object> get parameters => {
     'product_id': productId,
     'placement': placement,
+    if (price case final price?)
+      if (currency case final currency?) ...{
+        'value': price,
+        'currency': currency,
+      },
   };
 }
 
@@ -454,6 +515,111 @@ final class NotificationPermissionAnswered extends AnalyticsEvent {
   };
 }
 
+/// A screen came into view. Firebase's own screen tracking only sees Android
+/// activities, so every Flutter screen used to report as `MainActivity`.
+/// The Firebase sink sends this through `logScreenView`, which is what fills
+/// the Pages and screens report.
+final class ScreenView extends AnalyticsEvent {
+  final String screenName;
+
+  const ScreenView(this.screenName);
+
+  @override
+  String get name => 'screen_view';
+
+  @override
+  Map<String, Object> get parameters => {'screen_name': screenName};
+}
+
+/// How an account was signed in to or created.
+enum SignInMethod { google, apple, email }
+
+/// A player signed in to an account that already existed. GA's recommended
+/// `login`.
+final class Login extends AnalyticsEvent {
+  final SignInMethod method;
+
+  const Login(this.method);
+
+  @override
+  String get name => 'login';
+
+  @override
+  Map<String, Object> get parameters => {'method': method.name};
+}
+
+/// A player turned their anonymous progress into an account. GA's
+/// recommended `sign_up`.
+final class SignUp extends AnalyticsEvent {
+  final SignInMethod method;
+
+  const SignUp(this.method);
+
+  @override
+  String get name => 'sign_up';
+
+  @override
+  Map<String, Object> get parameters => {'method': method.name};
+}
+
+/// The store's rating sheet was asked for. Whether it actually appeared is
+/// the store's secret, so this counts asks, not ratings.
+final class ReviewPromptShown extends AnalyticsEvent {
+  /// Campaign levels solved at the time, so the ask can be judged by how far
+  /// in it came.
+  final int levelsSolved;
+
+  const ReviewPromptShown({required this.levelsSolved});
+
+  @override
+  String get name => 'review_prompt';
+
+  @override
+  Map<String, Object> get parameters => {'levels_solved': levelsSolved};
+}
+
+/// Today's Daily Pour was solved and the server took the result.
+///
+/// `level_complete` with mode = daily already counts the solve. This carries
+/// the part only the server knows: the streak it produced.
+final class DailyComplete extends AnalyticsEvent {
+  final int streak;
+
+  /// False for a replay of a board already finished today.
+  final bool firstToday;
+
+  const DailyComplete({required this.streak, required this.firstToday});
+
+  @override
+  String get name => 'daily_complete';
+
+  @override
+  Map<String, Object> get parameters => {
+    'streak': streak,
+    'first_today': firstToday ? 1 : 0,
+  };
+}
+
+/// A streak freeze was earned with a video.
+final class StreakFreezeEarned extends AnalyticsEvent {
+  const StreakFreezeEarned();
+
+  @override
+  String get name => 'streak_freeze_earned';
+
+  @override
+  Map<String, Object> get parameters => const {};
+}
+
+/// The `levels_solved` user property: campaign levels solved, in bands of
+/// ten. A raw count would make every player their own segment; bands make
+/// "players past level 50" a filter instead of a query.
+String levelsSolvedBand(int solved) {
+  if (solved <= 0) return '0';
+  final low = (solved - 1) ~/ 10 * 10 + 1;
+  return '$low-${low + 9}';
+}
+
 /// Where events go.
 ///
 /// Deliberately narrow and swappable — the same shape as the ad abstraction, so
@@ -463,8 +629,12 @@ abstract interface class AnalyticsService {
   /// never allowed to be the reason a tap feels slow or a level fails to open.
   Future<void> log(AnalyticsEvent event);
 
-  /// Flushes anything buffered. Called when the app backgrounds, which is the
-  /// last moment a pending `level_abandon` can still be sent.
+  /// Sets a user property: a fact about the player that every later event
+  /// can be split by, such as how far in they are. Same rules as [log]: never
+  /// throws, never blocks. A null [value] clears it.
+  Future<void> setUserProperty(String name, String? value);
+
+  /// Flushes anything buffered. Called when the app backgrounds.
   Future<void> flush();
 }
 
@@ -487,15 +657,23 @@ final class NoopAnalyticsService implements AnalyticsService {
   Future<void> log(AnalyticsEvent event) async {}
 
   @override
+  Future<void> setUserProperty(String name, String? value) async {}
+
+  @override
   Future<void> flush() async {}
 }
 
 /// Records events in memory. For tests and for the debug overlay.
 final class RecordingAnalyticsService implements AnalyticsService {
   final List<AnalyticsEvent> events = [];
+  final Map<String, String?> userProperties = {};
 
   @override
   Future<void> log(AnalyticsEvent event) async => events.add(event);
+
+  @override
+  Future<void> setUserProperty(String name, String? value) async =>
+      userProperties[name] = value;
 
   @override
   Future<void> flush() async {}

@@ -434,8 +434,14 @@ class MonetizationController extends Notifier<MonetizationState> {
     );
 
     if (outcome == PurchaseOutcome.purchased) {
+      final product = billing.removeAdsProduct;
       analytics.log(
-        IapPurchased(productId: 'remove_ads', placement: placement),
+        IapPurchased(
+          productId: IapIds.removeAds,
+          placement: placement,
+          price: product?.amount,
+          currency: product?.currency,
+        ),
       );
       state = state.copyWith(adsRemoved: true);
     }

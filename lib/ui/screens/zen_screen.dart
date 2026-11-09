@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../engine/level.dart';
 
+import '../../services/analytics/analytics_service.dart';
 import '../../services/audio/audio_service.dart';
 import '../../state/achievements.dart';
 import '../../state/game_controller.dart';
@@ -86,7 +87,7 @@ class _ZenScreenState extends ConsumerState<ZenScreen> {
       _level = level;
       _solved = false;
     });
-    _game.startLevel(level, levelSetVersion: 0);
+    _game.startLevel(level, levelSetVersion: 0, mode: PlayMode.zen);
   }
 
   bool get _midGame {
@@ -308,7 +309,11 @@ class _ZenScreenState extends ConsumerState<ZenScreen> {
               onRestart: () {
                 final level = _level;
                 if (level != null) {
-                  _game.startLevel(level, levelSetVersion: 0);
+                  _game.startLevel(
+                    level,
+                    levelSetVersion: 0,
+                    mode: PlayMode.zen,
+                  );
                 }
               },
               onHint: _onHint,

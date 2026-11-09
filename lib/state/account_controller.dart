@@ -27,6 +27,7 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../services/analytics/analytics_service.dart';
 import '../services/api/api_result.dart';
 import '../services/api/identity.dart';
 import 'play_history.dart';
@@ -193,9 +194,10 @@ class AccountController extends Notifier<AccountState> {
         state = state.copyWith(handle: value);
         return null;
       }(),
-      ApiFailure(:final kind, :final detail) => kind == ApiFailureKind.refused
-          ? (detail ?? 'That name was not accepted.')
-          : 'Could not reach the server. Try again in a moment.',
+      ApiFailure(:final kind, :final detail) =>
+        kind == ApiFailureKind.refused
+            ? (detail ?? 'That name was not accepted.')
+            : 'Could not reach the server. Try again in a moment.',
     };
   }
 
@@ -207,8 +209,9 @@ class AccountController extends Notifier<AccountState> {
   /// hidden while they are still listed, which is the single worst thing a
   /// control like this can do.
   Future<bool> setLeaderboardVisibility(bool visible) async {
-    final result =
-        await ref.read(usersApiProvider).setLeaderboardVisibility(visible);
+    final result = await ref
+        .read(usersApiProvider)
+        .setLeaderboardVisibility(visible);
 
     if (result case ApiOk(:final value)) {
       await ref.read(authServiceProvider).update(showOnLeaderboards: value);
@@ -219,18 +222,22 @@ class AccountController extends Notifier<AccountState> {
   }
 
   Future<IdentityResult> continueWithGoogle() =>
-      _run((identity) => identity.continueWithGoogle());
+      _run(SignInMethod.google, (identity) => identity.continueWithGoogle());
 
   /// Sign in with Apple. Same link-or-sign-in rules, same session re-exchange,
   /// same account-switch handling as Google — it goes through [_run] too.
   Future<IdentityResult> continueWithApple() =>
-      _run((identity) => identity.continueWithApple());
+      _run(SignInMethod.apple, (identity) => identity.continueWithApple());
 
-  Future<IdentityResult> createAccount(String email, String password) =>
-      _run((identity) => identity.createWithEmail(email.trim(), password));
+  Future<IdentityResult> createAccount(String email, String password) => _run(
+    SignInMethod.email,
+    (identity) => identity.createWithEmail(email.trim(), password),
+  );
 
-  Future<IdentityResult> signIn(String email, String password) =>
-      _run((identity) => identity.signInWithEmail(email.trim(), password));
+  Future<IdentityResult> signIn(String email, String password) => _run(
+    SignInMethod.email,
+    (identity) => identity.signInWithEmail(email.trim(), password),
+  );
 
   /// Always reports success to the caller.
   ///
@@ -249,6 +256,7 @@ class AccountController extends Notifier<AccountState> {
 
   /// Runs an identity operation, then makes the rest of the app agree with it.
   Future<IdentityResult> _run(
+    SignInMethod method,
     Future<IdentityResult> Function(Identity) operation,
   ) async {
     if (state.busy) {
@@ -267,6 +275,15 @@ class AccountController extends Notifier<AccountState> {
 
       final result = await operation(identity);
       if (!result.isOk) return result;
+
+      // Linked onto the same uid is a new account (sign_up); a different uid
+      // is an account that already existed (login).
+      final after = identity.current?.uid;
+      ref
+          .read(analyticsServiceProvider)
+          .log(
+            before != null && after != before ? Login(method) : SignUp(method),
+          );
 
       return await _adoptCurrentIdentity(previousUid: before);
     } finally {
@@ -289,9 +306,8 @@ class AccountController extends Notifier<AccountState> {
     final snapshot = identity.current;
     final auth = ref.read(authServiceProvider);
 
-    final switched = previousUid != null &&
-        snapshot != null &&
-        snapshot.uid != previousUid;
+    final switched =
+        previousUid != null && snapshot != null && snapshot.uid != previousUid;
 
     if (switched) {
       // No token, no session, new epoch — before anything can be sent. Every
@@ -350,12 +366,16 @@ class AccountController extends Notifier<AccountState> {
   /// uids, so this ABANDONS whatever the anonymous account had on this device
   /// and adopts the existing one instead — which is why it is a separate call
   /// that the screen only makes after saying so.
-  Future<IdentityResult> useExistingGoogleAccount() =>
-      _run((identity) => identity.signInToExistingGoogleAccount());
+  Future<IdentityResult> useExistingGoogleAccount() => _run(
+    SignInMethod.google,
+    (identity) => identity.signInToExistingGoogleAccount(),
+  );
 
   /// The Apple half of [useExistingGoogleAccount].
-  Future<IdentityResult> useExistingAppleAccount() =>
-      _run((identity) => identity.signInToExistingAppleAccount());
+  Future<IdentityResult> useExistingAppleAccount() => _run(
+    SignInMethod.apple,
+    (identity) => identity.signInToExistingAppleAccount(),
+  );
 
   /// Deletes the account: the server row first, then the Firebase identity.
   ///

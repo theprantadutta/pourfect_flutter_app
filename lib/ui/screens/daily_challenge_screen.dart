@@ -204,7 +204,11 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
     // Level set version zero: this board is not part of the campaign and must
     // never be mistaken for one in progress or in analytics.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _game.startLevel(challenge.asLevel, levelSetVersion: 0);
+      _game.startLevel(
+        challenge.asLevel,
+        levelSetVersion: 0,
+        mode: PlayMode.daily,
+      );
     });
   }
 
@@ -272,6 +276,14 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
         );
 
     if (!mounted) return;
+
+    if (result case ApiOk(:final value)) {
+      ref
+          .read(analyticsServiceProvider)
+          .log(
+            DailyComplete(streak: value.dailyStreak, firstToday: firstToday),
+          );
+    }
 
     setState(() {
       _submitting = false;
@@ -447,7 +459,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
     // Restarts the board being played, not whatever is cached now.
     final playing = _playing;
     if (playing == null) return;
-    _game.startLevel(playing.asLevel, levelSetVersion: 0);
+    _game.startLevel(playing.asLevel, levelSetVersion: 0, mode: PlayMode.daily);
   }
 
   /// Whether offering the reminder is appropriate right now.

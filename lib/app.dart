@@ -8,11 +8,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'state/account_controller.dart';
 import 'state/cosmetics_controller.dart';
 import 'state/campaign_worlds.dart';
 import 'state/legal_acceptance.dart';
 import 'state/monetization_controller.dart';
 import 'services/analytics/analytics_service.dart';
+import 'services/analytics/pending_abandon.dart';
+import 'services/analytics/screen_observer.dart';
 import 'services/audio/audio_service.dart';
 import 'services/api/push_service.dart';
 import 'services/notifications/notification_service.dart';
@@ -45,16 +48,24 @@ import 'ui/widgets/splash_handoff.dart';
 import 'ui/widgets/toy_kit.dart';
 import 'ui/widgets/update_prompt.dart';
 
-class PourfectApp extends StatelessWidget {
+/// One observer for the life of the app: a navigator must not be handed a new
+/// one on every rebuild.
+final screenObserverProvider = Provider<AnalyticsScreenObserver>(
+  (ref) => AnalyticsScreenObserver(() => ref.read(analyticsServiceProvider)),
+);
+
+class PourfectApp extends ConsumerWidget {
   const PourfectApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const tokens = PourfectTokens.toybox;
 
     return MaterialApp(
       title: 'Pourfect',
       debugShowCheckedModeBanner: false,
+      // Screen names for analytics; see screen_observer.dart.
+      navigatorObservers: [ref.read(screenObserverProvider)],
       // One theme. Toybox replaced the original dark direction outright; there
       // is no dark variant to fall back to or keep in sync.
       theme: _buildTheme(tokens),
@@ -229,6 +240,42 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
         );
       });
       ref.read(achievementsProvider.notifier).refresh();
+
+      // An abandon the previous process parked and never got to settle: the
+      // player backgrounded a level and the game was killed before they came
+      // back. See pending_abandon.dart.
+      unawaited(
+        sendAbandonLeftByLastRun(
+          ref.read(pendingAbandonStoreProvider),
+          ref.read(analyticsServiceProvider),
+        ),
+      );
+
+      // User properties: what every event can be split by in the console.
+      // How far in, whether they paid to remove ads, whether they signed in.
+      final analytics = ref.read(analyticsServiceProvider);
+      ref.listenManual(
+        progressProvider.select((p) => p.length),
+        (_, solved) => analytics.setUserProperty(
+          'levels_solved',
+          levelsSolvedBand(solved),
+        ),
+        fireImmediately: true,
+      );
+      ref.listenManual(
+        monetizationProvider.select((m) => m.adsRemoved),
+        (_, removed) =>
+            analytics.setUserProperty('ads_removed', removed ? 'yes' : 'no'),
+        fireImmediately: true,
+      );
+      ref.listenManual(
+        accountProvider.select((a) => a.signedIn),
+        (_, signedIn) => analytics.setUserProperty(
+          'account',
+          signedIn ? 'signed_in' : 'anonymous',
+        ),
+        fireImmediately: true,
+      );
 
       // Once per launch, a little after start so the saved settings are in.
       Future<void>.delayed(const Duration(seconds: 5), () {

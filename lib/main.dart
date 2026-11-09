@@ -8,6 +8,7 @@ import 'dart:async';
 import 'app.dart';
 import 'firebase_options.dart';
 import 'services/api/app_env.dart';
+import 'services/diagnostics/crash_reporting.dart';
 import 'services/diagnostics/diagnostics.dart';
 import 'services/diagnostics/startup_report.dart';
 import 'services/notifications/notification_service.dart';
@@ -35,6 +36,8 @@ Future<void> main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     firebaseReady = true;
+    // Release builds report; debug and profile builds report nothing.
+    await configureTelemetry();
   } catch (error, stack) {
     // RELEASE-VISIBLE. This used to go through `dart:developer`'s `log`, which
     // publishes to the VM service and reaches no logcat a release build has —

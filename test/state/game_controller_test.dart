@@ -7,6 +7,7 @@ import 'package:pourfect_flutter_app/engine/board.dart';
 import 'package:pourfect_flutter_app/engine/level.dart';
 import 'package:pourfect_flutter_app/engine/move.dart';
 import 'package:pourfect_flutter_app/services/analytics/analytics_service.dart';
+import 'package:pourfect_flutter_app/services/analytics/pending_abandon.dart';
 import 'package:pourfect_flutter_app/services/ads/ad_service.dart';
 import 'package:pourfect_flutter_app/services/audio/audio_service.dart';
 import 'package:pourfect_flutter_app/services/iap/billing_service.dart';
@@ -27,6 +28,20 @@ Level oneMoveLevel() => Level(
   forcedMoveRatio: 1,
 );
 
+/// Won in exactly two moves: tube 0's top 1 onto tube 1, then tube 2's 0 onto
+/// tube 0. Enough to background between the moves and still win.
+Level twoMoveLevel() => Level(
+  id: 3,
+  board: Board.fromLists([
+    [0, 0, 0, 1],
+    [1, 1, 1],
+    [0],
+  ], capacity: 4),
+  minMoves: 2,
+  difficultyScore: 20,
+  forcedMoveRatio: 1,
+);
+
 /// Two colors interleaved with a spare tube — several legal moves available.
 Level openLevel() => Level(
   id: 2,
@@ -43,12 +58,15 @@ Level openLevel() => Level(
 void main() {
   late ProviderContainer container;
   late RecordingAnalyticsService analytics;
+  late MemoryPendingAbandonStore pending;
 
   setUp(() {
     analytics = RecordingAnalyticsService();
+    pending = MemoryPendingAbandonStore();
     container = ProviderContainer(
       overrides: [
         analyticsServiceProvider.overrideWithValue(analytics),
+        pendingAbandonStoreProvider.overrideWithValue(pending),
         hapticsServiceProvider.overrideWithValue(const NoopHapticsService()),
         audioServiceProvider.overrideWithValue(const NoopAudioService()),
         adServiceProvider.overrideWithValue(const NoopAdService()),
@@ -236,20 +254,124 @@ void main() {
       expect(analytics.ofType<LevelAbandon>(), isEmpty);
     });
 
-    test('BACKGROUNDING logs level_abandon', () {
-      // The dominant abandon path: most people who give up close the app rather
-      // than pressing back. A funnel that only counts clean exits undercounts
-      // abandonment on exactly the levels it exists to find.
+    test('BACKGROUNDING parks the abandon instead of sending it', () {
+      // Most trips to the background end with the player coming back. Sent
+      // at once, those runs reported an abandon AND a completion.
       start();
       controller().tapTube(0);
       controller().tapTube(2);
       controller().reportAbandon(AbandonReason.backgrounded);
 
-      final abandon = analytics.ofType<LevelAbandon>().single;
-      expect(abandon.reason, AbandonReason.backgrounded);
-      expect(abandon.moves, 1);
-      expect(abandon.progress, closeTo(1 / 6, 1e-9));
+      expect(analytics.ofType<LevelAbandon>(), isEmpty);
+      final parked = pending.parked!;
+      expect(parked.reason, AbandonReason.backgrounded);
+      expect(parked.moves, 1);
+      expect(parked.progress, closeTo(1 / 6, 1e-9));
     });
+
+    test('coming back discards the parked abandon', () {
+      start();
+      controller().tapTube(0);
+      controller().tapTube(2);
+      controller().reportAbandon(AbandonReason.backgrounded);
+      controller().reportResumed();
+
+      expect(pending.parked, isNull);
+      expect(analytics.ofType<LevelAbandon>(), isEmpty);
+    });
+
+    test('backgrounded, back, and won reports only the completion', () {
+      // THE BUG THIS REPLACES: this run used to count as an abandon too.
+      start(twoMoveLevel());
+      controller().tapTube(0);
+      controller().tapTube(1);
+      controller().reportAbandon(AbandonReason.backgrounded);
+      controller().reportResumed();
+      controller().tapTube(2);
+      controller().tapTube(0);
+
+      expect(state().isWon, isTrue);
+      expect(analytics.ofType<LevelComplete>(), hasLength(1));
+      expect(analytics.ofType<LevelAbandon>(), isEmpty);
+      expect(pending.parked, isNull);
+    });
+
+    test('a win that races the resume still clears the parked abandon', () {
+      start(twoMoveLevel());
+      controller().tapTube(0);
+      controller().tapTube(1);
+      controller().reportAbandon(AbandonReason.backgrounded);
+      controller().tapTube(2);
+      controller().tapTube(0);
+
+      expect(analytics.ofType<LevelAbandon>(), isEmpty);
+      expect(pending.parked, isNull);
+    });
+
+    test('a parked abandon is sent if another board opens first', () {
+      start();
+      controller().tapTube(0);
+      controller().tapTube(2);
+      controller().reportAbandon(AbandonReason.backgrounded);
+      start(oneMoveLevel());
+
+      expect(
+        analytics.ofType<LevelAbandon>().single.reason,
+        AbandonReason.backgrounded,
+      );
+      expect(pending.parked, isNull);
+    });
+
+    test('the next launch sends what a killed process parked', () async {
+      start();
+      controller().tapTube(0);
+      controller().tapTube(2);
+      controller().reportAbandon(AbandonReason.backgrounded);
+
+      // The process dies here. A new one starts with only the store.
+      final nextRun = RecordingAnalyticsService();
+      await sendAbandonLeftByLastRun(pending, nextRun);
+
+      final sent = nextRun.ofType<LevelAbandon>().single;
+      expect(sent.levelId, 2);
+      expect(sent.moves, 1);
+      expect(pending.parked, isNull);
+
+      // And only once.
+      await sendAbandonLeftByLastRun(pending, nextRun);
+      expect(nextRun.ofType<LevelAbandon>(), hasLength(1));
+    });
+
+    test('every funnel event carries its mode', () {
+      controller().startLevel(
+        openLevel(),
+        levelSetVersion: 0,
+        mode: PlayMode.daily,
+      );
+      controller().tapTube(0);
+      controller().tapTube(2);
+      controller().restart();
+
+      expect(
+        analytics.ofType<LevelStart>().map((e) => e.mode),
+        everyElement(PlayMode.daily),
+      );
+      expect(analytics.ofType<LevelAbandon>().single.mode, PlayMode.daily);
+      expect(analytics.ofType<LevelStart>().first.parameters['mode'], 'daily');
+    });
+
+    test(
+      'a daily board is not a retry of the campaign level it shares an id with',
+      () {
+        start(openLevel());
+        controller().startLevel(
+          openLevel(),
+          levelSetVersion: 0,
+          mode: PlayMode.daily,
+        );
+        expect(analytics.ofType<LevelStart>().last.isRetry, isFalse);
+      },
+    );
 
     test('backgrounding before any move is not an abandonment', () {
       // Opening and immediately backgrounding is a session event. Counting it
@@ -266,7 +388,13 @@ void main() {
       controller().reportAbandon(AbandonReason.backgrounded);
       controller().reportAbandon(AbandonReason.backgrounded);
       controller().reportAbandon(AbandonReason.exited);
-      expect(analytics.ofType<LevelAbandon>(), hasLength(1));
+      controller().reportAbandon(AbandonReason.exited);
+      // The exit is how the run ended; the parked one is superseded.
+      expect(
+        analytics.ofType<LevelAbandon>().single.reason,
+        AbandonReason.exited,
+      );
+      expect(pending.parked, isNull);
     });
 
     test('restart logs an abandon and a fresh start', () {

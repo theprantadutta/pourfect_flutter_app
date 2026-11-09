@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../services/analytics/analytics_service.dart';
 import '../services/api/api_result.dart';
 import '../services/api/daily_api.dart';
 import 'account_controller.dart';
@@ -74,6 +75,7 @@ class StreakController extends Notifier<StreakInfo?> {
     switch (await _api.earnFreeze()) {
       case ApiOk(:final value):
         state = value;
+        ref.read(analyticsServiceProvider).log(const StreakFreezeEarned());
         return true;
       case ApiFailure(:final kind):
         debugPrint('[streak] freeze not added: $kind');

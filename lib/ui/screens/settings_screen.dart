@@ -161,6 +161,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _openCollection() {
     Navigator.of(context).push(
       PourfectPageRoute<void>(
+        settings: const RouteSettings(name: '/collection'),
         builder: (route) =>
             CollectionScreen(onClose: () => Navigator.of(route).pop()),
       ),
@@ -172,6 +173,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
     Navigator.of(context).push(
       PourfectPageRoute<void>(
+        settings: const RouteSettings(name: '/tutorial'),
         builder: (route) => GameScreen(
           levelId: 1,
           tutorial: true,
@@ -184,6 +186,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _openQuestions() {
     Navigator.of(context).push(
       PourfectPageRoute<void>(
+        settings: const RouteSettings(name: '/faq'),
         builder: (route) => FaqScreen(onClose: () => Navigator.of(route).pop()),
       ),
     );
@@ -290,8 +293,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _openAccount() async {
-    await Navigator.of(context)
-        .push(PourfectPageRoute<void>(builder: (_) => const AccountScreen()));
+    await Navigator.of(context).push(
+      PourfectPageRoute<void>(
+        settings: const RouteSettings(name: '/account'),
+        builder: (_) => const AccountScreen(),
+      ),
+    );
   }
 
   Future<void> _confirmSignOut() async {

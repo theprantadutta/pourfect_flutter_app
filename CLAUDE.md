@@ -335,18 +335,65 @@ requires re-running the CVD harness, not just editing the number.
 Behind a thin `AnalyticsService` interface, same shape as the ad service, so it
 is swappable and testable. Firebase Analytics is the first implementation.
 
-**`level_abandon` fires on BACKGROUNDING**, not just on a clean exit. Most
-players who give up close the app or take a call rather than pressing back, so
-a funnel counting only clean exits undercounts abandonment on exactly the hard
-levels it exists to find. `GameScreen` observes `AppLifecycleState` and flushes
-while the process is still alive. Verified on device:
+**RELEASE BUILDS ONLY.** Analytics and Crashlytics report from release builds
+and nothing else (`services/diagnostics/crash_reporting.dart`). Twice over on
+Android: the manifest's `firebase_analytics_collection_enabled` and
+`firebase_crashlytics_collection_enabled` come from the `firebaseTelemetry`
+placeholder in `build.gradle.kts` (false by default, true for `release`),
+because `first_open` and `session_start` are logged natively before any Dart
+runs. iOS relies on the Dart switch alone, so an iOS debug build can still leak
+its very first `first_open`. Why: on 2026-11-09 one tester accounted for 225
+`undo_used` events, a tenth of everything recorded, and the console was mostly
+us. A debug build still mirrors every event to logcat through `debugPrint`.
 
-    level_start   {level_id: 1, min_moves: 5, is_retry: 0}
-    level_abandon {level_id: 1, moves: 1, duration_seconds: 13,
-                   reason: backgrounded, progress: 0.2}
+**Crashlytics** catches `FlutterError.onError` (frame lost) and
+`PlatformDispatcher.instance.onError` (everything else), both reported fatal,
+and the release app carries on as before. The Gradle plugin uploads R8's
+mapping. **iOS still needs the dSYM upload run script** in Xcode (FlutterFire's
+`upload-crashlytics-symbols` build phase), which has to be added on the Mac;
+until then iOS native frames are unsymbolicated (Dart frames are fine).
+
+**`level_abandon` on backgrounding is PARKED, not sent**
+(`services/analytics/pending_abandon.dart`). Most trips to the background end
+with the player coming back and finishing, and sending at once made those runs
+count as an abandon AND a completion: 264 abandons against 297 completions in
+the first month. Now backgrounding saves the abandon to SharedPreferences;
+`reportResumed` throws it away; opening another board sends it; and if the
+process dies first, the next launch sends it from disk
+(`sendAbandonLeftByLastRun`, from the shell). Any other ending (exit, restart,
+win) supersedes a parked one.
 
 Opening a level and backgrounding with zero moves is NOT an abandonment — that
 is a session event, and counting it would smear noise across every funnel.
+
+**`mode` on every funnel event** (`PlayMode`: campaign, daily, event, zen). The
+daily, the weekly event and Zen share the game controller and all report
+`level_set_version` 0 with their own board ids. Filter on mode = campaign for
+the per-level funnel. `is_retry` is tracked per mode for the same reason.
+
+**What else is logged** (added 2026-11-09):
+- `screen_view` with real names, from `AnalyticsScreenObserver` on the
+  MaterialApp. Firebase's own tracking only sees Android activities, so every
+  screen was `MainActivity`. Name a route in `RouteSettings` when you push it
+  (`/level/12` reports as `level`); an unnamed page is not reported.
+- User properties `levels_solved` (bands of ten), `ads_removed` (yes/no),
+  `account` (signed_in/anonymous), set from the shell.
+- `iap_purchased` carries `value` and `currency` from the store, for both
+  products (the Skin pack was not logged at all before). Deliberately NOT GA's
+  `purchase` event: Firebase logs `in_app_purchase` from the store itself and
+  a second revenue event would count every sale twice.
+- `login` / `sign_up` (GA's names, with `method`), `review_prompt`,
+  `daily_complete` (with the streak), `streak_freeze_earned`.
+- Ad revenue comes from the AdMob ↔ Firebase link (both apps linked
+  2026-11-09), which logs `ad_impression` with value. Do NOT also log
+  `ad_impression` from the paid-event callback: that double counts.
+
+**Registered in GA** (property 551875472, Admin → Custom definitions), because
+GA shows a parameter only once it is registered: event dimensions `level_id`,
+`reason`, `placement`, `mode`, `stars`; user dimensions `levels_solved`,
+`ads_removed`, `account`; metrics `progress` (standard) and `duration_seconds`
+(seconds). A new parameter worth reporting on needs registering there too.
+Registration is not retroactive.
 
 The debug mirror uses `debugPrint`, not `dart:developer.log`: the latter posts
 to the VM service and never reaches `adb logcat`, so a funnel "verified"
@@ -928,6 +975,44 @@ splits them per device.
      - Support URL: `https://pourfect.pranta.dev/support`
   3. Ship that build. Once it's live, press **Check for updates** in AdMob.
   Play needs nothing; its listing already has a website.
+- **Also for the next macOS/iOS session: the 2026-11-09 analytics and
+  Crashlytics work, done from Windows and never built for iOS.** In order:
+  1. `git pull`, `flutter pub get`, then `cd ios && pod install` (or let
+     Xcode resolve the Swift packages). `firebase_crashlytics` is a new native
+     dependency, so the first iOS build after it must actually be run, not
+     assumed.
+  2. **dSYM upload.** Add FlutterFire's Crashlytics upload-symbols run script
+     as a Runner build phase (`flutterfire configure` offers to add it).
+     Without it, native iOS crash frames arrive unsymbolicated. Dart frames
+     are fine either way.
+  3. **Release-only on iOS.** Android turns collection off for debug in the
+     manifest; iOS only has the Dart switch, so a debug build's very first
+     `first_open` can still leak. To close that, add
+     `FIREBASE_ANALYTICS_COLLECTION_ENABLED` and
+     `FirebaseCrashlyticsCollectionEnabled` to Info.plist as
+     `$(FIREBASE_TELEMETRY)`, and define `FIREBASE_TELEMETRY` per build
+     configuration (`NO` for Debug and Profile, `YES` for Release) in the
+     Runner target's build settings. Optional, but it is the iOS twin of the
+     Android placeholder.
+  4. **Check it works, on a RELEASE build** (debug reports nothing, by design):
+     - Force a test crash (temporarily throw from a debug-only button, or
+       `FirebaseCrashlytics.instance.crash()`), relaunch, and check that it
+       appears in Firebase → Crashlytics for the iOS app. Remove the trigger
+       afterwards.
+     - Run with `-FIRDebugEnabled` in the scheme's launch arguments and watch
+       Firebase → DebugView. You should see `screen_view` with real names
+       (home, level, daily...), `level_start` carrying `mode`, and the user
+       properties `levels_solved`, `ads_removed` and `account`.
+     - Background a level mid-board, come back, and win: DebugView must show
+       `level_complete` and NO `level_abandon`.
+  5. **Purchase revenue on iOS.** Revenue cards rely on Firebase's automatic
+     `in_app_purchase`. On iOS with StoreKit 2 that may not log by itself.
+     After a sandbox purchase, check whether `in_app_purchase` appears in
+     DebugView. If it doesn't, look up the current FlutterFire/Firebase iOS
+     advice for StoreKit 2 transactions before adding anything, and do NOT log
+     GA's `purchase` on top of a working `in_app_purchase` (double count).
+  6. AdMob ↔ Firebase is already linked for the iOS app too (2026-11-09);
+     nothing to do there.
 
 ## Ads — live ids, gated on build mode
 

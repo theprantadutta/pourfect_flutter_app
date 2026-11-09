@@ -4,6 +4,9 @@ plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
     id("com.google.gms.google-services")
+    // Uploads R8's mapping file with each release build, so a native crash in
+    // Crashlytics names real classes instead of a.b.c.
+    id("com.google.firebase.crashlytics")
     // END: FlutterFire Configuration
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
@@ -62,6 +65,13 @@ android {
         // its own — every device this ships to loads multiple dex files
         // natively — but the build fails without it.
         multiDexEnabled = true
+
+        // Analytics and Crashlytics report from RELEASE builds only. Set here,
+        // in the manifest, because the SDK logs first_open and session_start
+        // natively before any Dart runs; the Dart switch in
+        // crash_reporting.dart would be too late for those. Release overrides
+        // these below.
+        manifestPlaceholders["firebaseTelemetry"] = "false"
     }
 
     signingConfigs {
@@ -90,6 +100,8 @@ android {
 
     buildTypes {
         release {
+            manifestPlaceholders["firebaseTelemetry"] = "true"
+
             // Debug keys are a LOCAL CONVENIENCE so `flutter run --release`
             // works without a keystore. A build signed with them cannot be
             // published — Play rejects the debug certificate — so the fallback

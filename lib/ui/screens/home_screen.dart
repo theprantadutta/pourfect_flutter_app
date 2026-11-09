@@ -598,6 +598,7 @@ class _Event extends ConsumerWidget {
     return Pressable(
       onPressed: () => Navigator.of(context).push(
         PourfectPageRoute<void>(
+          settings: const RouteSettings(name: '/event'),
           builder: (route) =>
               EventScreen(onClose: () => Navigator.of(route).maybePop()),
         ),
@@ -647,6 +648,7 @@ class _Zen extends ConsumerWidget {
       onPressed: open
           ? () => Navigator.of(context).push(
               PourfectPageRoute<void>(
+                settings: const RouteSettings(name: '/zen'),
                 builder: (route) =>
                     ZenScreen(onExit: () => Navigator.of(route).maybePop()),
               ),
