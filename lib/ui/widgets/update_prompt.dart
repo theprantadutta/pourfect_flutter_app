@@ -6,7 +6,7 @@
 /// exists; the old flexible flow ended on a Restart bar most players missed.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../theme/toy.dart';
 import 'ball.dart';

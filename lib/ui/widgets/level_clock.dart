@@ -18,7 +18,7 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../engine/level.dart' show timeMultiplierFor;
 import '../format.dart';

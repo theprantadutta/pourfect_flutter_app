@@ -1735,6 +1735,30 @@ Verify a build actually shipped them rather than trusting Gradle:
 
     aapt2 dump xmltree build/app/outputs/flutter-apk/app-release.apk --file res/<id>.xml
 
+## Flutter 3.50: material_ui and the dropped .env
+
+Moved to Flutter 3.50 / Dart 3.14 on 2026-11-13. Two things changed:
+
+- **`package:flutter/material.dart` is deprecated.** Every import now uses
+  `package:material_ui/material_ui.dart` (from `dart fix --apply
+  --code=migrate_design_widgets`). Write new files that way too.
+  `MaterialApp` passes material_ui's `GlobalMaterialLocalizations.delegates`
+  (material_ui's localizations type is not the framework's, and without them
+  dialogs throw "No MaterialLocalizations found"), and its builder wraps
+  everything in `MaterialUiCompatibilityBridge` for plugins still on the old
+  import. There is no flutter_localizations here, and none is needed.
+- **Release builds silently dropped `.env`.** Android's default asset
+  ignore list contains `.*`, and 3.50 stopped overriding it, so `AppEnv`
+  found no backend and a release build ran offline-only, with no crash and
+  nothing in the logs. `build.gradle.kts` sets `androidResources.ignoreAssetsPattern`
+  to the default list minus `.*`. To check: `assets/flutter_assets/.env`
+  must be inside the release APK, and the startup report's `api` line must
+  read the production URL.
+
+Verified on the A24: debug and release both start, play and show dialogs.
+The KGP ("plugins that apply the Kotlin Gradle Plugin") warning comes from
+firebase_* and other plugins and is only a warning for now.
+
 ## Secrets
 
 Same rules as the Snake Classic Flutter app. Gitignored, as **globs** rather

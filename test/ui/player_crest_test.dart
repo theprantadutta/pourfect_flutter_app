@@ -4,7 +4,7 @@
 // same as the person sitting next to them. Both are cheap to assert and neither
 // is obvious from reading the hash.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pourfect_flutter_app/ui/theme/ball_palette.dart';
 import 'package:pourfect_flutter_app/ui/widgets/player_crest.dart';

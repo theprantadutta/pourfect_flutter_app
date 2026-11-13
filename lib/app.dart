@@ -4,7 +4,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -69,9 +69,24 @@ class PourfectApp extends ConsumerWidget {
       // One theme. Toybox replaced the original dark direction outright; there
       // is no dark variant to fall back to or keep in sync.
       theme: _buildTheme(tokens),
+      // material_ui's own localizations (Material, Cupertino and Widgets).
+      // Its MaterialLocalizations is a different type from the old
+      // framework's, so without these every dialog, text-selection menu and
+      // tooltip fails with "No MaterialLocalizations found". English only,
+      // like the rest of the app.
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       // Tablets draw the phone layout scaled up; a phone passes straight
       // through. See ui_scale.dart.
-      builder: (context, child) => UiScale(child: child!),
+      //
+      // The bridge serves packages still built on the old
+      // package:flutter/material.dart, so their widgets find the theme and
+      // localizations they look for.
+      builder: (context, child) => UiScale(
+        // ignore: deprecated_member_use
+        child: MaterialUiCompatibilityBridge(
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
       home: const _Shell(),
     );
   }

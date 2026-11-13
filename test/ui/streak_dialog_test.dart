@@ -1,6 +1,6 @@
 // The streak dialog, drawn at phone and tablet widths with a known streak.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pourfect_flutter_app/services/ads/ad_service.dart';

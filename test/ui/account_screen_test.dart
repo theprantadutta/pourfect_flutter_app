@@ -10,7 +10,7 @@
 // what it does not survive is a new phone, and that is the only promise this
 // screen is allowed to make.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pourfect_flutter_app/services/api/identity.dart';

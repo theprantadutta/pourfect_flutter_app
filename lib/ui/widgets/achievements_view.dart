@@ -1,7 +1,7 @@
 /// The Badges tab on Your Stats: every achievement, earned or on its way.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/achievements.dart';

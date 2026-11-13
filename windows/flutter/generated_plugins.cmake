@@ -3,8 +3,8 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  firebase_auth
   firebase_core
+  firebase_auth
   refresh_rate
   url_launcher_windows
 )

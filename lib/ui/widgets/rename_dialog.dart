@@ -8,7 +8,7 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../services/api/leaderboard_api.dart';
 import '../theme/toy.dart';

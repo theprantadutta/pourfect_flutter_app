@@ -12,7 +12,7 @@
 /// person in it, not on a public list somebody else is scrolling.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/api/api_result.dart';

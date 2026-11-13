@@ -13,7 +13,7 @@
 /// rows can be scanned by color from the left edge.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../services/audio/audio_service.dart';
 

@@ -4,7 +4,7 @@
 // it to the constants those rules come from. A help page that drifts from the
 // game is worse than no help page.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pourfect_flutter_app/engine/level.dart';

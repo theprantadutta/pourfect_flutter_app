@@ -4,7 +4,7 @@
 // supports, where there must be no way around it at all: no button, no tap
 // outside, no back.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pourfect_flutter_app/ui/widgets/update_prompt.dart';

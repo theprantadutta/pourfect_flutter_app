@@ -33,6 +33,16 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    // KEEP DOT-FILES IN THE APK. Android's default asset ignore list includes
+    // ".*", and since Flutter 3.50 the build no longer overrides it, so a
+    // release build silently dropped assets/flutter_assets/.env. AppEnv then
+    // found no backend and the game ran offline-only. This is the default
+    // list minus ".*".
+    androidResources {
+        ignoreAssetsPattern =
+            "!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
+    }
+
     compileOptions {
         // REQUIRED BY flutter_local_notifications, not a general nicety.
         //

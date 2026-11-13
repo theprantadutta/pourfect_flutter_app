@@ -12,7 +12,7 @@
 /// read the same fields they always did.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'ball_palette.dart';
 import 'toy.dart';

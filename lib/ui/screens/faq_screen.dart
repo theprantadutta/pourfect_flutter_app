@@ -14,7 +14,7 @@
 /// page is worse than none.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../state/monetization_controller.dart' show kFreeHints;
 import '../theme/toy.dart';

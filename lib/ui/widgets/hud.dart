@@ -11,7 +11,7 @@
 /// optional here; an icon-only row is a row of guesses.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../engine/level.dart' show kTwoStarMoveMultiplier;
 import '../../services/audio/audio_service.dart';
