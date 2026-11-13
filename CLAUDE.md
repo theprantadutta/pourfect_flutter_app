@@ -349,9 +349,8 @@ us. A debug build still mirrors every event to logcat through `debugPrint`.
 **Crashlytics** catches `FlutterError.onError` (frame lost) and
 `PlatformDispatcher.instance.onError` (everything else), both reported fatal,
 and the release app carries on as before. The Gradle plugin uploads R8's
-mapping. **iOS still needs the dSYM upload run script** in Xcode (FlutterFire's
-`upload-crashlytics-symbols` build phase), which has to be added on the Mac;
-until then iOS native frames are unsymbolicated (Dart frames are fine).
+mapping. On iOS the Runner target's "Upload Crashlytics Symbols" build phase
+runs firebase-ios-sdk's `Crashlytics/run` from the SPM checkout, Release only.
 
 **`level_abandon` on backgrounding is PARKED, not sent**
 (`services/analytics/pending_abandon.dart`). Most trips to the background end
@@ -953,47 +952,35 @@ splits them per device.
   and its display plumbing is shared with rewarded video, which IS verified on
   hardware — but nobody has yet played to level 10 in a release build and
   watched one appear. Do that before the first public track.
-- **For the next macOS/iOS session: AdMob can't authorize the iOS app, because
-  the App Store listing has no developer website.** Found 2026-11-02 after
-  2.5.0 went live. AdMob's app-ads.txt tab says "We didn't find a developer
-  website in your app listing on App Store". The app-ads.txt file itself is
-  fine: `https://pourfect.pranta.dev/app-ads.txt` and
-  `https://pranta.dev/app-ads.txt` both serve the `pub-9242904787767394` line.
-  What's missing is the **Marketing URL** on the version page (Distribution →
-  iOS App → version → Product Page Information, next to Support URL). It is
-  NOT on the App Information page, and Apple locks it once a version is live.
-  To fix it:
-  1. Make `https://pourfect.pranta.dev/marketing` a real page first. Built
-     2026-11-08 in the API (`wwwroot/marketing.html`, also served at `/`,
-     with `/support` beside it; see the backend's CLAUDE.md, "Public
-     pages"). Check it answers 200 once that API is deployed.
-  2. **When deploying the next IPA for iOS**, create its version in App Store
-     Connect (the + beside "iOS App") and, on that version page under
-     Product Page Information, set both URLs to the pages the API now
-     serves:
-     - Marketing URL: `https://pourfect.pranta.dev/marketing`
-     - Support URL: `https://pourfect.pranta.dev/support`
-  3. Ship that build. Once it's live, press **Check for updates** in AdMob.
+- **AdMob's iOS developer website: waiting on 2.7.0.** AdMob said "We didn't
+  find a developer website in your app listing on App Store" (2026-11-02).
+  The fix is the **Marketing URL** on the version page (Distribution → iOS
+  App → version → Product Page Information; NOT on App Information, and
+  locked once a version is live). Set on 2.7.0 on 2026-11-13, with the
+  Support URL moved off the privacy page:
+  - Marketing URL: `https://pourfect.pranta.dev/marketing`
+  - Support URL: `https://pourfect.pranta.dev/support`
+  Both pages come from the API (`wwwroot/marketing.html`, `support.html`).
+  Once 2.7.0 is live, press **Check for updates** in AdMob's app-ads.txt tab.
   Play needs nothing; its listing already has a website.
-- **Also for the next macOS/iOS session: the 2026-11-09 analytics and
-  Crashlytics work, done from Windows and never built for iOS.** In order:
-  1. `git pull`, `flutter pub get`, then `cd ios && pod install` (or let
-     Xcode resolve the Swift packages). `firebase_crashlytics` is a new native
-     dependency, so the first iOS build after it must actually be run, not
-     assumed.
-  2. **dSYM upload.** Add FlutterFire's Crashlytics upload-symbols run script
-     as a Runner build phase (`flutterfire configure` offers to add it).
-     Without it, native iOS crash frames arrive unsymbolicated. Dart frames
-     are fine either way.
-  3. **Release-only on iOS.** Android turns collection off for debug in the
-     manifest; iOS only has the Dart switch, so a debug build's very first
-     `first_open` can still leak. To close that, add
-     `FIREBASE_ANALYTICS_COLLECTION_ENABLED` and
-     `FirebaseCrashlyticsCollectionEnabled` to Info.plist as
-     `$(FIREBASE_TELEMETRY)`, and define `FIREBASE_TELEMETRY` per build
-     configuration (`NO` for Debug and Profile, `YES` for Release) in the
-     Runner target's build settings. Optional, but it is the iOS twin of the
-     Android placeholder.
+- **iOS analytics and Crashlytics (the 2026-11-09 work), built for iOS on
+  2026-11-13.** Done so far:
+  1. Builds and runs on the iPhone simulator with Swift Package Manager (no
+     Podfile). SPM is stricter than Gradle about Firebase versions: every
+     firebase_* plugin pins one exact firebase-ios-sdk, and mismatched pins
+     fail resolution ("firebase_crashlytics-5.4.1 depends on firebase-ios-sdk
+     12.19.3 and firebase_messaging-16.7.0 depends on 12.19.0"). **Upgrade the
+     firebase_* plugins together**, never one alone, and build iOS after.
+  2. dSYMs: the Runner "Upload Crashlytics Symbols" phase (Release only).
+  3. Release-only Crashlytics: `FirebaseCrashlyticsCollectionEnabled` is
+     `$(FIREBASE_TELEMETRY)` in Info.plist, and the Runner target sets
+     `FIREBASE_TELEMETRY` to NO for Debug and Profile and YES for Release.
+     Crashlytics reads a string flag; **FirebaseCore does not**: it only
+     honours `FIREBASE_ANALYTICS_COLLECTION_ENABLED` as a real boolean, so a
+     `$(...)` string there is silently ignored and the key is left out.
+     Analytics stays on the Dart switch alone, so a debug build's very first
+     `first_open` can still reach the console. Accepted.
+  Still to do:
   4. **Check it works, on a RELEASE build** (debug reports nothing, by design):
      - Force a test crash (temporarily throw from a debug-only button, or
        `FirebaseCrashlytics.instance.crash()`), relaunch, and check that it
