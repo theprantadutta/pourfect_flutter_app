@@ -1,0 +1,13 @@
+{"segments": [
+  {"src": "pf_rec1.mp4", "a": 0.4,  "b": 3.4,   "chip": "BALL SORT",   "color": "tomato", "title": "Pour. Sort. Relax.", "sub": "A cozy color-sorting puzzle with a toybox look."},
+  {"src": "pf_rec1.mp4", "a": 4.2,  "b": 12.2,  "chip": "HOW TO PLAY", "color": "yellow", "title": "Tap to pour", "sub": "Lift the top balls and drop them onto a match or an empty tube."},
+  {"src": "pf_rec1.mp4", "a": 12.2, "b": 21.0,  "chip": "SORTED",      "color": "mint",   "title": "One color per tube", "sub": "Plan a few pours ahead and every tube clicks into place."},
+  {"src": "pf_rec1.mp4", "a": 21.0, "b": 26.0,  "chip": "THREE STARS", "color": "yellow", "title": "Perfect Pour!", "sub": "Finish within par for three stars and big points."},
+  {"src": "pf_rec2.mp4", "a": 66.0, "b": 74.0,  "chip": "RACE THE CLOCK", "color": "pink", "title": "Points for pace", "sub": "Every board has a clock. Fast and tidy scores the most."},
+  {"src": "pf_rec2.mp4", "a": 112.0, "b": 119.0, "chip": "150 LEVELS",  "color": "blue",   "title": "Keep climbing", "sub": "Four worlds, each a little trickier than the last."},
+  {"src": "pf_rec1.mp4", "a": 93.5, "b": 103.5, "chip": "JOURNEY",     "color": "mint",   "title": "Follow the path", "sub": "Every level and every star, on one map."},
+  {"src": "pf_rec3.mp4", "a": 4.5,  "b": 8.0,   "chip": "ZEN MODE",    "color": "lilac",  "title": "No clock. Just pour.", "sub": "Endless boards in three sizes, whenever you want calm."},
+  {"src": "pf_rec3.mp4", "a": 19.5, "b": 24.5,  "chip": "ZEN MODE",    "color": "lilac",  "title": "Calm, Steady or Deep", "sub": "Pick 4, 6 or 8 colors. The boards never run out."},
+  {"src": "pf_rec3.mp4", "a": 44.5, "b": 51.5,  "chip": "STATS",       "color": "blue",   "title": "Watch yourself improve", "sub": "Stars, points, pace and streaks, all in one place."},
+  {"src": "pf_rec3.mp4", "a": 57.6, "b": 59.8, "hold": 2.2,  "chip": "FOR EVERYONE", "color": "yellow", "title": "A shape on every ball", "sub": "Bold symbols for color vision deficiency."}
+]}
