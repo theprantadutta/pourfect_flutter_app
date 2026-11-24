@@ -1,5 +1,1088 @@
 {
   "@@locale": "en",
+  "accountGoogleFailed": "Google sign-in did not work on this phone. Try again, or use email below.",
+  "@accountGoogleFailed": {
+    "description": "Account screen: Google refused the sign-in (shown under the form and as a toast). 'Google' is a brand name."
+  },
+  "accountAppleFailed": "Apple sign-in did not work on this phone. Check you are signed in to your Apple Account in Settings, or use email below.",
+  "@accountAppleFailed": {
+    "description": "Account screen: Apple refused the sign-in. 'Apple Account' and 'Settings' name the iOS system app and account; use Apple's own translation."
+  },
+  "accountExistsNoLocal": "You already have an account with that email. Sign in to it and this phone will load the stars saved to it.",
+  "@accountExistsNoLocal": {
+    "description": "Account screen: the credential belongs to another account and this phone has no solved levels, so nothing is lost by switching. Must reassure, not warn."
+  },
+  "accountExistsWithLocal": "{solved, plural, =1{You already have an account with that email. This phone has {solved} solved level that are not on it, and the two cannot be merged — signing in replaces them with whatever that account holds.} other{You already have an account with that email. This phone has {solved} solved levels that are not on it, and the two cannot be merged — signing in replaces them with whatever that account holds.}}",
+  "@accountExistsWithLocal": {
+    "description": "Account screen: the credential belongs to another account and this phone has solved levels that would be replaced by switching.",
+    "placeholders": {
+      "solved": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "accountEmailInUse": "There is already an account with that email. Try signing in instead.",
+  "@accountEmailInUse": {
+    "description": "Account screen: creating an account with an email that is taken."
+  },
+  "accountEmailMalformed": "That does not look like an email address.",
+  "@accountEmailMalformed": {
+    "description": "Account screen: the email field's text is not an email address (form validation and server answer)."
+  },
+  "accountPasswordWeak": "That password is too easy to guess. Try a longer one.",
+  "@accountPasswordWeak": {
+    "description": "Account screen: the password was rejected as weak."
+  },
+  "accountWrongPassword": "That email and password do not match.",
+  "@accountWrongPassword": {
+    "description": "Account screen: wrong password OR no such account. Deliberately does not say which, so nobody can probe for registered emails."
+  },
+  "accountTooManyAttempts": "Too many tries. Wait a few minutes and try again.",
+  "@accountTooManyAttempts": {
+    "description": "Account screen: sign-in was rate limited."
+  },
+  "accountNeedsRecentLogin": "Please sign in again first.",
+  "@accountNeedsRecentLogin": {
+    "description": "Account screen: the action needs a fresh sign-in."
+  },
+  "accountMethodNotEnabled": "Email sign-in is not available right now. Try Continue with Google.",
+  "@accountMethodNotEnabled": {
+    "description": "Account screen: email sign-in is switched off. 'Continue with Google' is the button label (accountContinueGoogle); keep it matching."
+  },
+  "accountSessionUnavailable": "Signed in, but your progress has not been saved to the server yet. It will sync when the connection is back.",
+  "@accountSessionUnavailable": {
+    "description": "Account screen: signed in, but the game's server did not answer yet."
+  },
+  "accountUnavailable": "Could not reach the server. Your progress is still safe on this device.",
+  "@accountUnavailable": {
+    "description": "Account screen: network failure during sign-in."
+  },
+  "accountUseThatAccount": "Use that account",
+  "@accountUseThatAccount": {
+    "description": "Confirm button in the 'You already have an account' dialog. Short."
+  },
+  "accountExistingTitle": "You already have an account",
+  "@accountExistingTitle": {
+    "description": "Dialog title when the sign-in belongs to an existing account."
+  },
+  "accountExistingBodyEmpty": "This phone will load the stars already saved to it.",
+  "@accountExistingBodyEmpty": {
+    "description": "Dialog body when this phone has no progress to lose by switching to the existing account."
+  },
+  "accountExistingBodyLocal": "{cleared, plural, =1{This phone has {cleared} solved level that are not on that account. They cannot be combined, so they will be replaced by whatever the account already holds.} other{This phone has {cleared} solved levels that are not on that account. They cannot be combined, so they will be replaced by whatever the account already holds.}}",
+  "@accountExistingBodyLocal": {
+    "description": "Dialog body when switching to the existing account would replace this phone's solved levels.",
+    "placeholders": {
+      "cleared": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "accountSignIn": "Sign in",
+  "@accountSignIn": {
+    "description": "Button: sign in with email and password (form button and dialog confirm). Short."
+  },
+  "accountSignInCancelled": "Sign-in cancelled. Nothing changed.",
+  "@accountSignInCancelled": {
+    "description": "Toast after the player backed out of the Google/Apple sheet."
+  },
+  "accountSignedInToast": "Signed in. Your stars now follow you to a new phone.",
+  "@accountSignedInToast": {
+    "description": "Toast after a successful sign-in."
+  },
+  "accountResetNeedsEmail": "Enter your email first, then tap Forgot your password.",
+  "@accountResetNeedsEmail": {
+    "description": "Account screen: tapped the password-reset link with an empty email field. 'Forgot your password' must match accountForgotPassword."
+  },
+  "accountResetSent": "If that email has an account, a reset link is on its way.",
+  "@accountResetSent": {
+    "description": "Account screen: after asking for a password reset. Must not reveal whether the email is registered."
+  },
+  "accountYourAccount": "Your account",
+  "@accountYourAccount": {
+    "description": "Header title of the account screen for a signed-in player."
+  },
+  "accountRankValue": "#{rank}",
+  "@accountRankValue": {
+    "description": "The player's leaderboard rank on the Player Card, e.g. '#12'. Very short.",
+    "placeholders": {
+      "rank": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "accountStreakValue": "{days}d",
+  "@accountStreakValue": {
+    "description": "Current daily streak in days on the Player Card, e.g. '5d'. Very short (a tiny stat cell).",
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "accountCardTravels": "This card goes with your account, so a new phone starts right where you left off.",
+  "@accountCardTravels": {
+    "description": "Line under the Player Card. Claims only that the account moves to a new phone; never say 'safe' or 'backed up'."
+  },
+  "accountYourNameHeader": "Your name",
+  "@accountYourNameHeader": {
+    "description": "Section header above the rename and leaderboard-visibility rows."
+  },
+  "accountChangeName": "Change your name",
+  "@accountChangeName": {
+    "description": "Row title: opens the rename box for the leaderboard name."
+  },
+  "accountChangeNameDetail": "How you appear on the boards",
+  "@accountChangeNameDetail": {
+    "description": "One-line detail under 'Change your name'. Ellipsized, keep it short."
+  },
+  "accountShowOnBoards": "Show me on leaderboards",
+  "@accountShowOnBoards": {
+    "description": "Toggle row title: whether the player is listed on public leaderboards."
+  },
+  "accountShowOnBoardsDetail": "Off hides your name and rank. Stars still count.",
+  "@accountShowOnBoardsDetail": {
+    "description": "One-line detail under the leaderboard toggle. Ellipsized, keep it short."
+  },
+  "accountYourPlayHeader": "Your play",
+  "@accountYourPlayHeader": {
+    "description": "Section header above the Statistics and sync rows."
+  },
+  "accountStatistics": "Statistics",
+  "@accountStatistics": {
+    "description": "Row title that opens the statistics screen."
+  },
+  "accountStatisticsDetail": "Your times, activity and every level",
+  "@accountStatisticsDetail": {
+    "description": "One-line detail under 'Statistics'. Ellipsized, keep it short."
+  },
+  "accountSessionHeader": "Session",
+  "@accountSessionHeader": {
+    "description": "Section header above the sign-out card."
+  },
+  "accountDeleteHint": "To delete your account, go to Settings → Danger zone.",
+  "@accountDeleteHint": {
+    "description": "Footnote at the bottom of the account screen. 'Settings' and 'Danger zone' name the in-app Settings screen and its section; match their translations."
+  },
+  "accountVisibilityFailed": "Could not reach the server, so nothing changed.",
+  "@accountVisibilityFailed": {
+    "description": "Message when the leaderboard visibility switch could not be saved."
+  },
+  "accountSignOutTitle": "Sign out?",
+  "@accountSignOutTitle": {
+    "description": "Title of the sign-out confirmation dialog."
+  },
+  "accountSignOutBody": "Your progress stays on this phone. You can sign back in any time to pick it up somewhere else.",
+  "@accountSignOutBody": {
+    "description": "Body of the sign-out confirmation dialog."
+  },
+  "accountStaySignedIn": "Stay signed in",
+  "@accountStaySignedIn": {
+    "description": "Cancel button of the sign-out dialog."
+  },
+  "accountSignOut": "Sign out",
+  "@accountSignOut": {
+    "description": "Sign-out button, dialog confirm and the sign-out card's title and accessibility label."
+  },
+  "accountSignOutDetail": "Your progress stays on this phone",
+  "@accountSignOutDetail": {
+    "description": "One-line detail on the sign-out card. Ellipsized, keep it short."
+  },
+  "accountSaveTitle": "Save your progress",
+  "@accountSaveTitle": {
+    "description": "Header title of the account screen for a player who is not signed in."
+  },
+  "accountSaveIntro": "Your stars, streak and leaderboard name move with your account, so a new phone starts where you left off.",
+  "@accountSaveIntro": {
+    "description": "Intro at the top of the sign-in form. Claims only that progress moves to a new phone; never say 'safe' or 'backed up'."
+  },
+  "accountContinueApple": "Continue with Apple",
+  "@accountContinueApple": {
+    "description": "Sign in with Apple button (iOS). Use Apple's official translation of this label."
+  },
+  "accountContinueGoogle": "Continue with Google",
+  "@accountContinueGoogle": {
+    "description": "Sign in with Google button. Use Google's official translation of this label."
+  },
+  "accountOr": "OR",
+  "@accountOr": {
+    "description": "Divider between the social sign-in buttons and the email form. Capitals."
+  },
+  "accountEmailLabel": "Email",
+  "@accountEmailLabel": {
+    "description": "Email field label."
+  },
+  "accountEmailEmpty": "Enter your email.",
+  "@accountEmailEmpty": {
+    "description": "Validation: the email field is empty."
+  },
+  "accountPasswordLabel": "Password",
+  "@accountPasswordLabel": {
+    "description": "Password field label."
+  },
+  "accountPasswordHelper": "At least 8 characters",
+  "@accountPasswordHelper": {
+    "description": "Helper text under the password field when creating an account, shown before typing."
+  },
+  "accountPasswordEmpty": "Enter a password.",
+  "@accountPasswordEmpty": {
+    "description": "Validation: the password field is empty."
+  },
+  "accountPasswordShort": "At least 8 characters.",
+  "@accountPasswordShort": {
+    "description": "Validation: the new password is shorter than 8 characters."
+  },
+  "accountShowPassword": "Show password",
+  "@accountShowPassword": {
+    "description": "Accessibility label of the eye button that reveals the password."
+  },
+  "accountHidePassword": "Hide password",
+  "@accountHidePassword": {
+    "description": "Accessibility label of the eye button that hides the password again."
+  },
+  "accountCreate": "Create account",
+  "@accountCreate": {
+    "description": "Main button of the form when creating a new account. Short."
+  },
+  "accountSwitchToSignIn": "Already have an account? Sign in",
+  "@accountSwitchToSignIn": {
+    "description": "Text link under the form that switches it from 'create account' to 'sign in'."
+  },
+  "accountSwitchToSignInSemantic": "Sign in instead",
+  "@accountSwitchToSignInSemantic": {
+    "description": "Accessibility label of the 'Already have an account? Sign in' link."
+  },
+  "accountSwitchToCreate": "Need an account? Create one",
+  "@accountSwitchToCreate": {
+    "description": "Text link under the form that switches it from 'sign in' to 'create account'."
+  },
+  "accountSwitchToCreateSemantic": "Create an account instead",
+  "@accountSwitchToCreateSemantic": {
+    "description": "Accessibility label of the 'Need an account? Create one' link."
+  },
+  "accountForgotPassword": "Forgot your password?",
+  "@accountForgotPassword": {
+    "description": "Text link that sends a password-reset email."
+  },
+  "accountForgotPasswordSemantic": "Reset your password",
+  "@accountForgotPasswordSemantic": {
+    "description": "Accessibility label of the 'Forgot your password?' link."
+  },
+  "accountNaming": "Naming you…",
+  "@accountNaming": {
+    "description": "Shown on the Player Card in place of the leaderboard name while the server has not assigned one yet."
+  },
+  "accountSignedInLabel": "Signed in",
+  "@accountSignedInLabel": {
+    "description": "Player Card line where the email goes, for an account with no email (Google/Apple without one)."
+  },
+  "accountPouringSince": "POURING SINCE {month} {year}",
+  "@accountPouringSince": {
+    "description": "Player Card: the month the player's history starts, in capitals, e.g. 'POURING SINCE JAN 2026'. month is statsMonthShort upper-cased.",
+    "placeholders": {
+      "month": {
+        "type": "String",
+        "example": "JAN"
+      },
+      "year": {
+        "type": "int",
+        "example": "2026"
+      }
+    }
+  },
+  "accountPlayerCardTag": "PLAYER CARD",
+  "@accountPlayerCardTag": {
+    "description": "Small tilted tag on the corner of the Player Card. Capitals, very short."
+  },
+  "accountStatSolved": "SOLVED",
+  "@accountStatSolved": {
+    "description": "Player Card stat label under the number of levels solved. Capitals, about 8 characters max."
+  },
+  "accountStatStars": "STARS",
+  "@accountStatStars": {
+    "description": "Player Card stat label under the star total. Capitals, about 8 characters max."
+  },
+  "accountStatStreak": "STREAK",
+  "@accountStatStreak": {
+    "description": "Player Card stat label under the daily streak. Capitals, about 8 characters max."
+  },
+  "accountStatRank": "RANK",
+  "@accountStatRank": {
+    "description": "Player Card stat label under the leaderboard rank. Capitals, about 8 characters max."
+  },
+  "accountStarsValue": "{stars}★",
+  "@accountStarsValue": {
+    "description": "Player Card star total with a star symbol, e.g. '38★'. Keep the symbol.",
+    "placeholders": {
+      "stars": {
+        "type": "int",
+        "example": "38"
+      }
+    }
+  },
+  "accountSyncing": "Syncing…",
+  "@accountSyncing": {
+    "description": "Sync row title while progress is uploading."
+  },
+  "accountSyncingDetail": "Saving progress to your account",
+  "@accountSyncingDetail": {
+    "description": "Sync row detail while uploading. One line."
+  },
+  "accountWaitingToSync": "Waiting to sync",
+  "@accountWaitingToSync": {
+    "description": "Sync row title when progress is not uploaded yet."
+  },
+  "accountWaitingOffline": "Saves when you are back online",
+  "@accountWaitingOffline": {
+    "description": "Sync row detail when the server is unreachable. One line."
+  },
+  "accountWaitingPending": "Your latest levels go up next",
+  "@accountWaitingPending": {
+    "description": "Sync row detail when some levels are queued for upload. One line."
+  },
+  "accountSyncedDetail": "Progress saved to your account",
+  "@accountSyncedDetail": {
+    "description": "Sync row detail once everything is uploaded. One line."
+  },
+  "accountSynced": "Synced",
+  "@accountSynced": {
+    "description": "Sync row title once uploaded, when the time is unknown."
+  },
+  "accountSyncedJustNow": "Synced just now",
+  "@accountSyncedJustNow": {
+    "description": "Sync row title, uploaded less than a minute ago."
+  },
+  "accountSyncedMinutesAgo": "Synced {minutes}m ago",
+  "@accountSyncedMinutesAgo": {
+    "description": "Sync row title, uploaded some minutes ago. Abbreviated unit, short.",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "accountSyncedHoursAgo": "Synced {hours}h ago",
+  "@accountSyncedHoursAgo": {
+    "description": "Sync row title, uploaded some hours ago. Abbreviated unit, short.",
+    "placeholders": {
+      "hours": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "accountSyncedDaysAgo": "Synced {days}d ago",
+  "@accountSyncedDaysAgo": {
+    "description": "Sync row title, uploaded some days ago. Abbreviated unit, short.",
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "accountCrestSignedIn": "Your account",
+  "@accountCrestSignedIn": {
+    "description": "Accessibility label of the player's crest button (home screen) when signed in."
+  },
+  "accountCrestGuest": "Playing as a guest",
+  "@accountCrestGuest": {
+    "description": "Accessibility label of the player's crest button (home screen) when not signed in."
+  },
+  "accountRenameRefused": "That name was not accepted.",
+  "@accountRenameRefused": {
+    "description": "Message when the server refused a new leaderboard name without giving its own reason."
+  },
+  "accountRenameOffline": "Could not reach the server. Try again in a moment.",
+  "@accountRenameOffline": {
+    "description": "Message when renaming failed because the server could not be reached."
+  },
+  "ranksTitle": "Rankings",
+  "@ranksTitle": {
+    "description": "Header title of the leaderboard screen."
+  },
+  "ranksTabToday": "Today",
+  "@ranksTabToday": {
+    "description": "Leaderboard tab: today's daily challenge board. Short tab label."
+  },
+  "ranksTabCampaign": "Campaign",
+  "@ranksTabCampaign": {
+    "description": "Leaderboard tab: the campaign star board. Short tab label."
+  },
+  "ranksLoading": "Fetching the leaderboard…",
+  "@ranksLoading": {
+    "description": "Caption under the loading animation on the leaderboard screen."
+  },
+  "ranksEmptyDailyTitle": "Nobody has finished today’s board yet",
+  "@ranksEmptyDailyTitle": {
+    "description": "Leaderboard, Today tab, nobody on it yet."
+  },
+  "ranksEmptyDailyDetail": "Be the first.",
+  "@ranksEmptyDailyDetail": {
+    "description": "Line under the empty Today board."
+  },
+  "ranksEmptyCampaignTitle": "No ranked players yet",
+  "@ranksEmptyCampaignTitle": {
+    "description": "Leaderboard, Campaign tab, nobody on it yet."
+  },
+  "ranksEmptyCampaignDetail": "Stars decide this one.",
+  "@ranksEmptyCampaignDetail": {
+    "description": "Line under the empty Campaign board: the campaign board is ranked by stars."
+  },
+  "ranksYourSpot": "Your spot",
+  "@ranksYourSpot": {
+    "description": "Section label above the player's own row when they are outside the visible top list."
+  },
+  "ranksPlayerCount": "{count, plural, =1{1 player on this board} other{{count} players on this board}}",
+  "@ranksPlayerCount": {
+    "description": "Footer under the leaderboard: how many players are ranked.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "1,204"
+      }
+    }
+  },
+  "ranksMoves": "{count, plural, =1{{count} move} other{{count} moves}}",
+  "@ranksMoves": {
+    "description": "A daily-board score: how many moves the solve took.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "14"
+      }
+    }
+  },
+  "ranksStars": "{count, plural, =1{{count} star} other{{count} stars}}",
+  "@ranksStars": {
+    "description": "A campaign-board score, spoken by screen readers: the player's star total.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "38"
+      }
+    }
+  },
+  "ranksLevels": "{count, plural, =1{{count} level} other{{count} levels}}",
+  "@ranksLevels": {
+    "description": "Under a campaign-board name: how many levels the player has cleared.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "ranksInTime": "in {time}",
+  "@ranksInTime": {
+    "description": "Under a daily-board name: the time the solve took, e.g. 'in 1:07'.",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "1:07"
+      }
+    }
+  },
+  "ranksOpenSpot": "Open spot",
+  "@ranksOpenSpot": {
+    "description": "Name shown on an empty podium step (nobody holds this place yet)."
+  },
+  "ranksNameYou": "{name} (you)",
+  "@ranksNameYou": {
+    "description": "A leaderboard name marked as the player's own row. name is the player's leaderboard name.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Amber_Cascade_1284"
+      }
+    }
+  },
+  "ranksPlaceOpen": "Place {place}, open",
+  "@ranksPlaceOpen": {
+    "description": "Screen reader label of an empty podium step.",
+    "placeholders": {
+      "place": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "ranksPlaceSemantic": "Place {rank}, {name}, {score}",
+  "@ranksPlaceSemantic": {
+    "description": "Screen reader label of a podium step: rank, player name, score (e.g. '14 moves, in 1:07').",
+    "placeholders": {
+      "rank": {
+        "type": "int",
+        "example": "1"
+      },
+      "name": {
+        "type": "String",
+        "example": "Amber_Cascade_1284"
+      },
+      "score": {
+        "type": "String",
+        "example": "14 moves, in 1:07"
+      }
+    }
+  },
+  "ranksScoreWithTieBreak": "{score}, {tieBreak}",
+  "@ranksScoreWithTieBreak": {
+    "description": "Screen reader: a score followed by its tie-breaker, e.g. '14 moves, in 1:07' or '38 stars, 12 levels'.",
+    "placeholders": {
+      "score": {
+        "type": "String",
+        "example": "14 moves"
+      },
+      "tieBreak": {
+        "type": "String",
+        "example": "in 1:07"
+      }
+    }
+  },
+  "ranksOffTitle": "Leaderboards are off in this build",
+  "@ranksOffTitle": {
+    "description": "Leaderboard screen in a build with no server configured."
+  },
+  "ranksOffDetail": "The campaign is unaffected.",
+  "@ranksOffDetail": {
+    "description": "Line under 'Leaderboards are off in this build'."
+  },
+  "ranksLoadFailed": "Could not load the board",
+  "@ranksLoadFailed": {
+    "description": "Title when the leaderboard failed to load."
+  },
+  "ranksOffline": "You look offline. Every level still plays without a connection.",
+  "@ranksOffline": {
+    "description": "Leaderboard failed to load: no connection."
+  },
+  "ranksTimeout": "The server took too long to answer.",
+  "@ranksTimeout": {
+    "description": "Leaderboard failed to load: timeout."
+  },
+  "ranksServerError": "Something went wrong on our side. Your progress is safe.",
+  "@ranksServerError": {
+    "description": "Leaderboard failed to load: server error."
+  },
+  "ranksHiddenTitle": "You are hidden",
+  "@ranksHiddenTitle": {
+    "description": "Notice above the leaderboard for a player who turned off 'Show me on leaderboards'."
+  },
+  "ranksHiddenDetail": "Your stars and streak still count — you just do not appear here. Settings has the switch.",
+  "@ranksHiddenDetail": {
+    "description": "Body of the 'You are hidden' notice. 'Settings' is the in-app Settings screen."
+  },
+  "statsTitle": "Your Stats",
+  "@statsTitle": {
+    "description": "Header title of the statistics screen."
+  },
+  "statsTabOverview": "Overview",
+  "@statsTabOverview": {
+    "description": "Statistics tab: headline figures. Short tab label (three tabs share a phone width)."
+  },
+  "statsTabLevels": "Levels",
+  "@statsTabLevels": {
+    "description": "Statistics tab: per-world and per-level results. Short tab label."
+  },
+  "statsTabBadges": "Badges",
+  "@statsTabBadges": {
+    "description": "Statistics tab: achievements. Short tab label."
+  },
+  "statsPaceOnPar": "on par",
+  "@statsPaceOnPar": {
+    "description": "Average time against the par time: exactly on par. Lowercase, short (chip)."
+  },
+  "statsPaceUnder": "{percent}% under",
+  "@statsPaceUnder": {
+    "description": "Average time against par: faster than par by a percentage, e.g. '18% under'. Short (chip).",
+    "placeholders": {
+      "percent": {
+        "type": "int",
+        "example": "18"
+      }
+    }
+  },
+  "statsPaceOver": "{percent}% over",
+  "@statsPaceOver": {
+    "description": "Average time against par: slower than par by a percentage, e.g. '40% over'. Neutral, never scolding. Short (chip).",
+    "placeholders": {
+      "percent": {
+        "type": "int",
+        "example": "40"
+      }
+    }
+  },
+  "statsEmptyTitle": "Nothing to show yet",
+  "@statsEmptyTitle": {
+    "description": "Statistics screen before any level is solved."
+  },
+  "statsEmptyBody": "Solve a level and this fills up: your times against par, your best solves, and the days you played.",
+  "@statsEmptyBody": {
+    "description": "Body under 'Nothing to show yet'."
+  },
+  "statsBackToLevels": "Back to levels",
+  "@statsBackToLevels": {
+    "description": "Button on the empty statistics screen that goes back."
+  },
+  "statsLevelsSolved": "levels solved",
+  "@statsLevelsSolved": {
+    "description": "Label under the big number of levels solved. Lowercase, short."
+  },
+  "statsStars": "stars",
+  "@statsStars": {
+    "description": "Label under the big star total. Lowercase, short."
+  },
+  "statsPoints": "points",
+  "@statsPoints": {
+    "description": "Label under the big points total. Lowercase, short."
+  },
+  "statsPlayed": "played",
+  "@statsPlayed": {
+    "description": "Label under the total time played (e.g. '4h 12m'). Lowercase, short."
+  },
+  "statsNowOn": "now on",
+  "@statsNowOn": {
+    "description": "Label under 'Level 42': the furthest level unlocked. Lowercase, short."
+  },
+  "statsBestSolveMoves": "moves in best solves",
+  "@statsBestSolveMoves": {
+    "description": "Label under the sum of moves across every level's best solve."
+  },
+  "statsAgainstClock": "AGAINST THE CLOCK",
+  "@statsAgainstClock": {
+    "description": "Card label for the time-against-par figures. Capitals."
+  },
+  "statsNoTimes": "No times on record yet. Levels you cleared before the clock arrived have no time — replay one and it starts counting.",
+  "@statsNoTimes": {
+    "description": "Shown in the AGAINST THE CLOCK card when no level has a recorded time."
+  },
+  "statsFastest": "Fastest",
+  "@statsFastest": {
+    "description": "Row label: the fastest clear. Short."
+  },
+  "statsLongest": "Longest",
+  "@statsLongest": {
+    "description": "Row label: the slowest clear. Short."
+  },
+  "statsAvgPace": "Avg pace",
+  "@statsAvgPace": {
+    "description": "Row label: average time against par. Short, abbreviated."
+  },
+  "statsClockValue": "{time} · L{level}",
+  "@statsClockValue": {
+    "description": "A time and the level it was set on, e.g. '0:42 · L12'. L is short for Level. Very short.",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "0:42"
+      },
+      "level": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "statsUntimed": "{count, plural, other{{count} of your solved levels were cleared before the clock and have no time recorded.}}",
+  "@statsUntimed": {
+    "description": "Footnote: how many solved levels have no recorded time.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "8"
+      }
+    }
+  },
+  "statsUnderParSemantic": "{under} of {total} timed levels under par",
+  "@statsUnderParSemantic": {
+    "description": "Screen reader label of the under-par ring.",
+    "placeholders": {
+      "under": {
+        "type": "int",
+        "example": "5"
+      },
+      "total": {
+        "type": "int",
+        "example": "9"
+      }
+    }
+  },
+  "statsUnderParTag": "UNDER PAR",
+  "@statsUnderParTag": {
+    "description": "Tiny caption inside the ring, under '5/9'. Capitals, about 10 characters max."
+  },
+  "statsLast30Days": "LAST 30 DAYS",
+  "@statsLast30Days": {
+    "description": "Activity chart label. Capitals."
+  },
+  "statsStreakChip": "{count} day streak",
+  "@statsStreakChip": {
+    "description": "Chip: the current daily play streak, e.g. '5 day streak'. Short.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "statsNoStreak": "no streak",
+  "@statsNoStreak": {
+    "description": "Chip when there is no current streak. Lowercase, short."
+  },
+  "statsDaysPlayed": "{count, plural, =1{{count} day played} other{{count} days played}}",
+  "@statsDaysPlayed": {
+    "description": "Footer under the activity chart. Short (shares a row with two others).",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "statsLevelsFinished": "{count, plural, =1{{count} level finished} other{{count} levels finished}}",
+  "@statsLevelsFinished": {
+    "description": "Footer under the activity chart. Short (shares a row with two others).",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "40"
+      }
+    }
+  },
+  "statsBestStreak": "{count, plural, =1{best {count} day} other{best {count} days}}",
+  "@statsBestStreak": {
+    "description": "Footer under the activity chart: the longest streak. Short (shares a row with two others).",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "9"
+      }
+    }
+  },
+  "statsToday": "Today",
+  "@statsToday": {
+    "description": "Tooltip of today's bar in the activity chart."
+  },
+  "statsMonthShort": "{month, select, jan{Jan} feb{Feb} mar{Mar} apr{Apr} may{May} jun{Jun} jul{Jul} aug{Aug} sep{Sep} oct{Oct} nov{Nov} dec{Dec} other{{month}}}",
+  "@statsMonthShort": {
+    "description": "A short month name (3 letters in English). Used in the activity chart tooltip ('Jan 5') and, upper-cased, on the Player Card ('POURING SINCE JAN 2026'). Translate each branch value only, not the jan/feb keys.",
+    "placeholders": {
+      "month": {
+        "type": "String",
+        "example": "jan"
+      }
+    }
+  },
+  "statsMonthDay": "{month} {day}",
+  "@statsMonthDay": {
+    "description": "A day in the activity chart tooltip, e.g. 'Jan 5'. month is statsMonthShort.",
+    "placeholders": {
+      "month": {
+        "type": "String",
+        "example": "Jan"
+      },
+      "day": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "statsBarLevels": "{count, plural, =1{{day} · {count} level} other{{day} · {count} levels}}",
+  "@statsBarLevels": {
+    "description": "Tooltip of a played day in the activity chart, e.g. 'Jan 5 · 3 levels'.",
+    "placeholders": {
+      "day": {
+        "type": "String",
+        "example": "Jan 5"
+      },
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "statsBarNoPlay": "{day} · no play",
+  "@statsBarNoPlay": {
+    "description": "Tooltip of a day with no play in the activity chart, e.g. 'Jan 5 · no play'.",
+    "placeholders": {
+      "day": {
+        "type": "String",
+        "example": "Jan 5"
+      }
+    }
+  },
+  "statsWorldAhead": "ahead",
+  "@statsWorldAhead": {
+    "description": "Chip on a world the player has not started. Lowercase, very short."
+  },
+  "statsWorldNoTimes": "no times",
+  "@statsWorldNoTimes": {
+    "description": "Chip on a world with no recorded times. Lowercase, very short."
+  },
+  "statsWorldPoints": "{points} pts",
+  "@statsWorldPoints": {
+    "description": "Points earned in a world, abbreviated, e.g. '1,240 pts'. Very short.",
+    "placeholders": {
+      "points": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "1,240"
+      }
+    }
+  },
+  "statsWorldSolvedSemantic": "{name}: {cleared} of {total} solved",
+  "@statsWorldSolvedSemantic": {
+    "description": "Screen reader label of a world row. name is the world's name. Followed, comma-separated, by statsWorldPaceSemantic and statsWorldPointsSemantic when known.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "First Drops"
+      },
+      "cleared": {
+        "type": "int",
+        "example": "12"
+      },
+      "total": {
+        "type": "int",
+        "example": "40"
+      }
+    }
+  },
+  "statsWorldPaceSemantic": "pace {pace}",
+  "@statsWorldPaceSemantic": {
+    "description": "Screen reader: a world's average pace against par. pace is statsPaceOnPar/Under/Over.",
+    "placeholders": {
+      "pace": {
+        "type": "String",
+        "example": "18% under"
+      }
+    }
+  },
+  "statsWorldPointsSemantic": "{points} points",
+  "@statsWorldPointsSemantic": {
+    "description": "Screen reader: points earned in a world.",
+    "placeholders": {
+      "points": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "1,240"
+      }
+    }
+  },
+  "statsColLevel": "LVL",
+  "@statsColLevel": {
+    "description": "Per-level table column header: level number. Capitals, 3-4 characters (narrow column)."
+  },
+  "statsColStars": "STARS",
+  "@statsColStars": {
+    "description": "Per-level table column header. Capitals, about 6 characters (narrow column)."
+  },
+  "statsColMoves": "MOVES",
+  "@statsColMoves": {
+    "description": "Per-level table column header: your best moves / the minimum. Capitals."
+  },
+  "statsColTime": "TIME",
+  "@statsColTime": {
+    "description": "Per-level table column header. Capitals, about 5 characters (narrow column)."
+  },
+  "statsColPoints": "PTS",
+  "@statsColPoints": {
+    "description": "Per-level table column header: points, abbreviated. Capitals, 3-4 characters (narrow column)."
+  },
+  "statsMovesBestPossible": "{moves} moves, best possible {best}",
+  "@statsMovesBestPossible": {
+    "description": "Screen reader label of a per-level row's moves cell.",
+    "placeholders": {
+      "moves": {
+        "type": "int",
+        "example": "14"
+      },
+      "best": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "statsMoves": "{count, plural, =1{{count} move} other{{count} moves}}",
+  "@statsMoves": {
+    "description": "Screen reader label of a per-level row's moves cell when the minimum is unknown.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "14"
+      }
+    }
+  },
+  "badgeUnlockedCount": "{earned} of {total} unlocked",
+  "@badgeUnlockedCount": {
+    "description": "Badges tab heading: achievements unlocked so far.",
+    "placeholders": {
+      "earned": {
+        "type": "int",
+        "example": "3"
+      },
+      "total": {
+        "type": "int",
+        "example": "14"
+      }
+    }
+  },
+  "badgeUnlocked": "Unlocked",
+  "@badgeUnlocked": {
+    "description": "Status on an earned achievement card. Short."
+  },
+  "badgeNotYet": "Not yet",
+  "@badgeNotYet": {
+    "description": "Status on a one-off achievement not earned yet. Short."
+  },
+  "badgeProgress": "{shown} of {target}",
+  "@badgeProgress": {
+    "description": "Screen reader: progress toward an achievement, e.g. '4 of 10'.",
+    "placeholders": {
+      "shown": {
+        "type": "int",
+        "example": "4"
+      },
+      "target": {
+        "type": "int",
+        "example": "10"
+      }
+    }
+  },
+  "badgeSemantic": "{title}: {description} {status}",
+  "@badgeSemantic": {
+    "description": "Screen reader label of an achievement card: its title, description, then 'Unlocked' or progress like '4 of 10'.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "On par"
+      },
+      "description": {
+        "type": "String",
+        "example": "Clear 10 levels in exactly par."
+      },
+      "status": {
+        "type": "String",
+        "example": "4 of 10"
+      }
+    }
+  },
+  "badgeFirstPourTitle": "First pour",
+  "@badgeFirstPourTitle": {
+    "description": "Achievement title (card heading, one line, ellipsized; keep it short)."
+  },
+  "badgeFirstPourDesc": "Clear your first level.",
+  "@badgeFirstPourDesc": {
+    "description": "Achievement description (two lines max on a small card)."
+  },
+  "badgePar10Title": "On par",
+  "@badgePar10Title": {
+    "description": "Achievement title (one line, short). 'Par' is the minimum number of moves."
+  },
+  "badgePar10Desc": "Clear 10 levels in exactly par.",
+  "@badgePar10Desc": {
+    "description": "Achievement description (two lines max). Par = the proven minimum number of moves."
+  },
+  "badgePar50Title": "Par master",
+  "@badgePar50Title": {
+    "description": "Achievement title (one line, short)."
+  },
+  "badgePar50Desc": "Clear 50 levels in exactly par.",
+  "@badgePar50Desc": {
+    "description": "Achievement description (two lines max)."
+  },
+  "badgeCleanClearTitle": "No take-backs",
+  "@badgeCleanClearTitle": {
+    "description": "Achievement title (one line, short): finishing a level without undo."
+  },
+  "badgeCleanClearDesc": "Clear a level without using undo.",
+  "@badgeCleanClearDesc": {
+    "description": "Achievement description (two lines max)."
+  },
+  "badgeSpeedyTitle": "Quick pour",
+  "@badgeSpeedyTitle": {
+    "description": "Achievement title (one line, short)."
+  },
+  "badgeSpeedyDesc": "Clear a level in under 30 seconds.",
+  "@badgeSpeedyDesc": {
+    "description": "Achievement description (two lines max)."
+  },
+  "badgeLevels100Title": "Centurion",
+  "@badgeLevels100Title": {
+    "description": "Achievement title (one line, short) for clearing 100 levels."
+  },
+  "badgeLevels100Desc": "Clear 100 levels.",
+  "@badgeLevels100Desc": {
+    "description": "Achievement description (two lines max)."
+  },
+  "badgeStars300Title": "Star hoarder",
+  "@badgeStars300Title": {
+    "description": "Achievement title (one line, short)."
+  },
+  "badgeStars300Desc": "Collect 300 stars.",
+  "@badgeStars300Desc": {
+    "description": "Achievement description (two lines max)."
+  },
+  "badgeWorldPerfectTitle": "Flawless world",
+  "@badgeWorldPerfectTitle": {
+    "description": "Achievement title (one line, short)."
+  },
+  "badgeWorldPerfectDesc": "Three-star every level in a world.",
+  "@badgeWorldPerfectDesc": {
+    "description": "Achievement description (two lines max): earn three stars on every level of one world."
+  },
+  "badgeStreak7Title": "Week of pours",
+  "@badgeStreak7Title": {
+    "description": "Achievement title (one line, short)."
+  },
+  "badgeStreak7Desc": "Reach a 7-day Daily Pour streak.",
+  "@badgeStreak7Desc": {
+    "description": "Achievement description (two lines max). 'Daily Pour' is the name of the daily challenge; keep it as the game names it."
+  },
+  "badgeStreak30Title": "Month of pours",
+  "@badgeStreak30Title": {
+    "description": "Achievement title (one line, short)."
+  },
+  "badgeStreak30Desc": "Reach a 30-day Daily Pour streak.",
+  "@badgeStreak30Desc": {
+    "description": "Achievement description (two lines max). 'Daily Pour' is the name of the daily challenge."
+  },
+  "badgeChests5Title": "Treasure hunter",
+  "@badgeChests5Title": {
+    "description": "Achievement title (one line, short)."
+  },
+  "badgeChests5Desc": "Open 5 star chests.",
+  "@badgeChests5Desc": {
+    "description": "Achievement description (two lines max). Star chests are rewards opened with stars."
+  },
+  "badgeHard5Title": "Tough nut",
+  "@badgeHard5Title": {
+    "description": "Achievement title (one line, short)."
+  },
+  "badgeHard5Desc": "Clear 5 HARD levels.",
+  "@badgeHard5Desc": {
+    "description": "Achievement description (two lines max). HARD is the in-game label on hard levels, in capitals."
+  },
+  "badgeEventFullTitle": "Full week",
+  "@badgeEventFullTitle": {
+    "description": "Achievement title (one line, short)."
+  },
+  "badgeEventFullDesc": "Clear all seven boards of a weekly event.",
+  "@badgeEventFullDesc": {
+    "description": "Achievement description (two lines max)."
+  },
+  "badgeZen25Title": "Zen garden",
+  "@badgeZen25Title": {
+    "description": "Achievement title (one line, short)."
+  },
+  "badgeZen25Desc": "Pour 25 boards in Zen mode.",
+  "@badgeZen25Desc": {
+    "description": "Achievement description (two lines max). 'Zen mode' is the untimed relax mode."
+  },
   "commonCancel": "Cancel",
   "@commonCancel": {
     "description": "Generic cancel button."
@@ -36,5 +1119,756 @@
         "type": "int"
       }
     }
+  },
+  "playHudLevel": "Level",
+  "@playHudLevel": {
+    "description": "Game screen header title word when no level number follows. Short: it sits in the HUD."
+  },
+  "playHudTitle": "{label} {value}",
+  "@playHudTitle": {
+    "description": "Game screen header title: a mode word followed by its number, e.g. 'Level 12' or 'Daily 5'. Short.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "playHudHard": "HARD ×1.5",
+  "@playHudHard": {
+    "description": "Small sticker next to the level title on a hard level (worth 1.5 times the points). Very short, uppercase."
+  },
+  "playHudHardLabel": "Hard level, one and a half times the points",
+  "@playHudHardLabel": {
+    "description": "Screen-reader label for the HARD ×1.5 sticker."
+  },
+  "playHudMoves": "MOVES",
+  "@playHudMoves": {
+    "description": "Tiny caption under the move count in a 44px square. Must stay very short (about 6 characters)."
+  },
+  "playHudMovesLabel": "{count, plural, =1{1 move} other{{count} moves}}",
+  "@playHudMovesLabel": {
+    "description": "Screen-reader label for the move counter.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playParLeftFor3Stars": "{count, plural, =1{1 move left for 3 stars} other{{count} moves left for 3 stars}}",
+  "@playParLeftFor3Stars": {
+    "description": "Par meter line under the progress bar: moves left before the run drops to 2 stars. One short line.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playParSpent": "Par spent · 2 stars from here",
+  "@playParSpent": {
+    "description": "Par meter line once the player has used exactly par moves. One short line."
+  },
+  "playParLeftFor2Stars": "{count, plural, =1{1 move left for 2 stars} other{{count} moves left for 2 stars}}",
+  "@playParLeftFor2Stars": {
+    "description": "Par meter line: moves left before the run drops to 1 star. One short line.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playParOneStarFromHere": "1 star from here · any finish",
+  "@playParOneStarFromHere": {
+    "description": "Par meter line once only 1 star is still possible. One short line."
+  },
+  "playParAnyFinish": "Any finish earns 1 star",
+  "@playParAnyFinish": {
+    "description": "Par meter line far past par: finishing at all earns 1 star. One short line."
+  },
+  "playParMeterLabel": "{stars} star pace, {used} of par {par} moves. {words}",
+  "@playParMeterLabel": {
+    "description": "Screen-reader label for the par meter. {words} is one of the par meter lines (e.g. '2 moves left for 3 stars').",
+    "placeholders": {
+      "stars": {
+        "type": "int"
+      },
+      "used": {
+        "type": "int"
+      },
+      "par": {
+        "type": "int"
+      },
+      "words": {
+        "type": "String"
+      }
+    }
+  },
+  "playHudBusyLabel": "{label}, working. Tap to cancel",
+  "@playHudBusyLabel": {
+    "description": "Screen-reader label for a board button (e.g. Hint) while it is working; tapping again cancels.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "playHudUndo": "Undo",
+  "@playHudUndo": {
+    "description": "Board action button: take back the last pour. Short (button under an icon)."
+  },
+  "playHudHint": "Hint",
+  "@playHudHint": {
+    "description": "Board action button: show a good next move. Short (button under an icon)."
+  },
+  "playHudRestart": "Restart",
+  "@playHudRestart": {
+    "description": "Board action button: start the level over. Also the action on the 'no way to finish' message. Short."
+  },
+  "playExtraTubeLabel": "Watch a video for an extra tube",
+  "@playExtraTubeLabel": {
+    "description": "Screen-reader label for the '+ Tube' chip, which plays a rewarded video for one extra empty tube."
+  },
+  "playExtraTubeChip": "+ Tube",
+  "@playExtraTubeChip": {
+    "description": "Small pill button offering one extra empty tube (for a video). Very short."
+  },
+  "playStarsOfTotal": "{earned} of {total} stars",
+  "@playStarsOfTotal": {
+    "description": "Screen-reader label for a row of stars, e.g. '2 of 3 stars'.",
+    "placeholders": {
+      "earned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "playDismiss": "Dismiss",
+  "@playDismiss": {
+    "description": "Screen-reader label for the dimmed area behind a dialog; tapping it closes the dialog."
+  },
+  "playLeaveTitleSoSoon": "Leaving so soon?",
+  "@playLeaveTitleSoSoon": {
+    "description": "Playful title of the dialog asked before leaving a half-played board (one of four picked at random)."
+  },
+  "playLeaveTitleMissYou": "The balls will miss you",
+  "@playLeaveTitleMissYou": {
+    "description": "Playful title of the dialog asked before leaving a half-played board (one of four picked at random)."
+  },
+  "playLeaveTitleAbandon": "Abandon the pour?",
+  "@playLeaveTitleAbandon": {
+    "description": "Playful title of the dialog asked before leaving a half-played board (one of four picked at random)."
+  },
+  "playLeaveTitleMidPour": "Walking out mid-pour?",
+  "@playLeaveTitleMidPour": {
+    "description": "Playful title of the dialog asked before leaving a half-played board (one of four picked at random)."
+  },
+  "playLeaveBody": "Your moves and time on this board won't be saved.",
+  "@playLeaveBody": {
+    "description": "Body of the leave-the-board dialog: says plainly what is lost."
+  },
+  "playLeaveKeepPouring": "Keep pouring",
+  "@playLeaveKeepPouring": {
+    "description": "Leave-the-board dialog: button to stay on the board. Short (half-width button)."
+  },
+  "playLeaveConfirm": "Leave",
+  "@playLeaveConfirm": {
+    "description": "Leave-the-board dialog: button to leave. Short (half-width button)."
+  },
+  "playTutorialSkipLabel": "Skip the tutorial",
+  "@playTutorialSkipLabel": {
+    "description": "Screen-reader label for the Skip link on the first-level tutorial caption."
+  },
+  "playTutorialSkip": "Skip",
+  "@playTutorialSkip": {
+    "description": "Small link on the tutorial caption that ends the tutorial. Very short."
+  },
+  "playTipBubbleLabel": "{text}. Dismiss",
+  "@playTipBubbleLabel": {
+    "description": "Screen-reader label for a one-time tip bubble; {text} is the tip, tapping dismisses it.",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "playTipPar": "Finish within par for three stars. The bar shows how much you've used.",
+  "@playTipPar": {
+    "description": "One-time tip on level 2 about par and the par meter bar. Shown in a toast; keep to two lines."
+  },
+  "playTipTallTubes": "Taller tubes! Each one holds five balls now.",
+  "@playTipTallTubes": {
+    "description": "One-time tip on the first board whose tubes hold five balls instead of four."
+  },
+  "playTipHint": "Stuck? Hint shows you a good next move.",
+  "@playTipHint": {
+    "description": "One-time tip after 40 seconds stuck, pointing at the Hint button."
+  },
+  "playTipUndo": "Past par? Undo is free — step back as far as you like.",
+  "@playTipUndo": {
+    "description": "One-time tip the first time a run goes past par: undo costs nothing."
+  },
+  "playGuideSorted": "Sorted! Now make every tube a single color.",
+  "@playGuideSorted": {
+    "description": "Tutorial caption after the player completes their first tube. Max two lines."
+  },
+  "playGuideDrop": "Now tap where they go: onto the same color, or an empty tube.",
+  "@playGuideDrop": {
+    "description": "Tutorial caption while holding balls: tap a tube to pour into. Max two lines."
+  },
+  "playGuideWrongTube": "Tap the tube the hand points at to pick those up instead.",
+  "@playGuideWrongTube": {
+    "description": "Tutorial caption when the player picked up a different tube than the one the hand points at. Max two lines."
+  },
+  "playGuideFirstTap": "Tap a tube to pick up the balls on top.",
+  "@playGuideFirstTap": {
+    "description": "First tutorial caption on level 1. Max two lines."
+  },
+  "playGuideFirstPour": "That's a pour! Keep going.",
+  "@playGuideFirstPour": {
+    "description": "Tutorial caption after the first pour. Max two lines."
+  },
+  "playGuideKeepGoing": "Keep going: one color per tube.",
+  "@playGuideKeepGoing": {
+    "description": "Tutorial caption after the second pour onward. Max two lines."
+  },
+  "playCoachHolding": "Holding {count} · drop into a bouncing tube",
+  "@playCoachHolding": {
+    "description": "Toast above the board while balls are picked up: how many are held and where they can go (tubes that accept them bounce).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playExtraTubeAdTitle": "Watch a video for an extra tube?",
+  "@playExtraTubeAdTitle": {
+    "description": "Title of the dialog asking before a rewarded video for an extra tube."
+  },
+  "playExtraTubeAdBody": "One more empty tube for this level. A level finished with an extra tube earns up to two stars.",
+  "@playExtraTubeAdBody": {
+    "description": "Body of the extra-tube video dialog."
+  },
+  "playExtraTubeNotFinished": "No tube — the video was not finished.",
+  "@playExtraTubeNotFinished": {
+    "description": "Toast when the player closed the extra-tube video early."
+  },
+  "playExtraTubeSaved": "Saved — your next tube is free.",
+  "@playExtraTubeSaved": {
+    "description": "Toast when a watched video's extra tube could not be given now and is kept for next time."
+  },
+  "playNoVideo": "No video available right now.",
+  "@playNoVideo": {
+    "description": "Toast when no rewarded video can be shown."
+  },
+  "playRewardFailed": "Something went wrong. Nothing was used.",
+  "@playRewardFailed": {
+    "description": "Toast when a rewarded video failed for another reason; nothing was charged."
+  },
+  "playHintShowing": "Your hint is showing: pour into the glowing tube.",
+  "@playHintShowing": {
+    "description": "Toast when the player taps Hint while a hint is already on the board."
+  },
+  "playHintNoneNothingUsed": "No hint for this position. Nothing was used.",
+  "@playHintNoneNothingUsed": {
+    "description": "Toast when no hint can be found; no hint or video was spent."
+  },
+  "playHintNotFinished": "No hint — the video was not finished.",
+  "@playHintNotFinished": {
+    "description": "Toast when the player closed the hint video early."
+  },
+  "playHintVideoSaved": "Your video is saved for the next hint.",
+  "@playHintVideoSaved": {
+    "description": "Toast when the board changed while the hint video played; the reward is kept for the next hint."
+  },
+  "playHintNoneVideoSaved": "No hint for this position — your video is saved for the next one.",
+  "@playHintNoneVideoSaved": {
+    "description": "Toast after a hint video when no hint exists for the position; the reward is kept."
+  },
+  "playHintNone": "No hint available for this position.",
+  "@playHintNone": {
+    "description": "Toast when a free hint found nothing for the position (the hint was given back)."
+  },
+  "playHintHere": "Here is your hint — pour into the glowing tube.",
+  "@playHintHere": {
+    "description": "Toast after a rewarded hint video, pointing at the glowing destination tube."
+  },
+  "playDeadEndRestart": "No way to finish from here. Restart to try another line.",
+  "@playDeadEndRestart": {
+    "description": "Dead-end hint toast when undoing cannot help; has a Restart action."
+  },
+  "playDeadEndRestartTube": "No way to finish from here. Restart to try another line. Or tap + Tube for a spare tube.",
+  "@playDeadEndRestartTube": {
+    "description": "Dead-end hint toast, variant when the '+ Tube' button (an extra empty tube) is also offered."
+  },
+  "playDeadEndUndo": "{count, plural, =1{No way to finish from here. Undo 1 move to get back on track.} other{No way to finish from here. Undo {count} moves to get back on track.}}",
+  "@playDeadEndUndo": {
+    "description": "Dead-end hint toast: how many moves to undo to reach a solvable position. Has an 'Undo N' action.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playDeadEndUndoTube": "{count, plural, =1{No way to finish from here. Undo 1 move to get back on track. Or tap + Tube for a spare tube.} other{No way to finish from here. Undo {count} moves to get back on track. Or tap + Tube for a spare tube.}}",
+  "@playDeadEndUndoTube": {
+    "description": "Dead-end hint toast, variant when the '+ Tube' button (an extra empty tube) is also offered.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playDeadEndUndoAction": "Undo {count}",
+  "@playDeadEndUndoAction": {
+    "description": "Action button on the dead-end toast: undo that many moves. Very short.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playHintAdTitle": "Watch a video for a hint?",
+  "@playHintAdTitle": {
+    "description": "Title of the dialog asking before a rewarded video for a hint."
+  },
+  "playHintAdFreeLeft": "{count, plural, =1{You have 1 free hint left.} other{You have {count} free hints left.}}",
+  "@playHintAdFreeLeft": {
+    "description": "Body of the hint video dialog while free hints remain.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playHintAdNoneLeft": "Your free hints are used up. A short video earns one more.",
+  "@playHintAdNoneLeft": {
+    "description": "Body of the hint video dialog once the free hints are gone."
+  },
+  "playWatch": "Watch",
+  "@playWatch": {
+    "description": "Confirm button on a rewarded-video dialog. Short (half-width button)."
+  },
+  "playLoadFailed": "Could not load levels",
+  "@playLoadFailed": {
+    "description": "Title on the game screen when the level data failed to load."
+  },
+  "playTubeSorted": "SORTED!",
+  "@playTubeSorted": {
+    "description": "Tiny badge on a tube that is finished (one color, full). Very short, uppercase."
+  },
+  "playWinTitlePerfect": "Perfect\nPour!",
+  "@playWinTitlePerfect": {
+    "description": "Big result title for a 3-star clear, over two lines (keep the line break). Very short words."
+  },
+  "playWinTitleNice": "Nice\nPour!",
+  "@playWinTitleNice": {
+    "description": "Big result title for a 2-star clear, over two lines (keep the line break). Very short words."
+  },
+  "playWinTitlePoured": "Poured!",
+  "@playWinTitlePoured": {
+    "description": "Big result title for a 1-star clear. Very short."
+  },
+  "playWinLastPour": "Last pour…",
+  "@playWinLastPour": {
+    "description": "Big caption where the board buttons were, during the final pour celebration. Short."
+  },
+  "playWinMovesPar": "{count, plural, =1{1 MOVE · PAR {par}} other{{count} MOVES · PAR {par}}}",
+  "@playWinMovesPar": {
+    "description": "Pill under 'Last pour…': moves used and par. Uppercase, short.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "par": {
+        "type": "int"
+      }
+    }
+  },
+  "playWinLevelBand": "Level {level} · {band}",
+  "@playWinLevelBand": {
+    "description": "Chip at the top of the result screen: level number and its band (world) name.",
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "band": {
+        "type": "String"
+      }
+    }
+  },
+  "playWinNewBest": "NEW BEST!",
+  "@playWinNewBest": {
+    "description": "Sticker on the result screen for a personal best. Very short, uppercase."
+  },
+  "playWinMovesChip": "moves · par {par}",
+  "@playWinMovesChip": {
+    "description": "Caption under the move count chip on the result screen. Short (a third of the screen width).",
+    "placeholders": {
+      "par": {
+        "type": "int"
+      }
+    }
+  },
+  "playWinUntimed": "untimed",
+  "@playWinUntimed": {
+    "description": "Caption under the time chip when the run had no clock (the tutorial). Short, lowercase."
+  },
+  "playWinFastest": "fastest yet!",
+  "@playWinFastest": {
+    "description": "Caption under the time chip for the player's fastest clear of the level. Short, lowercase."
+  },
+  "playWinTime": "time",
+  "@playWinTime": {
+    "description": "Caption under the time chip on the result screen. Short, lowercase."
+  },
+  "playWinUnderPar": "UNDER PAR!",
+  "@playWinUnderPar": {
+    "description": "Small sticker on the time chip when the clear beat the time par. Very short, uppercase."
+  },
+  "playWinPoints": "points",
+  "@playWinPoints": {
+    "description": "Caption under the points chip on the result screen. Short, lowercase."
+  },
+  "playWinWorldBand": "WORLD {world} · {band}",
+  "@playWinWorldBand": {
+    "description": "Label over the world progress bar on the result screen. {band} is already uppercase. Uppercase, one line.",
+    "placeholders": {
+      "world": {
+        "type": "int"
+      },
+      "band": {
+        "type": "String"
+      }
+    }
+  },
+  "playWinTryAssisted": "Three stars need a clear without the extra tube.",
+  "@playWinTryAssisted": {
+    "description": "Result screen nudge to replay, when the clear used the extra tube (capped at 2 stars). Two lines max."
+  },
+  "playWinTryShort": "{short, plural, =1{Par {par}, you took {took}. One move from 3★.} other{Par {par}, you took {took}. {short} moves from 3★.}}",
+  "@playWinTryShort": {
+    "description": "Result screen nudge to replay: par, moves taken, and how many moves short of 3 stars. Two lines max.",
+    "placeholders": {
+      "par": {
+        "type": "int"
+      },
+      "took": {
+        "type": "int"
+      },
+      "short": {
+        "type": "int"
+      }
+    }
+  },
+  "playWinTryInReach": "Par {par}. Three stars are in reach.",
+  "@playWinTryInReach": {
+    "description": "Result screen nudge to replay for 3 stars. Two lines max.",
+    "placeholders": {
+      "par": {
+        "type": "int"
+      }
+    }
+  },
+  "playWinTryButton": "TRY FOR 3★",
+  "@playWinTryButton": {
+    "description": "Compact button on the result screen to replay for three stars. Very short, uppercase."
+  },
+  "playWinTryButtonLabel": "Replay this level for three stars",
+  "@playWinTryButtonLabel": {
+    "description": "Screen-reader label for the TRY FOR 3★ button."
+  },
+  "playWinReplayLabel": "Replay this level",
+  "@playWinReplayLabel": {
+    "description": "Screen-reader label for the replay icon button on the result screen."
+  },
+  "playWinHomeLabel": "Back to the home screen",
+  "@playWinHomeLabel": {
+    "description": "Screen-reader label for the home icon button on the result screen."
+  },
+  "playWinNextLevel": "NEXT LEVEL",
+  "@playWinNextLevel": {
+    "description": "Main button on the result screen. Uppercase, short (large font)."
+  },
+  "playWinBackToLevels": "BACK TO LEVELS",
+  "@playWinBackToLevels": {
+    "description": "Main result-screen button when there is no next level. Uppercase, short (large font)."
+  },
+  "playChestNextAtLabel": "Next star chest at {stars} stars",
+  "@playChestNextAtLabel": {
+    "description": "Screen-reader label for the star chest card before the next chest is earned.",
+    "placeholders": {
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "playChestOpenLabel": "Open star chest",
+  "@playChestOpenLabel": {
+    "description": "Screen-reader label for the star chest card when a chest is ready."
+  },
+  "playChestReady": "A star chest is ready!",
+  "@playChestReady": {
+    "description": "Star chest card text when a chest can be opened. One line."
+  },
+  "playChestNextAt": "Next chest at {stars} ★",
+  "@playChestNextAt": {
+    "description": "Star chest card text above its progress bar: the star total that earns the next chest. One short line.",
+    "placeholders": {
+      "stars": {
+        "type": "int"
+      }
+    }
+  },
+  "playChestOpen": "OPEN",
+  "@playChestOpen": {
+    "description": "Small button on the star chest card. Very short, uppercase."
+  },
+  "playChestDoubleFailed": "Could not double it this time.",
+  "@playChestDoubleFailed": {
+    "description": "Toast when doubling a chest's reward after the video failed."
+  },
+  "playChestDoubleNotFinished": "Not doubled — the video was not finished.",
+  "@playChestDoubleNotFinished": {
+    "description": "Toast when the player closed the chest-doubling video early."
+  },
+  "playChestOpening": "Opening…",
+  "@playChestOpening": {
+    "description": "Star chest dialog title while it is being opened. Short."
+  },
+  "playChestTitle": "Star chest {index}",
+  "@playChestTitle": {
+    "description": "Star chest dialog title once opened: which chest this is (1st, 2nd, ...). Short.",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "playChestNotYetTitle": "Almost there",
+  "@playChestNotYetTitle": {
+    "description": "Star chest dialog title when the server has not counted the stars yet. Short."
+  },
+  "playChestAlreadyOpenTitle": "Already open",
+  "@playChestAlreadyOpenTitle": {
+    "description": "Star chest dialog title when the chest was already opened. Short."
+  },
+  "playChestFailedTitle": "Could not open it",
+  "@playChestFailedTitle": {
+    "description": "Star chest dialog title when opening failed. Short."
+  },
+  "playChestNotYetNote": "Your newest stars are still on their way to the server. Try again in a moment.",
+  "@playChestNotYetNote": {
+    "description": "Star chest dialog body when the server has not counted the newest stars yet."
+  },
+  "playChestAlreadyOpenNote": "This chest was opened on another device.",
+  "@playChestAlreadyOpenNote": {
+    "description": "Star chest dialog body when the chest was opened elsewhere."
+  },
+  "playChestFailedNote": "Check your connection and try again.",
+  "@playChestFailedNote": {
+    "description": "Star chest dialog body when opening failed (network)."
+  },
+  "playChestRewardCount": "+{count}",
+  "@playChestRewardCount": {
+    "description": "Big number on a chest reward chip, e.g. '+2'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playChestHintsCaption": "{count, plural, other{hints}}",
+  "@playChestHintsCaption": {
+    "description": "Caption under the '+N' hints reward chip in the star chest. One short word.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playChestTubesCaption": "{count, plural, =1{extra tube} other{extra tubes}}",
+  "@playChestTubesCaption": {
+    "description": "Caption under the '+N' extra tubes reward chip in the star chest. Short.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playChestUnlocked": "Unlocked: {name}",
+  "@playChestUnlocked": {
+    "description": "Star chest reward pill for a new cosmetic. {name} is e.g. 'Glossy ball skin' or 'a new look'.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "playChestBallSkinName": "{skin} ball skin",
+  "@playChestBallSkinName": {
+    "description": "A cosmetic's name in the star chest: a ball skin. {skin} is the skin's name.",
+    "placeholders": {
+      "skin": {
+        "type": "String"
+      }
+    }
+  },
+  "playChestTubeThemeName": "{theme} tubes",
+  "@playChestTubeThemeName": {
+    "description": "A cosmetic's name in the star chest: a tube theme. {theme} is the theme's name.",
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "playChestNewLook": "a new look",
+  "@playChestNewLook": {
+    "description": "Fallback cosmetic name in 'Unlocked: a new look' when the app does not know the item."
+  },
+  "playChestSavedNote": "Saved for when you need them. Hint and + Tube use these first.",
+  "@playChestSavedNote": {
+    "description": "Small note under the chest rewards: hints and extra tubes are banked; Hint and + Tube are button names."
+  },
+  "playChestLoadingVideo": "Loading video…",
+  "@playChestLoadingVideo": {
+    "description": "Chest dialog button while the doubling video loads. Fits one button line."
+  },
+  "playChestDouble": "Double it with a video",
+  "@playChestDouble": {
+    "description": "Chest dialog button: watch a video to double the reward. Fits one button line."
+  },
+  "playChestCollect": "Collect",
+  "@playChestCollect": {
+    "description": "Chest dialog button that closes it after a reward. Short."
+  },
+  "playClockLabel": "Time {time}",
+  "@playClockLabel": {
+    "description": "Screen-reader label for the level clock. {time} is a spoken duration.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "playClockDetailLabel": "Time {time} of par {par}, {sign, select, plus{plus} other{minus}} {percent} percent points",
+  "@playClockDetailLabel": {
+    "description": "Screen-reader label for the level clock with its time par and the score bonus (plus) or penalty (minus) in percent. {sign} is 'plus' or 'minus'.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "par": {
+        "type": "String"
+      },
+      "sign": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "playClockBonusChip": "{sign}{percent}% pts",
+  "@playClockBonusChip": {
+    "description": "Tiny chip next to the clock: how the time changes the points, e.g. '+25% pts'. {sign} is +, − or ±. Very short.",
+    "placeholders": {
+      "sign": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "playLoading": "Loading",
+  "@playLoading": {
+    "description": "Screen-reader label for the pouring-balls loading animation."
+  },
+  "playWorking": "Working",
+  "@playWorking": {
+    "description": "Screen-reader label for the small busy indicator."
+  },
+  "playZenTitle": "Zen",
+  "@playZenTitle": {
+    "description": "Name of the endless relaxed mode, as the screen title and board header. Short."
+  },
+  "playZenIntro": "Endless boards. No clock, no stars, no leaderboard — just pour.",
+  "@playZenIntro": {
+    "description": "Intro line on the Zen mode picker."
+  },
+  "playZenPaceCalm": "Calm",
+  "@playZenPaceCalm": {
+    "description": "Zen mode pace option with the fewest colors. One short word (large font)."
+  },
+  "playZenPaceSteady": "Steady",
+  "@playZenPaceSteady": {
+    "description": "Zen mode pace option with a medium number of colors. One short word (large font)."
+  },
+  "playZenPaceDeep": "Deep",
+  "@playZenPaceDeep": {
+    "description": "Zen mode pace option with the most colors. One short word (large font)."
+  },
+  "playZenPaceColors": "{count, plural, =1{1 color} other{{count} colors}}",
+  "@playZenPaceColors": {
+    "description": "Under a Zen pace option: how many ball colors its boards use (always 4 or more).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playZenPaceLabel": "{count, plural, =1{{pace}, 1 color} other{{pace}, {count} colors}}",
+  "@playZenPaceLabel": {
+    "description": "Screen-reader label for a Zen pace option: its name and how many colors (always 4 or more).",
+    "placeholders": {
+      "pace": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playZenBandPoured": "{pace} · {count} poured",
+  "@playZenBandPoured": {
+    "description": "Zen board header subtitle: the pace name and how many boards were finished this session. Short.",
+    "placeholders": {
+      "pace": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playZenPoured": "{count, plural, =1{Poured!} other{Poured! {count} so far.}}",
+  "@playZenPoured": {
+    "description": "Shown when a Zen board is finished, with the session's running count of boards (1 or more).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playZenNext": "NEXT",
+  "@playZenNext": {
+    "description": "Button for the next Zen board. Uppercase, very short."
+  },
+  "playZenLeaveBody": "This board's moves won't be saved. Your poured count stays.",
+  "@playZenLeaveBody": {
+    "description": "Body of the leave dialog on a Zen board: what is and is not lost."
+  },
+  "playZenDeadEnd": "No way to finish from here. Undo or restart.",
+  "@playZenDeadEnd": {
+    "description": "Toast when Hint finds no way to finish the Zen board."
+  },
+  "playZenNoHint": "No hint for this position right now.",
+  "@playZenNoHint": {
+    "description": "Toast when no Zen hint is available."
   }
 }
