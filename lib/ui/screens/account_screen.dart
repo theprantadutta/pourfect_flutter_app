@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/api/identity.dart';
 import '../../state/account_controller.dart';
 import '../../state/play_history.dart';
@@ -74,6 +75,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   /// [solved] is how many levels this device has, because the honest wording
   /// of one of these outcomes depends entirely on it.
   static String? _explain(
+    AppLocalizations l,
     IdentityOutcome outcome,
     int solved,
   ) => switch (outcome) {
@@ -81,12 +83,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     // Backing out of the Google sheet is a decision, not a failure: said
     // plainly, never in red (see _settle).
     IdentityOutcome.cancelled => null,
-    IdentityOutcome.googleFailed =>
-      'Google sign-in did not work on this phone. Try again, or use email '
-          'below.',
-    IdentityOutcome.appleFailed =>
-      'Apple sign-in did not work on this phone. Check you are signed in to '
-          'your Apple Account in Settings, or use email below.',
+    IdentityOutcome.googleFailed => l.accountGoogleFailed,
+    IdentityOutcome.appleFailed => l.accountAppleFailed,
 
     // THE REINSTALL CASE IS THE COMMON ONE AND USED TO READ AS A THREAT.
     //
@@ -100,40 +98,27 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     // The confirmation dialog has always branched on this. The inline message
     // now agrees with it rather than contradicting it a step earlier.
     IdentityOutcome.credentialBelongsToAnotherAccount =>
-      solved == 0
-          ? 'You already have an account with that email. Sign in to it and '
-                'this phone will load the stars saved to it.'
-          : 'You already have an account with that email. This phone has '
-                '$solved solved ${solved == 1 ? "level" : "levels"} that are '
-                'not on it, and the two cannot be merged — signing in replaces '
-                'them with whatever that account holds.',
-    IdentityOutcome.emailAlreadyInUse =>
-      'There is already an account with that email. Try signing in instead.',
-    IdentityOutcome.emailMalformed =>
-      'That does not look like an email address.',
-    IdentityOutcome.passwordTooWeak =>
-      'That password is too easy to guess. Try a longer one.',
-    IdentityOutcome.wrongPassword => 'That email and password do not match.',
-    IdentityOutcome.noSuchAccount => 'That email and password do not match.',
-    IdentityOutcome.tooManyAttempts =>
-      'Too many tries. Wait a few minutes and try again.',
-    IdentityOutcome.needsRecentLogin => 'Please sign in again first.',
+      solved == 0 ? l.accountExistsNoLocal : l.accountExistsWithLocal(solved),
+    IdentityOutcome.emailAlreadyInUse => l.accountEmailInUse,
+    IdentityOutcome.emailMalformed => l.accountEmailMalformed,
+    IdentityOutcome.passwordTooWeak => l.accountPasswordWeak,
+    IdentityOutcome.wrongPassword => l.accountWrongPassword,
+    IdentityOutcome.noSuchAccount => l.accountWrongPassword,
+    IdentityOutcome.tooManyAttempts => l.accountTooManyAttempts,
+    IdentityOutcome.needsRecentLogin => l.accountNeedsRecentLogin,
     // Points at the way in that IS switched on rather than at a retry, which
     // cannot work. A player never sees this in a correctly configured build.
-    IdentityOutcome.methodNotEnabled =>
-      'Email sign-in is not available right now. Try Continue with Google.',
+    IdentityOutcome.methodNotEnabled => l.accountMethodNotEnabled,
     // Firebase took the sign-in; our own server did not answer. The account
     // is real and the next sync will pick it up, so this is not a failure to
     // undo — just one worth being honest about.
-    IdentityOutcome.sessionUnavailable =>
-      'Signed in, but your progress has not been saved to the server yet. '
-          'It will sync when the connection is back.',
-    IdentityOutcome.unavailable =>
-      'Could not reach the server. Your progress is still safe on this device.',
+    IdentityOutcome.sessionUnavailable => l.accountSessionUnavailable,
+    IdentityOutcome.unavailable => l.accountUnavailable,
   };
 
   Future<void> _google() async {
     setState(() => _problem = null);
+    final useIt = context.l10n.accountUseThatAccount;
     final result = await ref
         .read(accountProvider.notifier)
         .continueWithGoogle();
@@ -146,7 +131,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       // below the fold. So the common case, somebody reclaiming their own
       // account, was the one that required scrolling to discover.
       await _offerExistingAccount(
-        confirmLabel: 'Use that account',
+        confirmLabel: useIt,
         onConfirmed: () =>
             ref.read(accountProvider.notifier).useExistingGoogleAccount(),
       );
@@ -157,12 +142,13 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
   Future<void> _apple() async {
     setState(() => _problem = null);
+    final useIt = context.l10n.accountUseThatAccount;
     final result = await ref.read(accountProvider.notifier).continueWithApple();
 
     // The same reclaim question Google asks; see _google.
     if (result.outcome == IdentityOutcome.credentialBelongsToAnotherAccount) {
       await _offerExistingAccount(
-        confirmLabel: 'Use that account',
+        confirmLabel: useIt,
         onConfirmed: () =>
             ref.read(accountProvider.notifier).useExistingAppleAccount(),
       );
@@ -189,20 +175,18 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     required Future<IdentityResult> Function() onConfirmed,
   }) async {
     final cleared = ref.read(progressProvider).length;
+    final l = context.l10n;
 
     final confirmed = await showRowConfirm(
       context: context,
-      title: 'You already have an account',
+      title: l.accountExistingTitle,
       // THE REINSTALL CASE IS THE FIRST BRANCH ON PURPOSE. An empty device
       // has nothing to lose and everything to gain, and telling somebody
       // otherwise is how cloud progress goes unclaimed.
       body: cleared == 0
-          ? 'This phone will load the stars already saved to it.'
-          : 'This phone has $cleared solved '
-                '${cleared == 1 ? "level" : "levels"} that are not on that '
-                'account. They cannot be combined, so they will be '
-                'replaced by whatever the account already holds.',
-      cancelLabel: 'Not now',
+          ? l.accountExistingBodyEmpty
+          : l.accountExistingBodyLocal(cleared),
+      cancelLabel: l.commonNotNow,
       confirmLabel: confirmLabel,
     );
 
@@ -211,6 +195,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (!confirmed) {
       setState(
         () => _problem = _explain(
+          context.l10n,
           IdentityOutcome.credentialBelongsToAnotherAccount,
           ref.read(progressProvider).length,
         ),
@@ -259,7 +244,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       // making them enter it a second time.
       setState(() => _registering = false);
       await _offerExistingAccount(
-        confirmLabel: 'Sign in',
+        confirmLabel: context.l10n.accountSignIn,
         onConfirmed: () => account.signIn(_email.text, _password.text),
       );
       return;
@@ -279,9 +264,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   void _settle(IdentityResult result) {
     if (!mounted) return;
     FocusScope.of(context).unfocus();
+    final l = context.l10n;
 
     if (result.outcome == IdentityOutcome.cancelled) {
-      showToyToast(context, 'Sign-in cancelled. Nothing changed.');
+      showToyToast(context, l.accountSignInCancelled);
       return;
     }
 
@@ -291,13 +277,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       // up. Taken before the pop, while this context still has an ancestor.
       final overlay = Overlay.of(context, rootOverlay: true);
       Navigator.of(context).maybePop();
-      showToyToastOn(
-        overlay,
-        'Signed in. Your stars now follow you to a new phone.',
-      );
+      showToyToastOn(overlay, l.accountSignedInToast);
       return;
     }
-    final problem = _explain(result.outcome, ref.read(progressProvider).length);
+    final problem = _explain(
+      l,
+      result.outcome,
+      ref.read(progressProvider).length,
+    );
     setState(() => _problem = problem);
     if (problem != null) showToyToast(context, problem);
   }
@@ -305,7 +292,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   Future<void> _resetPassword() async {
     final email = _email.text.trim();
     if (email.isEmpty) {
-      const ask = 'Enter your email first, then tap Forgot your password.';
+      final ask = context.l10n.accountResetNeedsEmail;
       setState(() => _problem = ask);
       showToyToast(context, ask);
       return;
@@ -316,14 +303,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
     // The same message whether or not that address has an account. Saying
     // otherwise would let a stranger test which emails are registered.
-    setState(
-      () => _problem =
-          'If that email has an account, a reset link is on its way.',
-    );
-    showToyToast(
-      context,
-      'If that email has an account, a reset link is on its way.',
-    );
+    final sent = context.l10n.accountResetSent;
+    setState(() => _problem = sent);
+    showToyToast(context, sent);
   }
 
   /// What the crest opens once there is an account behind it.
@@ -344,21 +326,22 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final history = ref.watch(playHistoryProvider);
     final stars = ref.read(progressProvider.notifier).totalStars;
     final streak = ref.read(playHistoryProvider.notifier).currentStreak();
+    final l = context.l10n;
     final rank = switch (ref.watch(campaignRankProvider)) {
-      AsyncData(:final value?) => '#$value',
+      AsyncData(:final value?) => l.accountRankValue(value),
       _ => '—',
     };
     final sync = ref.watch(syncControllerProvider);
 
     return _Screen(
-      title: 'Your account',
+      title: l.accountYourAccount,
       children: [
         _PlayerCard(
           account: account,
           since: _pouringSince(progress, history),
           solved: progress.length,
           stars: stars,
-          streak: streak > 0 ? '${streak}d' : '—',
+          streak: streak > 0 ? l.accountStreakValue(streak) : '—',
           rank: rank,
         ),
         const SizedBox(height: 10),
@@ -367,13 +350,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           child: Text(
             // The honest claim and the whole of it — an account moves this
             // to a new phone, and that is all it promises.
-            'This card goes with your account, so a new phone starts right '
-            'where you left off.',
+            l.accountCardTravels,
             style: Toy.ui(13, weight: FontWeight.w500, color: Toy.inkMuted),
           ),
         ),
 
-        const SectionHeader(label: 'Your name'),
+        SectionHeader(label: l.accountYourNameHeader),
         Group(
           children: [
             // Says what tapping DOES, not the handle again — that is already
@@ -382,15 +364,15 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             ActionRow(
               icon: const Icon(Icons.edit_rounded),
               iconColor: Toy.mint,
-              title: 'Change your name',
-              detail: 'How you appear on the boards',
+              title: l.accountChangeName,
+              detail: l.accountChangeNameDetail,
               onTap: _rename,
             ),
             ToggleRow(
               icon: const Icon(Icons.contrast_rounded),
               iconColor: kRowMoss,
-              title: 'Show me on leaderboards',
-              detail: 'Off hides your name and rank. Stars still count.',
+              title: l.accountShowOnBoards,
+              detail: l.accountShowOnBoardsDetail,
               value: account.showOnLeaderboards,
               onChanged: _setVisibility,
             ),
@@ -399,7 +381,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
         if (widget.onOpenStatistics != null ||
             sync.status != SyncStatus.off) ...[
-          const SectionHeader(label: 'Your play'),
+          SectionHeader(label: l.accountYourPlayHeader),
           Group(
             children: [
               // WHERE THE STATISTICS SCREEN IS REACHED FROM.
@@ -412,11 +394,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 ActionRow(
                   icon: const BarsGlyph(),
                   iconColor: Toy.pink,
-                  title: 'Statistics',
+                  title: l.accountStatistics,
                   // ActionRow gives a detail ONE line and ellipsises the rest
                   // — that is the Settings rule, so the copy fits the row
                   // rather than the row growing for it.
-                  detail: 'Your times, activity and every level',
+                  detail: l.accountStatisticsDetail,
                   onTap: widget.onOpenStatistics!,
                 ),
               if (sync.status != SyncStatus.off) _SyncRow(sync: sync),
@@ -424,11 +406,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           ),
         ],
 
-        const SectionHeader(label: 'Session', danger: true),
+        SectionHeader(label: l.accountSessionHeader, danger: true),
         _SignOutCard(onPressed: _confirmSignOut),
         const SizedBox(height: 24),
         Text(
-          'To delete your account, go to Settings → Danger zone.',
+          l.accountDeleteHint,
           textAlign: TextAlign.center,
           style: Toy.ui(12, weight: FontWeight.w500, color: Toy.inkMuted),
         ),
@@ -487,22 +469,18 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     // the point: a control that looks like it worked on a request that did not
     // tells somebody they are hidden while they are still listed.
     if (!ok && mounted) {
-      showRowMessage(
-        context,
-        'Could not reach the server, so nothing changed.',
-      );
+      showRowMessage(context, context.l10n.accountVisibilityFailed);
     }
   }
 
   Future<void> _confirmSignOut() async {
+    final l = context.l10n;
     final confirmed = await showRowConfirm(
       context: context,
-      title: 'Sign out?',
-      body:
-          'Your progress stays on this phone. You can sign back in any time '
-          'to pick it up somewhere else.',
-      cancelLabel: 'Stay signed in',
-      confirmLabel: 'Sign out',
+      title: l.accountSignOutTitle,
+      body: l.accountSignOutBody,
+      cancelLabel: l.accountStaySignedIn,
+      confirmLabel: l.accountSignOut,
     );
 
     if (!confirmed || !mounted) return;
@@ -524,8 +502,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     // as in this file.
     if (account.signedIn) return _signedIn(context, account);
 
+    final l = context.l10n;
     return _Screen(
-      title: 'Save your progress',
+      title: l.accountSaveTitle,
       children: [
         ToyBox(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
@@ -537,8 +516,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               Text(
                 // Precisely what it does. Not "your progress is safe" — an
                 // account moves it to a new phone, and that is the whole claim.
-                'Your stars, streak and leaderboard name move with your '
-                'account, so a new phone starts where you left off.',
+                l.accountSaveIntro,
                 style: Toy.ui(
                   14,
                   weight: FontWeight.w500,
@@ -554,7 +532,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               // color. Android has no Apple sign-in.
               if (defaultTargetPlatform == TargetPlatform.iOS) ...[
                 ToyButton(
-                  label: 'Continue with Apple',
+                  label: l.accountContinueApple,
                   icon: const Icon(Icons.apple, color: Colors.white, size: 22),
                   color: Colors.black,
                   textColor: Colors.white,
@@ -568,7 +546,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 const SizedBox(height: 12),
               ],
               ToyButton.secondary(
-                label: 'Continue with Google',
+                label: l.accountContinueGoogle,
                 icon: const _GoogleMark(),
                 onPressed: account.busy ? null : _google,
               ),
@@ -579,7 +557,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   const Expanded(child: _Rule()),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('OR', style: Toy.caps()),
+                    child: Text(l.accountOr, style: Toy.caps()),
                   ),
                   const Expanded(child: _Rule()),
                 ],
@@ -593,16 +571,16 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   children: [
                     _Field(
                       controller: _email,
-                      label: 'Email',
+                      label: l.accountEmailLabel,
                       keyboardType: TextInputType.emailAddress,
                       autofillHints: const [AutofillHints.email],
                       validator: (value) {
                         final text = (value ?? '').trim();
-                        if (text.isEmpty) return 'Enter your email.';
+                        if (text.isEmpty) return l.accountEmailEmpty;
                         // Deliberately loose. Firebase is the real arbiter, and
                         // a strict pattern here rejects valid addresses.
                         if (!text.contains('@') || !text.contains('.')) {
-                          return 'That does not look like an email address.';
+                          return l.accountEmailMalformed;
                         }
                         return null;
                       },
@@ -610,9 +588,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     const SizedBox(height: 12),
                     _Field(
                       controller: _password,
-                      label: 'Password',
+                      label: l.accountPasswordLabel,
                       obscure: true,
-                      helper: _registering ? 'At least 8 characters' : null,
+                      helper: _registering ? l.accountPasswordHelper : null,
                       autofillHints: [
                         _registering
                             ? AutofillHints.newPassword
@@ -620,12 +598,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                       ],
                       validator: (value) {
                         final text = value ?? '';
-                        if (text.isEmpty) return 'Enter a password.';
+                        if (text.isEmpty) return l.accountPasswordEmpty;
                         // Only enforced when CREATING one. Applying it at
                         // sign-in would lock out anybody whose existing
                         // password is shorter than a rule invented later.
                         if (_registering && text.length < 8) {
-                          return 'At least 8 characters.';
+                          return l.accountPasswordShort;
                         }
                         return null;
                       },
@@ -653,7 +631,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
               const SizedBox(height: 16),
               ToyButton(
-                label: _registering ? 'Create account' : 'Sign in',
+                label: _registering ? l.accountCreate : l.accountSignIn,
                 height: 56,
                 fontSize: 22,
                 icon: account.busy ? const BounceDots() : null,
@@ -666,11 +644,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         const SizedBox(height: 14),
         _TextLink(
           label: _registering
-              ? 'Already have an account? Sign in'
-              : 'Need an account? Create one',
+              ? l.accountSwitchToSignIn
+              : l.accountSwitchToCreate,
           semanticLabel: _registering
-              ? 'Sign in instead'
-              : 'Create an account instead',
+              ? l.accountSwitchToSignInSemantic
+              : l.accountSwitchToCreateSemantic,
           color: Toy.tomatoDark,
           onPressed: () => setState(() {
             _registering = !_registering;
@@ -679,8 +657,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         ),
         if (!_registering)
           _TextLink(
-            label: 'Forgot your password?',
-            semanticLabel: 'Reset your password',
+            label: l.accountForgotPassword,
+            semanticLabel: l.accountForgotPasswordSemantic,
             color: Toy.inkMuted,
             onPressed: _resetPassword,
           ),
@@ -751,15 +729,17 @@ class _PlayerCard extends StatelessWidget {
   final String streak;
   final String rank;
 
-  static const _months = [
-    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', //
-    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+  /// The ICU select keys statsMonthShort takes, by month number - 1.
+  static const _monthKeys = [
+    'jan', 'feb', 'mar', 'apr', 'may', 'jun', //
+    'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
   ];
 
   @override
   Widget build(BuildContext context) {
     final handle = account.handle;
     final since = this.since;
+    final l = context.l10n;
 
     final card = Container(
       padding: const EdgeInsets.all(18),
@@ -800,7 +780,7 @@ class _PlayerCard extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        handle ?? 'Naming you…',
+                        handle ?? l.accountNaming,
                         style: Toy.display(30),
                         maxLines: 1,
                       ),
@@ -808,7 +788,7 @@ class _PlayerCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       account.email == null
-                          ? 'Signed in'
+                          ? l.accountSignedInLabel
                           : maskEmail(account.email!),
                       style: Toy.ui(13),
                       maxLines: 1,
@@ -817,8 +797,12 @@ class _PlayerCard extends StatelessWidget {
                     if (since != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'POURING SINCE ${_months[since.month - 1]} '
-                        '${since.year}',
+                        l.accountPouringSince(
+                          l
+                              .statsMonthShort(_monthKeys[since.month - 1])
+                              .toUpperCase(),
+                          since.year,
+                        ),
                         style: Toy.ui(
                           11,
                           weight: FontWeight.w800,
@@ -863,7 +847,7 @@ class _PlayerCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    'PLAYER CARD',
+                    l.accountPlayerCardTag,
                     style: Toy.ui(
                       10,
                       weight: FontWeight.w800,
@@ -925,6 +909,7 @@ class _StatStrip extends StatelessWidget {
       ),
     );
     const rule = SizedBox(width: 2, child: ColoredBox(color: Toy.ink));
+    final l = context.l10n;
 
     return Container(
       decoration: BoxDecoration(
@@ -937,13 +922,13 @@ class _StatStrip extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            cell('$solved', 'SOLVED'),
+            cell('$solved', l.accountStatSolved),
             rule,
-            cell('$stars★', 'STARS'),
+            cell(l.accountStarsValue(stars), l.accountStatStars),
             rule,
-            cell(streak, 'STREAK'),
+            cell(streak, l.accountStatStreak),
             rule,
-            cell(rank, 'RANK', hot: true),
+            cell(rank, l.accountStatRank, hot: true),
           ],
         ),
       ),
@@ -959,17 +944,18 @@ class _SyncRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final (title, detail) = switch (sync.status) {
-      SyncStatus.syncing => ('Syncing…', 'Saving progress to your account'),
+      SyncStatus.syncing => (l.accountSyncing, l.accountSyncingDetail),
       SyncStatus.unreachable => (
-        'Waiting to sync',
-        'Saves when you are back online',
+        l.accountWaitingToSync,
+        l.accountWaitingOffline,
       ),
       _ when sync.pending > 0 => (
-        'Waiting to sync',
-        'Your latest levels go up next',
+        l.accountWaitingToSync,
+        l.accountWaitingPending,
       ),
-      _ => (_synced(sync.lastSucceededAt), 'Progress saved to your account'),
+      _ => (_synced(l, sync.lastSucceededAt), l.accountSyncedDetail),
     };
     return ActionRow(
       icon: const Icon(Icons.swap_vert_rounded),
@@ -981,13 +967,13 @@ class _SyncRow extends StatelessWidget {
     );
   }
 
-  static String _synced(DateTime? at) {
-    if (at == null) return 'Synced';
+  static String _synced(AppLocalizations l, DateTime? at) {
+    if (at == null) return l.accountSynced;
     final ago = DateTime.now().difference(at);
-    if (ago.inMinutes < 1) return 'Synced just now';
-    if (ago.inHours < 1) return 'Synced ${ago.inMinutes}m ago';
-    if (ago.inDays < 1) return 'Synced ${ago.inHours}h ago';
-    return 'Synced ${ago.inDays}d ago';
+    if (ago.inMinutes < 1) return l.accountSyncedJustNow;
+    if (ago.inHours < 1) return l.accountSyncedMinutesAgo(ago.inMinutes);
+    if (ago.inDays < 1) return l.accountSyncedHoursAgo(ago.inHours);
+    return l.accountSyncedDaysAgo(ago.inDays);
   }
 }
 
@@ -1002,7 +988,7 @@ class _SignOutCard extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 4),
     child: Pressable(
       onPressed: onPressed,
-      semanticLabel: 'Sign out',
+      semanticLabel: context.l10n.accountSignOut,
       child: ToyBox(
         radius: Toy.rControl,
         shadowColor: Toy.tomato,
@@ -1020,7 +1006,7 @@ class _SignOutCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Sign out',
+                    context.l10n.accountSignOut,
                     style: Toy.ui(
                       15,
                       weight: FontWeight.w800,
@@ -1030,7 +1016,7 @@ class _SignOutCard extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text(
                     // States what it does NOT do, because that is the fear.
-                    'Your progress stays on this phone',
+                    context.l10n.accountSignOutDetail,
                     style: Toy.ui(
                       12,
                       weight: FontWeight.w500,
@@ -1112,7 +1098,9 @@ class _FieldState extends State<_Field> {
             ? null
             : Pressable(
                 onPressed: () => setState(() => _hidden = !_hidden),
-                semanticLabel: _hidden ? 'Show password' : 'Hide password',
+                semanticLabel: _hidden
+                    ? context.l10n.accountShowPassword
+                    : context.l10n.accountHidePassword,
                 child: Icon(
                   _hidden
                       ? Icons.visibility_rounded

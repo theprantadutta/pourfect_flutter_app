@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/l10n.dart';
 import '../services/api/api_result.dart';
 import 'account_controller.dart';
 import 'chest_controller.dart';
@@ -61,8 +62,11 @@ class AchievementFacts {
 class Achievement {
   /// Shared with the API. Never rename.
   final String id;
-  final String title;
-  final String description;
+
+  /// What is SHOWN, resolved at display time so it follows the language of
+  /// whoever is looking. Never stored or sent: the server knows only [id].
+  final String Function(AppLocalizations) titleIn;
+  final String Function(AppLocalizations) descriptionIn;
 
   /// How far along the player is, out of [target].
   final int Function(AchievementFacts) progress;
@@ -70,11 +74,17 @@ class Achievement {
 
   const Achievement({
     required this.id,
-    required this.title,
-    required this.description,
+    required this.titleIn,
+    required this.descriptionIn,
     required this.progress,
     this.target = 1,
   });
+
+  /// The title in the device's language, for code with no BuildContext.
+  String get title => titleIn(appL10n());
+
+  /// The description in the device's language, for code with no BuildContext.
+  String get description => descriptionIn(appL10n());
 
   bool earnedBy(AchievementFacts facts) => progress(facts) >= target;
 }
@@ -84,34 +94,34 @@ int _one(bool yes) => yes ? 1 : 0;
 final List<Achievement> kAchievements = [
   Achievement(
     id: 'first_pour',
-    title: 'First pour',
-    description: 'Clear your first level.',
+    titleIn: (l) => l.badgeFirstPourTitle,
+    descriptionIn: (l) => l.badgeFirstPourDesc,
     progress: (f) => f.levelsCleared,
   ),
   Achievement(
     id: 'par_10',
-    title: 'On par',
-    description: 'Clear 10 levels in exactly par.',
+    titleIn: (l) => l.badgePar10Title,
+    descriptionIn: (l) => l.badgePar10Desc,
     progress: (f) => f.parClears,
     target: 10,
   ),
   Achievement(
     id: 'par_50',
-    title: 'Par master',
-    description: 'Clear 50 levels in exactly par.',
+    titleIn: (l) => l.badgePar50Title,
+    descriptionIn: (l) => l.badgePar50Desc,
     progress: (f) => f.parClears,
     target: 50,
   ),
   Achievement(
     id: 'clean_clear',
-    title: 'No take-backs',
-    description: 'Clear a level without using undo.',
+    titleIn: (l) => l.badgeCleanClearTitle,
+    descriptionIn: (l) => l.badgeCleanClearDesc,
     progress: (f) => _one(f.lastClearWithoutUndo),
   ),
   Achievement(
     id: 'speedy',
-    title: 'Quick pour',
-    description: 'Clear a level in under 30 seconds.',
+    titleIn: (l) => l.badgeSpeedyTitle,
+    descriptionIn: (l) => l.badgeSpeedyDesc,
     progress: (f) {
       final seconds = f.lastClearSeconds;
       return _one(seconds != null && seconds > 0 && seconds < 30);
@@ -119,63 +129,63 @@ final List<Achievement> kAchievements = [
   ),
   Achievement(
     id: 'levels_100',
-    title: 'Centurion',
-    description: 'Clear 100 levels.',
+    titleIn: (l) => l.badgeLevels100Title,
+    descriptionIn: (l) => l.badgeLevels100Desc,
     progress: (f) => f.levelsCleared,
     target: 100,
   ),
   Achievement(
     id: 'stars_300',
-    title: 'Star hoarder',
-    description: 'Collect 300 stars.',
+    titleIn: (l) => l.badgeStars300Title,
+    descriptionIn: (l) => l.badgeStars300Desc,
     progress: (f) => f.stars,
     target: 300,
   ),
   Achievement(
     id: 'world_perfect',
-    title: 'Flawless world',
-    description: 'Three-star every level in a world.',
+    titleIn: (l) => l.badgeWorldPerfectTitle,
+    descriptionIn: (l) => l.badgeWorldPerfectDesc,
     progress: (f) => f.perfectWorlds,
   ),
   Achievement(
     id: 'streak_7',
-    title: 'Week of pours',
-    description: 'Reach a 7-day Daily Pour streak.',
+    titleIn: (l) => l.badgeStreak7Title,
+    descriptionIn: (l) => l.badgeStreak7Desc,
     progress: (f) => f.bestStreak,
     target: 7,
   ),
   Achievement(
     id: 'streak_30',
-    title: 'Month of pours',
-    description: 'Reach a 30-day Daily Pour streak.',
+    titleIn: (l) => l.badgeStreak30Title,
+    descriptionIn: (l) => l.badgeStreak30Desc,
     progress: (f) => f.bestStreak,
     target: 30,
   ),
   Achievement(
     id: 'chests_5',
-    title: 'Treasure hunter',
-    description: 'Open 5 star chests.',
+    titleIn: (l) => l.badgeChests5Title,
+    descriptionIn: (l) => l.badgeChests5Desc,
     progress: (f) => f.chestsOpened,
     target: 5,
   ),
   Achievement(
     id: 'hard_5',
-    title: 'Tough nut',
-    description: 'Clear 5 HARD levels.',
+    titleIn: (l) => l.badgeHard5Title,
+    descriptionIn: (l) => l.badgeHard5Desc,
     progress: (f) => f.hardClears,
     target: 5,
   ),
   Achievement(
     id: 'event_full',
-    title: 'Full week',
-    description: 'Clear all seven boards of a weekly event.',
+    titleIn: (l) => l.badgeEventFullTitle,
+    descriptionIn: (l) => l.badgeEventFullDesc,
     progress: (f) => f.eventBoardsCleared,
     target: 7,
   ),
   Achievement(
     id: 'zen_25',
-    title: 'Zen garden',
-    description: 'Pour 25 boards in Zen mode.',
+    titleIn: (l) => l.badgeZen25Title,
+    descriptionIn: (l) => l.badgeZen25Desc,
     progress: (f) => f.zenBoards,
     target: 25,
   ),

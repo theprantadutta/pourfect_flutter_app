@@ -22,6 +22,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../engine/level_set.dart';
+import '../../l10n/l10n.dart';
 import '../../state/level_repository.dart';
 import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
@@ -51,20 +52,21 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
     final progressController = ref.read(progressProvider.notifier);
     ref.watch(playHistoryProvider);
     final history = ref.read(playHistoryProvider.notifier);
+    final l = context.l10n;
 
     return ToyScaffold(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ToyHeader(title: 'Your Stats', onBack: widget.onBack),
+          ToyHeader(title: l.statsTitle, onBack: widget.onBack),
           if (progress.isEmpty)
             Expanded(child: _Empty(onBack: widget.onBack))
           else ...[
             const SizedBox(height: 12),
             // Ink, not tomato: here the tabs only switch a view.
             ToyTabs(
-              labels: const ['Overview', 'Levels', 'Badges'],
+              labels: [l.statsTabOverview, l.statsTabLevels, l.statsTabBadges],
               index: _tab,
               onChanged: (i) => setState(() => _tab = i),
               selectedColor: Toy.ink,
@@ -97,11 +99,21 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
 }
 
 /// Says a par ratio the way a person would, not as a bare decimal.
-String _paceLabel(double ratio) {
+String _paceLabel(AppLocalizations l, double ratio) {
   final percent = ((ratio - 1) * 100).round();
-  if (percent == 0) return 'on par';
-  return percent < 0 ? '${-percent}% under' : '$percent% over';
+  if (percent == 0) return l.statsPaceOnPar;
+  return percent < 0 ? l.statsPaceUnder(-percent) : l.statsPaceOver(percent);
 }
+
+/// The ICU select keys statsMonthShort takes, by month number - 1.
+const _monthKeys = [
+  'jan', 'feb', 'mar', 'apr', 'may', 'jun', //
+  'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
+];
+
+/// A short month name ("Jan") for month 1-12 in this locale.
+String _monthShort(AppLocalizations l, int month) =>
+    l.statsMonthShort(_monthKeys[month - 1]);
 
 /// Good news on the Levels tab: the moss ball's green.
 final _underParGreen = Color(0xFF000000 | kBallPalette[5].rgb);
@@ -120,6 +132,7 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 28),
@@ -140,14 +153,13 @@ class _Empty extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                'Nothing to show yet',
+                l.statsEmptyTitle,
                 textAlign: TextAlign.center,
                 style: Toy.display(24, height: 1.1),
               ),
               const SizedBox(height: 8),
               Text(
-                'Solve a level and this fills up: your times against par, '
-                'your best solves, and the days you played.',
+                l.statsEmptyBody,
                 textAlign: TextAlign.center,
                 style: Toy.ui(
                   14,
@@ -158,7 +170,7 @@ class _Empty extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               ToyButton(
-                label: 'Back to levels',
+                label: l.statsBackToLevels,
                 onPressed: onBack,
                 height: 52,
                 radius: 16,
@@ -275,6 +287,7 @@ class _Trophies extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final number = Toy.display(32, height: 1.05);
+    final l = context.l10n;
 
     return Column(
       children: [
@@ -283,7 +296,7 @@ class _Trophies extends StatelessWidget {
             Expanded(
               child: _Block(
                 color: Toy.yellow,
-                label: 'levels solved',
+                label: l.statsLevelsSolved,
                 value: _RunUp(
                   value: solved,
                   format: formatCount,
@@ -296,7 +309,7 @@ class _Trophies extends StatelessWidget {
               child: _Block(
                 color: Toy.pink,
                 angle: 1.5,
-                label: 'stars',
+                label: l.statsStars,
                 value: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -316,7 +329,7 @@ class _Trophies extends StatelessWidget {
               child: _Block(
                 color: Toy.mint,
                 angle: -1,
-                label: 'points',
+                label: l.statsPoints,
                 value: _RunUp(
                   value: points,
                   format: formatCount,
@@ -328,7 +341,7 @@ class _Trophies extends StatelessWidget {
             Expanded(
               child: _Block(
                 color: Toy.lilac,
-                label: 'played',
+                label: l.statsPlayed,
                 value: _RunUp(
                   value: seconds,
                   format: formatSpan,
@@ -391,6 +404,7 @@ class _FactStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     Widget fact(String value, String label) => Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -415,7 +429,7 @@ class _FactStrip extends StatelessWidget {
       child: IntrinsicHeight(
         child: Row(
           children: [
-            fact('Level $furthest', 'now on'),
+            fact(l.commonLevelN(furthest), l.statsNowOn),
             const VerticalDivider(
               width: 1.5,
               thickness: 1.5,
@@ -423,7 +437,7 @@ class _FactStrip extends StatelessWidget {
               indent: 10,
               endIndent: 10,
             ),
-            fact(formatCount(bestSolveMoves), 'moves in best solves'),
+            fact(formatCount(bestSolveMoves), l.statsBestSolveMoves),
           ],
         ),
       ),
@@ -448,9 +462,10 @@ class _AgainstTheClock extends StatelessWidget {
   Widget build(BuildContext context) {
     final set = levels;
     final timed = progress.values.where((p) => p.hasTime).length;
-    const label = Text(
-      'AGAINST THE CLOCK',
-      style: TextStyle(
+    final l = context.l10n;
+    final label = Text(
+      l.statsAgainstClock,
+      style: const TextStyle(
         fontFamily: Toy.uiFamily,
         fontSize: 11,
         fontWeight: FontWeight.w800,
@@ -468,8 +483,7 @@ class _AgainstTheClock extends StatelessWidget {
             label,
             const SizedBox(height: 8),
             Text(
-              'No times on record yet. Levels you cleared before the clock '
-              'arrived have no time — replay one and it starts counting.',
+              l.statsNoTimes,
               style: Toy.ui(
                 13,
                 weight: FontWeight.w500,
@@ -503,24 +517,28 @@ class _AgainstTheClock extends StatelessWidget {
                     label,
                     const SizedBox(height: 7),
                     _ClockLine(
-                      'Fastest',
+                      l.statsFastest,
                       fastest == null
                           ? '—'
-                          : '${formatClock(fastest.bestTimeSeconds)} · '
-                                'L${fastest.levelId}',
+                          : l.statsClockValue(
+                              formatClock(fastest.bestTimeSeconds),
+                              fastest.levelId,
+                            ),
                     ),
                     const SizedBox(height: 7),
                     _ClockLine(
-                      'Longest',
+                      l.statsLongest,
                       slowest == null
                           ? '—'
-                          : '${formatClock(slowest.bestTimeSeconds)} · '
-                                'L${slowest.levelId}',
+                          : l.statsClockValue(
+                              formatClock(slowest.bestTimeSeconds),
+                              slowest.levelId,
+                            ),
                     ),
                     const SizedBox(height: 7),
                     _ClockLine(
-                      'Avg pace',
-                      ratio == null ? '—' : _paceLabel(ratio),
+                      l.statsAvgPace,
+                      ratio == null ? '—' : _paceLabel(l, ratio),
                       good: ratio != null && ratio <= 1,
                     ),
                   ],
@@ -531,8 +549,7 @@ class _AgainstTheClock extends StatelessWidget {
           if (timed < progress.length) ...[
             const SizedBox(height: 12),
             Text(
-              '${progress.length - timed} of your solved levels were cleared '
-              'before the clock and have no time recorded.',
+              l.statsUntimed(progress.length - timed),
               style: Toy.ui(12, weight: FontWeight.w500, color: Toy.inkMuted),
             ),
           ],
@@ -593,9 +610,10 @@ class _Donut extends StatelessWidget {
   Widget build(BuildContext context) {
     final fraction = of == 0 ? 0.0 : under / of;
     final calm = Toy.calm(context);
+    final l = context.l10n;
 
     return Semantics(
-      label: '$under of $of timed levels under par',
+      label: l.statsUnderParSemantic(under, of),
       excludeSemantics: true,
       child: SizedBox.square(
         dimension: 96,
@@ -621,7 +639,7 @@ class _Donut extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'UNDER PAR',
+                      l.statsUnderParTag,
                       style: Toy.ui(
                         9,
                         weight: FontWeight.w800,
@@ -695,6 +713,7 @@ class _Activity extends StatelessWidget {
     final streak = history.currentStreak();
     final days = history.recentDays(30);
     final footer = Toy.ui(12, color: Toy.inkMuted);
+    final l = context.l10n;
 
     Widget foot(String text, Alignment alignment) => Flexible(
       child: FittedBox(
@@ -711,10 +730,10 @@ class _Activity extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'LAST 30 DAYS',
-                  style: TextStyle(
+                  l.statsLast30Days,
+                  style: const TextStyle(
                     fontFamily: Toy.uiFamily,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
@@ -730,7 +749,10 @@ class _Activity extends StatelessWidget {
                     horizontal: 8,
                     vertical: 2,
                   ),
-                  child: Text('$streak day streak', style: Toy.numbers(12)),
+                  child: Text(
+                    l.statsStreakChip(streak),
+                    style: Toy.numbers(12),
+                  ),
                 )
               else
                 ToyChip(
@@ -740,7 +762,7 @@ class _Activity extends StatelessWidget {
                     vertical: 2,
                   ),
                   child: Text(
-                    'no streak',
+                    l.statsNoStreak,
                     style: Toy.ui(12, weight: FontWeight.w800),
                   ),
                 ),
@@ -757,18 +779,15 @@ class _Activity extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              foot(
-                '${plural(history.daysPlayed, 'day')} played',
-                Alignment.centerLeft,
-              ),
+              foot(l.statsDaysPlayed(history.daysPlayed), Alignment.centerLeft),
               const SizedBox(width: 8),
               foot(
-                '${plural(history.totalSolves, 'level')} finished',
+                l.statsLevelsFinished(history.totalSolves),
                 Alignment.center,
               ),
               const SizedBox(width: 8),
               foot(
-                'best ${plural(history.longestStreak, 'day')}',
+                l.statsBestStreak(history.longestStreak),
                 Alignment.centerRight,
               ),
             ],
@@ -837,36 +856,23 @@ class _Bar extends StatelessWidget {
 
   const _Bar({required this.day, required this.isToday, required this.height});
 
-  static const _months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-
-  String get _dayLabel {
-    if (isToday) return 'Today';
+  String _dayLabel(AppLocalizations l) {
+    if (isToday) return l.statsToday;
     final parts = day.date.split('-');
     final m = parts.length == 3 ? int.tryParse(parts[1]) : null;
     final d = parts.length == 3 ? int.tryParse(parts[2]) : null;
     if (m == null || d == null || m < 1 || m > 12) return day.date;
-    return '${_months[m - 1]} $d';
+    return l.statsMonthDay(_monthShort(l, m), d);
   }
 
   @override
   Widget build(BuildContext context) {
     final played = day.solved > 0;
+    final l = context.l10n;
+    final label = _dayLabel(l);
     final message = played
-        ? '$_dayLabel · ${plural(day.solved, 'level')}'
-        : '$_dayLabel · no play';
+        ? l.statsBarLevels(label, day.solved)
+        : l.statsBarNoPlay(label);
 
     return Tooltip(
       message: message,
@@ -974,14 +980,15 @@ class _WorldRow extends StatelessWidget {
     final ballId = _worldBalls[band.index % _worldBalls.length];
     final ballColor = Color(0xFF000000 | kBallPalette[ballId].rgb);
     final untouched = cleared == 0;
+    final l = context.l10n;
 
     final (chipText, chipColor) = untouched
-        ? ('ahead', Toy.card)
+        ? (l.statsWorldAhead, Toy.card)
         : pace == null
-        ? ('no times', Toy.card)
+        ? (l.statsWorldNoTimes, Toy.card)
         : pace <= 1
-        ? (_paceLabel(pace), _underParGreen)
-        : (_paceLabel(pace), Toy.cream);
+        ? (_paceLabel(l, pace), _underParGreen)
+        : (_paceLabel(l, pace), Toy.cream);
 
     final row = ToyBox(
       radius: 16,
@@ -1054,7 +1061,7 @@ class _WorldRow extends StatelessWidget {
               if (points > 0) ...[
                 const SizedBox(height: 3),
                 Text(
-                  '${formatCount(points)} pts',
+                  l.statsWorldPoints(points),
                   style: Toy.numbers(
                     11,
                     color: Toy.inkMuted,
@@ -1069,10 +1076,11 @@ class _WorldRow extends StatelessWidget {
     );
 
     return Semantics(
-      label:
-          '${band.name}: $cleared of ${band.length} solved'
-          '${pace == null ? '' : ', pace ${_paceLabel(pace)}'}'
-          '${points > 0 ? ', ${formatCount(points)} points' : ''}',
+      label: [
+        l.statsWorldSolvedSemantic(band.name, cleared, band.length),
+        if (pace != null) l.statsWorldPaceSemantic(_paceLabel(l, pace)),
+        if (points > 0) l.statsWorldPointsSemantic(points),
+      ].join(', '),
       excludeSemantics: true,
       child: untouched ? Opacity(opacity: 0.55, child: row) : row,
     );
@@ -1140,6 +1148,7 @@ class _TableHeader extends StatelessWidget {
       color: Toy.cream,
       letterSpacing: 1,
     );
+    final l = context.l10n;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: const BoxDecoration(
@@ -1152,24 +1161,28 @@ class _TableHeader extends StatelessWidget {
         children: [
           SizedBox(
             width: _colLevel,
-            child: Text('LVL', style: style),
+            child: Text(l.statsColLevel, style: style),
           ),
           const SizedBox(width: _colGap),
           SizedBox(
             width: _colStars,
-            child: Text('STARS', style: style),
+            child: Text(l.statsColStars, style: style),
           ),
           const SizedBox(width: _colGap),
-          Expanded(child: Text('MOVES', style: style)),
+          Expanded(child: Text(l.statsColMoves, style: style)),
           const SizedBox(width: _colGap),
           SizedBox(
             width: _colTime,
-            child: Text('TIME', style: style),
+            child: Text(l.statsColTime, style: style),
           ),
           const SizedBox(width: _colGap),
           SizedBox(
             width: _colPoints,
-            child: Text('PTS', textAlign: TextAlign.right, style: style),
+            child: Text(
+              l.statsColPoints,
+              textAlign: TextAlign.right,
+              style: style,
+            ),
           ),
         ],
       ),
@@ -1246,8 +1259,11 @@ class _LevelRow extends StatelessWidget {
                   ? '${progress.bestMoves} / $minMoves'
                   : '${progress.bestMoves}',
               semanticsLabel: minMoves > 0
-                  ? '${progress.bestMoves} moves, best possible $minMoves'
-                  : plural(progress.bestMoves, 'move'),
+                  ? context.l10n.statsMovesBestPossible(
+                      progress.bestMoves,
+                      minMoves,
+                    )
+                  : context.l10n.statsMoves(progress.bestMoves),
               style: Toy.numbers(13, weight: FontWeight.w700),
             ),
           ),
