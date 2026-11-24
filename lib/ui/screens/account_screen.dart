@@ -30,6 +30,7 @@ import '../widgets/rename_dialog.dart';
 import '../widgets/settings_rows.dart';
 import '../widgets/toy_kit.dart';
 import '../widgets/pour_loader.dart';
+import '../format.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key, this.onOpenStatistics});
@@ -798,9 +799,10 @@ class _PlayerCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         l.accountPouringSince(
-                          l
-                              .statsMonthShort(_monthKeys[since.month - 1])
-                              .toUpperCase(),
+                          upperIn(
+                            l,
+                            l.statsMonthShort(_monthKeys[since.month - 1]),
+                          ),
                           since.year,
                         ),
                         style: Toy.ui(

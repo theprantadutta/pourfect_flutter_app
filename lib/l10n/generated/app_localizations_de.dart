@@ -557,7 +557,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String statsStreakChip(int count) {
-    return '$count-Tage-Serie';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count-Tage-Serie',
+      one: '1 Tag Serie',
+    );
+    return '$_temp0';
   }
 
   @override

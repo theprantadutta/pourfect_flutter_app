@@ -55,3 +55,27 @@ Both OFL-1.1 texts are in `assets/licenses/`, registered at startup by
 `lib/services/licenses.dart` and shown on the app's licence page. The OFL
 obliges us to ship them; shipping the fonts without them is a licence breach,
 not a tidiness issue.
+
+---
+
+## Rubik — present (fallback only)
+
+Copyright 2015 The Rubik Project Authors.
+SIL Open Font License 1.1 · <https://github.com/googlefonts/rubik>
+
+Never chosen as a face. It is `Toy.fontFallback`: Flutter draws a character
+with it only when Bagel Fat One or Outfit lacks that glyph. Neither has
+Cyrillic, and Bagel Fat One lacks Turkish İ Ş Ğ, so Russian and Turkish text
+would otherwise fall back to the system font mid-word. Chinese, Japanese and
+Korean use the system font.
+
+**Subset** to Latin, Latin Extended and Cyrillic (about 86 KB a weight), with
+the same `python -m fontTools.subset` as above.
+
+| File | Weight |
+|---|---|
+| `Rubik-Medium.ttf` | 500 |
+| `Rubik-SemiBold.ttf` | 600 |
+| `Rubik-Bold.ttf` | 700 |
+| `Rubik-ExtraBold.ttf` | 800 |
+| `Rubik-Black.ttf` | 900 |

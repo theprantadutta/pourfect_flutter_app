@@ -21,6 +21,7 @@ import '../theme/ball_palette.dart';
 import '../theme/toy.dart';
 import 'ball.dart';
 import 'pressable.dart';
+import '../format.dart';
 
 export 'pressable.dart' show Pressable, PressDepth, ToyBox;
 
@@ -459,7 +460,7 @@ class ToySectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
-    child: Text(text.toUpperCase(), style: Toy.caps(color: color)),
+    child: Text(upperIn(context.l10n, text), style: Toy.caps(color: color)),
   );
 }
 

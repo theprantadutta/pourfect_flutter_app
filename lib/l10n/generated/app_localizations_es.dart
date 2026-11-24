@@ -555,7 +555,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String statsStreakChip(int count) {
-    return 'racha de $count días';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'racha de $count días',
+      one: 'racha de 1 día',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -1605,7 +1611,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String playParMeterLabel(int stars, int used, int par, String words) {
-    return 'Ritmo de $stars estrellas, $used de $par movimientos de par. $words';
+    String _temp0 = intl.Intl.pluralLogic(
+      stars,
+      locale: localeName,
+      other: 'Ritmo de $stars estrellas',
+      one: 'Ritmo de 1 estrella',
+    );
+    return '$_temp0, $used de $par movimientos de par. $words';
   }
 
   @override

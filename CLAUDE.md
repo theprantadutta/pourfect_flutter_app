@@ -330,6 +330,48 @@ not relaxing, which is the product. Get difficulty from fewer empty tubes,
 higher scatter and lower forced-move ratio instead. Raising this constant
 requires re-running the CVD harness, not just editing the number.
 
+## Languages
+
+Since 2026-11-24: English plus pt (Brazil), es (Latin America), ru, tr, id,
+de, ja, ko, zh (Simplified) and zh_Hant (Traditional), picked from where Play
+impressions come from, plus East Asia, where puzzle players are. Arabic
+(right to left) is next.
+
+- **Strings live in `lib/l10n/src/<locale>/<area>.arb`** (common, account,
+  hub, play, settings). `dart run tool/merge_arb.dart && flutter gen-l10n`
+  builds `lib/l10n/app_<locale>.arb` and `lib/l10n/generated/`. English's
+  `@key` descriptions say where a string appears and how long it may be;
+  translators read them.
+- **`python -I tool/check_translations.py` before every gen-l10n.** It checks
+  placeholders, ICU braces, the plural `other` branch, and the trap below.
+- **`=1{...}` compiles to the plural CATEGORY "one", not the number 1.**
+  Portuguese "one" covers 0 too, so a fresh board read "1 jogada"; Russian
+  "one" covers 21, 31... Portuguese plurals with `=1` therefore also carry
+  `=0`, and Russian ones a real `one{}`. The checker enforces both, and
+  `test/l10n/plural_zero_test.dart` pins it.
+- **Capitals go through `upperIn(l10n, text)`** (`ui/format.dart`), never a
+  bare `toUpperCase()`: Dart knows no locale, and Turkish "Hissiyat" came out
+  "HISSIYAT" instead of "HİSSİYAT". Don't re-case a translated string either
+  (the HUD used to force "Title case").
+- **Small fixed boxes scale their text** (`FittedBox`, one line): the 44dp
+  moves badge wrapped "JOGADAS" and "LANGKAH" onto two lines.
+- **Reach strings with `context.l10n`** in widgets and `appL10n()` without a
+  context; both fall back to English, so a bare widget test still renders.
+  World names go through `worldDisplayName`.
+- **Chinese:** zh-TW, zh-HK and zh-MO get Traditional; other zh, Simplified
+  (`resolveSupportedLocale`).
+- **Fonts:** Rubik (`Toy.fontFallback`) fills in Cyrillic and Turkish letters
+  that Bagel Fat One and Outfit lack. CJK uses the system font.
+- **Not translated, on purpose:** "Pourfect", "Zen", and event names that
+  come from the server (e.g. "Cascade Week").
+- **Check on a device with the per-app language**, not the phone's:
+  `adb shell cmd locale set-app-locales com.pranta.pourfect --user 0 --locales ja-JP`,
+  and `--locales '""'` to put it back. Checked 2026-11-24 on the A24 (ja, de,
+  pt, id, ko) and the Tab A9 (ru, tr, zh-TW, zh-CN): hub, level, win screen,
+  settings, stats and the legal gate.
+- Android declares the list in `res/xml/locales_config.xml`, iOS in
+  `CFBundleLocalizations`. Add a language to both.
+
 ## Analytics
 
 Behind a thin `AnalyticsService` interface, same shape as the ad service, so it

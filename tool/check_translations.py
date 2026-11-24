@@ -77,6 +77,16 @@ def check(locale, english):
                 f" != English {sorted(top_level_placeholders(en))}")
         if re.search(r",\s*plural\s*,", text) and not re.search(r"\bother\s*\{", text):
             problems.append(f"{file}: {key}: plural without an 'other' branch")
+        # gen-l10n compiles "=1{...}" to the "one" CATEGORY. Where that
+        # category is wider than the number 1, the =1 text leaks: Portuguese
+        # "one" is 0 and 1 (a fresh board read "1 jogada"), Russian and
+        # Ukrainian "one" is 1, 21, 31...
+        lang = locale.split("_")[0]
+        if "=1{" in text:
+            if lang == "pt" and "=0{" not in text:
+                problems.append(f"{file}: {key}: =1 needs a =0 branch in {lang} ('one' includes 0)")
+            if lang in ("ru", "uk", "be") and not re.search(r"\bone\s*\{", text):
+                problems.append(f"{file}: {key}: =1 needs a one{{}} branch in {lang} ('one' includes 21, 31...)")
     missing = sorted(set(english) - set(translated))
     return problems, missing
 

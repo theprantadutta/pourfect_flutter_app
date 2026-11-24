@@ -404,7 +404,7 @@ class JourneyPainter extends CustomPainter {
     );
     final name = _text(
       'bandn$world${band.reached}${band.name}',
-      worldDisplayName(appL10n(), band.name).toUpperCase(),
+      upperIn(appL10n(), worldDisplayName(appL10n(), band.name)),
       Toy.ui(
         12.5,
         weight: FontWeight.w800,

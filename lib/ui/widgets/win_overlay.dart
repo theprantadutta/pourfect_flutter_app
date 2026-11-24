@@ -716,7 +716,7 @@ class _WinResultState extends State<WinResult>
                 child: Text(
                   context.l10n.playWinWorldBand(
                     widget.worldNumber,
-                    widget.bandName.toUpperCase(),
+                    upperIn(context.l10n, widget.bandName),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

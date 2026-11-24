@@ -139,7 +139,7 @@
   "statsUnderParSemantic": "{under} von {total} Leveln mit Zeit unter Par",
   "statsUnderParTag": "UNTER PAR",
   "statsLast30Days": "LETZTE 30 TAGE",
-  "statsStreakChip": "{count}-Tage-Serie",
+  "statsStreakChip": "{count, plural, =1{1 Tag Serie} other{{count}-Tage-Serie}}",
   "statsNoStreak": "keine Serie",
   "statsDaysPlayed": "{count, plural, =1{{count} Tag gespielt} other{{count} Tage gespielt}}",
   "statsLevelsFinished": "{count, plural, =1{{count} Level gelöst} other{{count} Level gelöst}}",

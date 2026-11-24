@@ -10,7 +10,7 @@
   "playParLeftFor2Stars": "{count, plural, =1{Te queda 1 movimiento para 2 estrellas} other{Te quedan {count} movimientos para 2 estrellas}}",
   "playParOneStarFromHere": "1 estrella desde aquí · con solo terminar",
   "playParAnyFinish": "Terminar te da 1 estrella",
-  "playParMeterLabel": "Ritmo de {stars} estrellas, {used} de {par} movimientos de par. {words}",
+  "playParMeterLabel": "{stars, plural, =1{Ritmo de 1 estrella} other{Ritmo de {stars} estrellas}}, {used} de {par} movimientos de par. {words}",
   "playHudBusyLabel": "{label}, trabajando. Toca para cancelar",
   "playHudUndo": "Deshacer",
   "playHudHint": "Pista",

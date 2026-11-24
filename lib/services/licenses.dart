@@ -18,6 +18,7 @@ import 'package:flutter/services.dart';
 const _fontLicenses = <String, List<String>>{
   'assets/licenses/OFL-BagelFatOne.txt': ['Bagel Fat One'],
   'assets/licenses/OFL-Outfit.txt': ['Outfit'],
+  'assets/licenses/OFL-Rubik.txt': ['Rubik'],
 };
 
 /// Adds every bundled font licence to the registry.

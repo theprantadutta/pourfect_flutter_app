@@ -527,7 +527,7 @@ class _WorldRibbon extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                l10n.journeyRibbonLabel(world, name.toUpperCase()),
+                l10n.journeyRibbonLabel(world, upperIn(l10n, name)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: style,

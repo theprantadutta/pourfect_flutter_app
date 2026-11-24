@@ -70,9 +70,9 @@ class BoardHud extends StatelessWidget {
   bool get _meterShown => showParMeter && minMoves > 0;
 
   String _title(AppLocalizations l10n) {
-    final label = titleLabel == null
-        ? l10n.playHudLevel
-        : titleLabel![0].toUpperCase() + titleLabel!.substring(1).toLowerCase();
+    // Labels arrive capitalized as their language writes them; re-casing
+    // here broke Turkish (İ) and German nouns.
+    final label = titleLabel ?? l10n.playHudLevel;
     final value = titleValue ?? '$levelId';
     return value.isEmpty ? label : l10n.playHudTitle(label, value);
   }
@@ -195,9 +195,18 @@ class _MovesCounter extends StatelessWidget {
                 style: Toy.numbers(17, weight: FontWeight.w800),
               ),
             ),
-            Text(
-              context.l10n.playHudMoves,
-              style: Toy.ui(8, weight: FontWeight.w800, height: 1.1),
+            // Scales down rather than wrapping: "JOGADAS" and "LANGKAH" are
+            // wider than the 44dp badge and broke onto two lines.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  context.l10n.playHudMoves,
+                  maxLines: 1,
+                  style: Toy.ui(8, weight: FontWeight.w800, height: 1.1),
+                ),
+              ),
             ),
           ],
         ),

@@ -30,6 +30,8 @@ class AppLocalizationsPt extends AppLocalizations {
           'Você já tem uma conta com esse e-mail. Este celular tem $solved níveis resolvidos que não estão nela, e os dois não podem ser combinados: ao entrar, eles serão substituídos pelo que estiver nessa conta.',
       one:
           'Você já tem uma conta com esse e-mail. Este celular tem $solved nível resolvido que não está nela, e os dois não podem ser combinados: ao entrar, ele será substituído pelo que estiver nessa conta.',
+      zero:
+          'Você já tem uma conta com esse e-mail. Este celular tem $solved níveis resolvidos que não estão nela, e os dois não podem ser combinados: ao entrar, eles serão substituídos pelo que estiver nessa conta.',
     );
     return '$_temp0';
   }
@@ -87,6 +89,8 @@ class AppLocalizationsPt extends AppLocalizations {
           'Este celular tem $cleared níveis resolvidos que não estão nessa conta. Não dá para combinar, então eles serão substituídos pelo que a conta já tem.',
       one:
           'Este celular tem $cleared nível resolvido que não está nessa conta. Não dá para combinar, então ele será substituído pelo que a conta já tem.',
+      zero:
+          'Este celular tem $cleared níveis resolvidos que não estão nessa conta. Não dá para combinar, então eles serão substituídos pelo que a conta já tem.',
     );
     return '$_temp0';
   }
@@ -362,6 +366,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$countString jogadores neste ranking',
       one: '1 jogador neste ranking',
+      zero: '$countString jogadores neste ranking',
     );
     return '$_temp0';
   }
@@ -373,6 +378,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count jogadas',
       one: '$count jogada',
+      zero: '$count jogadas',
     );
     return '$_temp0';
   }
@@ -384,6 +390,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count estrelas',
       one: '$count estrela',
+      zero: '$count estrelas',
     );
     return '$_temp0';
   }
@@ -395,6 +402,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count níveis',
       one: '$count nível',
+      zero: '$count níveis',
     );
     return '$_temp0';
   }
@@ -537,6 +545,8 @@ class AppLocalizationsPt extends AppLocalizations {
           '$count dos seus níveis resolvidos foram concluídos antes do relógio e não têm tempo registrado.',
       one:
           '$count dos seus níveis resolvidos foi concluído antes do relógio e não tem tempo registrado.',
+      zero:
+          '$count dos seus níveis resolvidos foram concluídos antes do relógio e não têm tempo registrado.',
     );
     return '$_temp0';
   }
@@ -554,7 +564,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String statsStreakChip(int count) {
-    return 'sequência de $count dias';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'sequência de $count dias',
+      one: 'sequência de 1 dia',
+      zero: 'sequência de $count dias',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -567,6 +584,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count dias jogados',
       one: '$count dia jogado',
+      zero: '$count dias jogados',
     );
     return '$_temp0';
   }
@@ -578,6 +596,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count níveis concluídos',
       one: '$count nível concluído',
+      zero: '$count níveis concluídos',
     );
     return '$_temp0';
   }
@@ -589,6 +608,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'recorde: $count dias',
       one: 'recorde: $count dia',
+      zero: 'recorde: $count dias',
     );
     return '$_temp0';
   }
@@ -628,6 +648,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$day · $count níveis',
       one: '$day · $count nível',
+      zero: '$day · $count níveis',
     );
     return '$_temp0';
   }
@@ -698,6 +719,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count jogadas',
       one: '$count jogada',
+      zero: '$count jogadas',
     );
     return '$_temp0';
   }
@@ -873,6 +895,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count dias',
       one: '1 dia',
+      zero: '$count dias',
     );
     return '$_temp0';
   }
@@ -1073,6 +1096,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'sequência de $count dias',
       one: 'sequência de 1 dia',
+      zero: 'sequência de $count dias',
     );
     return '$_temp0';
   }
@@ -1084,6 +1108,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Sequência de $count dias!',
       one: 'Sequência de 1 dia!',
+      zero: 'Sequência de $count dias!',
     );
     return '$_temp0';
   }
@@ -1128,6 +1153,8 @@ class AppLocalizationsPt extends AppLocalizations {
       other:
           'Não dá para terminar a partir daqui. Desfaça $count jogadas para voltar ao caminho certo.',
       one: 'Não dá para terminar a partir daqui. Desfaça 1 jogada para voltar ao caminho certo.',
+      zero:
+          'Não dá para terminar a partir daqui. Desfaça $count jogadas para voltar ao caminho certo.',
     );
     return '$_temp0';
   }
@@ -1174,6 +1201,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count dias',
       one: '1 dia',
+      zero: '$count dias',
     );
     return 'Sua sequência: $_temp0. Abrir';
   }
@@ -1278,6 +1306,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Recorde: $count dias',
       one: 'Recorde: 1 dia',
+      zero: 'Recorde: $count dias',
     );
     return '$_temp0';
   }
@@ -1300,6 +1329,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Um grátis toda segunda-feira: em $days dias.',
       one: 'Um grátis toda segunda-feira: amanhã.',
+      zero: 'Um grátis toda segunda-feira: em $days dias.',
     );
     return '$_temp0';
   }
@@ -1389,6 +1419,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$stars estrelas',
       one: '1 estrela',
+      zero: '$stars estrelas',
     );
     return 'Tabuleiro $slot, $_temp0, $points pontos';
   }
@@ -1430,6 +1461,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Não dá para terminar a partir daqui. Desfaça $count jogadas.',
       one: 'Não dá para terminar a partir daqui. Desfaça 1 jogada.',
+      zero: 'Não dá para terminar a partir daqui. Desfaça $count jogadas.',
     );
     return '$_temp0';
   }
@@ -1468,6 +1500,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count estrelas',
       one: '1 estrela',
+      zero: '$count estrelas',
     );
     return '$_temp0';
   }
@@ -1566,6 +1599,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count jogadas',
       one: '1 jogada',
+      zero: '$count jogadas',
     );
     return '$_temp0';
   }
@@ -1577,6 +1611,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Faltam $count jogadas para 3 estrelas',
       one: 'Falta 1 jogada para 3 estrelas',
+      zero: 'Faltam $count jogadas para 3 estrelas',
     );
     return '$_temp0';
   }
@@ -1591,6 +1626,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Faltam $count jogadas para 2 estrelas',
       one: 'Falta 1 jogada para 2 estrelas',
+      zero: 'Faltam $count jogadas para 2 estrelas',
     );
     return '$_temp0';
   }
@@ -1604,7 +1640,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String playParMeterLabel(int stars, int used, int par, String words) {
-    return 'Ritmo de $stars estrelas, $used de $par jogadas do par. $words';
+    String _temp0 = intl.Intl.pluralLogic(
+      stars,
+      locale: localeName,
+      other: 'Ritmo de $stars estrelas',
+      one: 'Ritmo de 1 estrela',
+      zero: 'Ritmo de $stars estrelas',
+    );
+    return '$_temp0, $used de $par jogadas do par. $words';
   }
 
   @override
@@ -1772,6 +1815,8 @@ class AppLocalizationsPt extends AppLocalizations {
       other:
           'Não dá para terminar a partir daqui. Desfaça $count jogadas para voltar ao caminho certo.',
       one: 'Não dá para terminar a partir daqui. Desfaça 1 jogada para voltar ao caminho certo.',
+      zero:
+          'Não dá para terminar a partir daqui. Desfaça $count jogadas para voltar ao caminho certo.',
     );
     return '$_temp0';
   }
@@ -1784,6 +1829,8 @@ class AppLocalizationsPt extends AppLocalizations {
       other:
           'Não dá para terminar a partir daqui. Desfaça $count jogadas para voltar ao caminho certo. Ou toque em + Tubo para ganhar um tubo extra.',
       one: 'Não dá para terminar a partir daqui. Desfaça 1 jogada para voltar ao caminho certo. Ou toque em + Tubo para ganhar um tubo extra.',
+      zero:
+          'Não dá para terminar a partir daqui. Desfaça $count jogadas para voltar ao caminho certo. Ou toque em + Tubo para ganhar um tubo extra.',
     );
     return '$_temp0';
   }
@@ -1803,6 +1850,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Você ainda tem $count dicas grátis.',
       one: 'Você ainda tem 1 dica grátis.',
+      zero: 'Você ainda tem $count dicas grátis.',
     );
     return '$_temp0';
   }
@@ -1839,6 +1887,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count JOGADAS · PAR $par',
       one: '1 JOGADA · PAR $par',
+      zero: '$count JOGADAS · PAR $par',
     );
     return '$_temp0';
   }
@@ -1887,6 +1936,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Par $par, você fez $took. A $short jogadas das 3★.',
       one: 'Par $par, você fez $took. A uma jogada das 3★.',
+      zero: 'Par $par, você fez $took. A $short jogadas das 3★.',
     );
     return '$_temp0';
   }
@@ -1981,6 +2031,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'dicas',
       one: 'dica',
+      zero: 'dicas',
     );
     return '$_temp0';
   }
@@ -1992,6 +2043,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'tubos extras',
       one: 'tubo extra',
+      zero: 'tubos extras',
     );
     return '$_temp0';
   }
@@ -2080,6 +2132,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count cores',
       one: '1 cor',
+      zero: '$count cores',
     );
     return '$_temp0';
   }
@@ -2091,6 +2144,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$pace, $count cores',
       one: '$pace, 1 cor',
+      zero: '$pace, $count cores',
     );
     return '$_temp0';
   }
@@ -2107,6 +2161,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Feito! $count até agora.',
       one: 'Feito!',
+      zero: 'Feito! $count até agora.',
     );
     return '$_temp0';
   }
@@ -2368,6 +2423,8 @@ class AppLocalizationsPt extends AppLocalizations {
       other:
           'Isso apaga todas as estrelas e melhores marcas de $count níveis resolvidos e bloqueia de novo tudo depois do nível 1. Não dá para desfazer.',
       one: 'Isso apaga todas as estrelas e melhores marcas de 1 nível resolvido e bloqueia de novo tudo depois do nível 1. Não dá para desfazer.',
+      zero:
+          'Isso apaga todas as estrelas e melhores marcas de $count níveis resolvidos e bloqueia de novo tudo depois do nível 1. Não dá para desfazer.',
     );
     return '$_temp0';
   }
@@ -2435,6 +2492,8 @@ class AppLocalizationsPt extends AppLocalizations {
       other:
           'Pourfect $version · feito com $count tabuleiros com solução comprovada',
       one: 'Pourfect $version · feito com 1 tabuleiro com solução comprovada',
+      zero:
+          'Pourfect $version · feito com $count tabuleiros com solução comprovada',
     );
     return '$_temp0';
   }
@@ -2553,6 +2612,8 @@ class AppLocalizationsPt extends AppLocalizations {
       other:
           'Suas primeiras $count dicas são grátis. Depois disso, um vídeo curto rende uma. Se não for possível encontrar uma dica, o vídeo continua valendo para a próxima.',
       one: 'Sua primeira dica é grátis. Depois disso, um vídeo curto rende uma. Se não for possível encontrar uma dica, o vídeo continua valendo para a próxima.',
+      zero:
+          'Suas primeiras $count dicas são grátis. Depois disso, um vídeo curto rende uma. Se não for possível encontrar uma dica, o vídeo continua valendo para a próxima.',
     );
     return '$_temp0';
   }
@@ -2772,6 +2833,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Sequência de $days dias',
       one: 'Sequência de 1 dia',
+      zero: 'Sequência de $days dias',
     );
     return '$_temp0';
   }

@@ -138,7 +138,7 @@
   "statsUnderParSemantic": "{under} de {total} niveles cronometrados bajo par",
   "statsUnderParTag": "BAJO PAR",
   "statsLast30Days": "ÚLTIMOS 30 DÍAS",
-  "statsStreakChip": "racha de {count} días",
+  "statsStreakChip": "{count, plural, =1{racha de 1 día} other{racha de {count} días}}",
   "statsNoStreak": "sin racha",
   "statsDaysPlayed": "{count, plural, =1{{count} día jugado} other{{count} días jugados}}",
   "statsLevelsFinished": "{count, plural, =1{{count} nivel superado} other{{count} niveles superados}}",

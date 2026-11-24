@@ -121,3 +121,16 @@ String worldDisplayName(AppLocalizations l10n, String name) => switch (name) {
   'Mastery' => l10n.journeyBandMastery,
   _ => name,
 };
+
+/// [text] in capitals, the way [l10n]'s language writes them.
+///
+/// Dart's `toUpperCase` knows no locale, so Turkish (and Azerbaijani) "i"
+/// became a dotless "I": "Hissiyat" read "HISSIYAT" instead of "HİSSİYAT".
+/// Every user-facing capitalization goes through here.
+String upperIn(AppLocalizations l10n, String text) {
+  final lang = l10n.localeName.split(RegExp('[_-]')).first;
+  if (lang == 'tr' || lang == 'az') {
+    return text.replaceAll('i', 'İ').toUpperCase();
+  }
+  return text.toUpperCase();
+}
