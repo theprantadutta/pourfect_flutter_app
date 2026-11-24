@@ -1027,6 +1027,29 @@ splits them per device.
      GA's `purchase` on top of a working `in_app_purchase` (double count).
   6. AdMob ↔ Firebase is already linked for the iOS app too (2026-11-09);
      nothing to do there.
+- **For the next macOS/iOS session: localize the App Store listing, as was
+  done for Play.** Since 2026-11-24 the app itself comes in English plus
+  Portuguese, Spanish, Russian, Turkish, Indonesian, German, Japanese, Korean,
+  Simplified Chinese and Traditional Chinese (`lib/l10n/`; iOS declares them
+  in `CFBundleLocalizations` in `ios/Runner/Info.plist`). Arabic (right to
+  left) is next. On Play, translated listings exist for all of them. In App
+  Store Connect, do the same for the iOS app:
+  1. Build and run iOS once first: Info.plist gained `CFBundleLocalizations`,
+     and the Rubik fallback font was added to `pubspec.yaml`. Set the
+     simulator to Japanese and to Russian and look at the hub, a level and
+     Settings.
+  2. App Information → **Localizable Information**: add each language and
+     fill in Name and Subtitle (30 characters each).
+  3. On the next version → **Product Page Information**, for each language:
+     Promotional Text, Description, Keywords (100 characters, comma
+     separated, no spaces after commas) and What's New. Reuse the Play text:
+     `store_listings/play-listing/<locale>.md` has the title, short and full
+     description and What's New per language. Keep the Marketing and Support
+     URLs the same in every language. Apple's locales are pt-BR, es-MX,
+     ru, tr, id, de-DE, ja, ko, zh-Hans and zh-Hant.
+  4. Screenshots may stay English (App Store falls back to the primary
+     language), but localized ones convert better in Japan, Korea and Taiwan.
+  5. Don't tick anything that marks the content as AI-generated.
 
 ## Ads — live ids, gated on build mode
 
