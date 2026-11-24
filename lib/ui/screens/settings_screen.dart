@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/analytics/analytics_service.dart';
 import '../../services/iap/billing_service.dart';
 import '../../services/review/play_review_service.dart'
@@ -101,17 +102,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _confirmReset() async {
     final cleared = ref.read(progressProvider).length;
 
+    final l10n = context.l10n;
     final confirmed = await showRowConfirm(
       context: context,
-      title: 'Reset progress?',
+      title: l10n.settingsResetTitle,
       body: cleared == 0
-          ? 'There is nothing to reset yet.'
-          : 'This erases every star and best score across '
-                '$cleared solved ${cleared == 1 ? "level" : "levels"}, '
-                'and locks everything after level 1 again. It cannot be '
-                'undone.',
-      cancelLabel: 'Keep it',
-      confirmLabel: 'Erase everything',
+          ? l10n.settingsResetNothing
+          : l10n.settingsResetBody(cleared),
+      cancelLabel: l10n.settingsKeepIt,
+      confirmLabel: l10n.settingsResetConfirm,
       destructive: true,
       confirmEnabled: cleared != 0,
     );
@@ -129,7 +128,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       // it lands, so an offline reset is still a reset.
       await ref.read(syncControllerProvider.notifier).reset();
       if (!mounted) return;
-      showRowMessage(context, 'Progress reset.');
+      showRowMessage(context, context.l10n.settingsResetDone);
     }
   }
 
@@ -139,19 +138,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         .buyRemoveAds(placement: 'settings');
     if (!mounted) return;
 
+    final l10n = context.l10n;
     final message = switch (outcome) {
-      PurchaseOutcome.purchased => 'Thank you. Ads between levels are off.',
-      PurchaseOutcome.alreadyOwned => 'Already purchased — ads are off.',
+      PurchaseOutcome.purchased => l10n.settingsPurchaseThanks,
+      PurchaseOutcome.alreadyOwned => l10n.settingsPurchaseAlreadyOwned,
       // Backing out is a normal choice, not a failure, and must never be
       // reported as an error.
       PurchaseOutcome.cancelled => null,
-      PurchaseOutcome.pending =>
-        'Payment pending. Ads will switch off once it clears.',
-      PurchaseOutcome.unavailable =>
-        'The store is not available on this device right now.',
-      PurchaseOutcome.failed =>
-        'The purchase did not go through. You have '
-            'not been charged.',
+      PurchaseOutcome.pending => l10n.settingsPurchasePending,
+      PurchaseOutcome.unavailable => l10n.settingsStoreUnavailable,
+      PurchaseOutcome.failed => l10n.settingsPurchaseFailed,
     };
     if (message == null) return;
     showRowMessage(context, message);
@@ -200,14 +196,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _rate() async {
     final opened = await ref.read(reviewServiceProvider).openStoreListing();
     if (!opened && mounted) {
-      showRowMessage(context, 'Could not open the store.');
+      showRowMessage(context, context.l10n.settingsStoreOpenFailed);
     }
   }
 
   Future<void> _restore() async {
     await ref.read(billingServiceProvider).restorePurchases();
     if (!mounted) return;
-    showRowMessage(context, 'Purchases restored, if there were any.');
+    showRowMessage(context, context.l10n.settingsRestoreDone);
   }
 
   /// Re-opens the advertising consent form.
@@ -231,7 +227,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       Uri.parse(url),
       mode: LaunchMode.externalApplication,
     );
-    if (!ok && mounted) showRowMessage(context, 'Could not open the browser.');
+    if (!ok && mounted) {
+      showRowMessage(context, context.l10n.settingsBrowserOpenFailed);
+    }
   }
 
   Future<void> _openPrivacy() => _openUrl(kPrivacyPolicyUrl);
@@ -249,12 +247,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Terms & licenses', style: Toy.display(24, height: 1.1)),
+            Text(
+              context.l10n.settingsTermsAndLicenses,
+              style: Toy.display(24, height: 1.1),
+            ),
             const SizedBox(height: 16),
-            for (final (key, label) in const [
-              ('terms', 'Terms of use'),
-              ('refund', 'Refund policy'),
-              ('licenses', 'Open-source licenses'),
+            for (final (key, label) in [
+              ('terms', context.l10n.settingsTermsOfUse),
+              ('refund', context.l10n.settingsRefundPolicy),
+              ('licenses', context.l10n.settingsOpenSourceLicenses),
             ]) ...[
               ToyButton.secondary(
                 label: label,
@@ -264,7 +265,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
             const SizedBox(height: 4),
             ToyButton(
-              label: 'Close',
+              label: context.l10n.commonClose,
               color: Toy.mint,
               textColor: Toy.ink,
               height: 52,
@@ -302,17 +303,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _confirmSignOut() async {
+    final l10n = context.l10n;
     final confirmed = await showRowConfirm(
       context: context,
-      title: 'Sign out?',
+      title: l10n.settingsSignOutTitle,
       // True, and worth saying: the campaign is on the device and stays
       // there. Signing out changes which account it syncs into next, and
       // the merge is monotonic, so nothing can be taken away by it.
-      body:
-          'Your progress stays on this phone. You can sign back in any time '
-          'to pick it up somewhere else.',
-      cancelLabel: 'Stay signed in',
-      confirmLabel: 'Sign out',
+      body: l10n.settingsSignOutBody,
+      cancelLabel: l10n.settingsSignOutStay,
+      confirmLabel: l10n.settingsSignOutConfirm,
     );
 
     if (confirmed && mounted) {
@@ -356,20 +356,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // The switch has NOT moved, because the server never agreed. Saying so is
     // the whole point: a control that looks like it worked, on a request that
     // did not, tells somebody they are hidden while they are still listed.
-    showRowMessage(context, 'Could not reach the server, so nothing changed.');
+    showRowMessage(context, context.l10n.settingsServerUnreachable);
   }
 
   Future<void> _confirmDeleteAccount() async {
+    final l10n = context.l10n;
     final confirmed = await showRowConfirm(
       context: context,
-      title: 'Delete your account?',
-      body:
-          'This removes your account, your stars, your streak and your '
-          'leaderboard entry, on this phone and on our server. It cannot be '
-          'undone.\n\nRemove Ads is not affected — it belongs to the store '
-          'account you bought it with, and restores if you play again.',
-      cancelLabel: 'Keep it',
-      confirmLabel: 'Delete everything',
+      title: l10n.settingsDeleteTitle,
+      body: l10n.settingsDeleteBody,
+      cancelLabel: l10n.settingsKeepIt,
+      confirmLabel: l10n.settingsDeleteConfirm,
       destructive: true,
     );
 
@@ -382,16 +379,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // believing their data is gone when it is not, which is worse than the
     // deletion never having been offered.
     final problem = switch (outcome) {
-      AccountDeletion.serverRefused =>
-        'Could not reach the server. Nothing was deleted — try again when '
-            'you are back online.',
+      AccountDeletion.serverRefused => context.l10n.settingsDeleteServerRefused,
       // Distinct from the above, because the fix is different. Reporting
       // success here is what the audit caught: no request was ever sent, the
       // account was untouched, and the credentials needed to retry had been
       // thrown away.
       AccountDeletion.notAuthenticated =>
-        'Could not confirm it is you. Sign in again, then delete your '
-            'account — nothing has been deleted yet.',
+        context.l10n.settingsDeleteNotAuthenticated,
       AccountDeletion.busy || AccountDeletion.deleted => null,
     };
 
@@ -406,6 +400,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final money = ref.watch(monetizationProvider);
     final adPrivacy = ref.watch(adServiceProvider).privacyOptionsRequired;
     final boards = ref.watch(campaignProvider).value?.levels.length;
+    final l10n = context.l10n;
+    final version = _version.isEmpty ? '—' : _version;
 
     return Scaffold(
       backgroundColor: Toy.cream,
@@ -415,7 +411,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ToyHeader(title: 'Settings', onBack: widget.onClose),
+            ToyHeader(title: l10n.settingsTitle, onBack: widget.onClose),
             const SizedBox(height: 12),
             Expanded(
               child: ListView(
@@ -440,20 +436,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     onRename: _renameHandle,
                   ),
 
-                  const SectionHeader(label: 'Feel'),
+                  SectionHeader(label: l10n.settingsSectionFeel),
                   Group(
                     children: [
                       ToggleRow(
                         icon: const Icon(Icons.volume_up_rounded),
                         iconColor: Toy.yellow,
-                        title: 'Sound effects',
-                        detail: 'Pours, buttons and rewards',
+                        title: l10n.settingsSoundTitle,
+                        detail: l10n.settingsSoundDetail,
                         value: settings.soundEnabled,
                         onChanged: controller.setSound,
                       ),
                       if (settings.soundEnabled)
                         VolumeRow(
-                          label: 'Effects volume',
+                          label: l10n.settingsSoundVolume,
                           value: settings.soundVolume,
                           onChanged: controller.setSoundVolume,
                         ),
@@ -461,37 +457,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         icon: const Icon(Icons.music_note_rounded),
                         iconColor: Toy.lilac,
                         iconInk: Colors.white,
-                        title: 'Music',
-                        detail: 'Never plays over your own music',
+                        title: l10n.settingsMusicTitle,
+                        detail: l10n.settingsMusicDetail,
                         value: settings.musicEnabled,
                         onChanged: controller.setMusic,
                       ),
                       if (settings.musicEnabled)
                         VolumeRow(
-                          label: 'Music volume',
+                          label: l10n.settingsMusicVolume,
                           value: settings.musicVolume,
                           onChanged: controller.setMusicVolume,
                         ),
                       ToggleRow(
                         icon: const Icon(Icons.vibration_rounded),
                         iconColor: Toy.pink,
-                        title: 'Haptics',
-                        detail: 'A tick as each ball lands',
+                        title: l10n.settingsHapticsTitle,
+                        detail: l10n.settingsHapticsDetail,
                         value: settings.hapticsEnabled,
                         onChanged: controller.setHaptics,
                       ),
                       ChoiceRow<SmoothMotion>(
                         icon: const Icon(Icons.speed_rounded),
                         iconColor: Toy.mint,
-                        title: 'Smooth motion',
+                        title: l10n.settingsSmoothMotionTitle,
                         detail: _smoothMotionDetail(
+                          l10n,
                           ref.watch(displayRateProvider),
                           settings.smoothMotion,
                         ),
-                        options: const [
-                          (SmoothMotion.auto, 'Auto'),
-                          (SmoothMotion.standard, '60 Hz'),
-                          (SmoothMotion.max, 'Max'),
+                        options: [
+                          (SmoothMotion.auto, l10n.settingsSmoothMotionAuto),
+                          (SmoothMotion.standard, l10n.settingsSmoothMotion60),
+                          (SmoothMotion.max, l10n.settingsSmoothMotionMax),
                         ],
                         value: settings.smoothMotion,
                         onChanged: (mode) {
@@ -506,7 +503,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
 
-                  const SectionHeader(label: 'Visibility'),
+                  SectionHeader(label: l10n.settingsSectionVisibility),
                   Group(
                     children: [
                       ToggleRow(
@@ -516,13 +513,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         iconColor: Toy.blue,
                         iconInk: Colors.white,
-                        title: 'Bold symbols',
+                        title: l10n.settingsBoldSymbolsTitle,
                         // Names the condition explicitly. "Bold symbols" is the
                         // honest label — the shapes are always there and this
                         // only changes emphasis — but somebody who needs it
                         // will scan a settings list for the words they already
                         // know, not for our framing.
-                        detail: 'Stronger shapes for color vision deficiency',
+                        detail: l10n.settingsBoldSymbolsDetail,
                         value: settings.boldSymbols,
                         onChanged: controller.setBoldSymbols,
                       ),
@@ -535,7 +532,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
 
-                  const SectionHeader(label: 'Leaderboard'),
+                  SectionHeader(label: l10n.settingsSectionLeaderboard),
                   Group(
                     children: [
                       // The name comes FIRST, because it is the thing a player
@@ -544,59 +541,57 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ActionRow(
                         icon: const Icon(Icons.edit_rounded),
                         iconColor: Toy.mint,
-                        title: 'Change your name',
-                        detail: 'How you appear on the boards',
+                        title: l10n.settingsRenameTitle,
+                        detail: l10n.settingsRenameDetail,
                         onTap: _renameHandle,
                       ),
                       ToggleRow(
                         icon: const Icon(Icons.contrast_rounded),
                         iconColor: kRowMoss,
-                        title: 'Show me on leaderboards',
-                        detail:
-                            'Off hides your name and rank. Stars still '
-                            'count.',
+                        title: l10n.settingsShowOnBoardsTitle,
+                        detail: l10n.settingsShowOnBoardsDetail,
                         value: account.showOnLeaderboards,
                         onChanged: _setLeaderboardVisibility,
                       ),
                     ],
                   ),
 
-                  const SectionHeader(label: 'Notifications'),
+                  SectionHeader(label: l10n.settingsSectionNotifications),
                   _NotificationsGroup(
                     onProblem: (message) => showRowMessage(context, message),
                   ),
 
-                  const SectionHeader(label: 'Support'),
+                  SectionHeader(label: l10n.settingsSectionSupport),
                   Group(
                     children: [
                       ActionRow(
                         icon: const Icon(Icons.school_rounded),
                         iconColor: Toy.yellow,
-                        title: 'How to play',
-                        detail: 'Replay the guided first level',
+                        title: l10n.settingsHowToPlayTitle,
+                        detail: l10n.settingsHowToPlayDetail,
                         onTap: _howToPlay,
                       ),
                       ActionRow(
                         icon: const Icon(Icons.help_rounded),
                         iconColor: Toy.lilac,
                         iconInk: Colors.white,
-                        title: 'Questions',
-                        detail: 'Stars, hints, the clock and more',
+                        title: l10n.settingsQuestionsTitle,
+                        detail: l10n.settingsQuestionsDetail,
                         onTap: _openQuestions,
                       ),
                       if (canOpenStoreListing)
                         ActionRow(
                           icon: const Icon(Icons.star_rounded),
                           iconColor: Toy.pink,
-                          title: 'Rate Pourfect',
-                          detail: 'Tell other players what you think',
+                          title: l10n.settingsRateTitle,
+                          detail: l10n.settingsRateDetail,
                           onTap: _rate,
                         ),
                       ActionRow(
                         icon: const Icon(Icons.palette_rounded),
                         iconColor: Toy.mint,
-                        title: 'Collection',
-                        detail: 'Ball skins and tube themes',
+                        title: l10n.settingsCollectionTitle,
+                        detail: l10n.settingsCollectionDetail,
                         onTap: _openCollection,
                       ),
                       _RemoveAdsRow(
@@ -612,14 +607,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       // findable.
                       ActionRow(
                         icon: const Icon(Icons.replay_rounded),
-                        title: 'Restore purchases',
-                        detail: 'Remove Ads or the Skin pack',
+                        title: l10n.settingsRestoreTitle,
+                        detail: l10n.settingsRestoreDetail,
                         onTap: _restore,
                       ),
                     ],
                   ),
 
-                  const SectionHeader(label: 'Account & about'),
+                  SectionHeader(label: l10n.settingsSectionAccount),
                   Group(
                     children: [
                       // Hidden entirely in a build with no Firebase, rather
@@ -630,9 +625,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             icon: const Icon(Icons.check_rounded),
                             iconColor: Toy.lilac,
                             iconInk: Colors.white,
-                            title: 'Signed in',
+                            title: l10n.settingsSignedIn,
                             detail: account.email == null
-                                ? 'Your progress moves with you'
+                                ? l10n.settingsSignedInDetail
                                 : maskEmail(account.email!),
                             onTap: _confirmSignOut,
                           )
@@ -641,12 +636,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             icon: const Icon(Icons.cloud_upload_rounded),
                             iconColor: Toy.blue,
                             iconInk: Colors.white,
-                            title: 'Save your progress',
+                            title: l10n.settingsSaveProgressTitle,
                             // The honest claim, and the whole of it. Not "your
                             // progress is safe" — an anonymous account already
                             // survives a crash; what it does NOT survive is a
                             // new phone.
-                            detail: 'Keep your stars if you change phones',
+                            detail: l10n.settingsSaveProgressDetail,
                             onTap: _openAccount,
                           ),
                       ActionRow(
@@ -654,7 +649,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           '§',
                           style: Toy.ui(16, weight: FontWeight.w800),
                         ),
-                        title: 'Privacy policy',
+                        title: l10n.settingsPrivacyPolicy,
                         onTap: _openPrivacy,
                       ),
                       ActionRow(
@@ -662,14 +657,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           '¶',
                           style: Toy.ui(16, weight: FontWeight.w800),
                         ),
-                        title: 'Terms & licenses',
+                        title: l10n.settingsTermsAndLicenses,
                         onTap: _openTermsAndLicenses,
                       ),
                       if (adPrivacy)
                         ActionRow(
                           icon: const Icon(Icons.campaign_rounded),
-                          title: 'Ad privacy options',
-                          detail: 'Change what you agreed to for advertising',
+                          title: l10n.settingsAdPrivacyTitle,
+                          detail: l10n.settingsAdPrivacyDetail,
                           onTap: _openAdPrivacyOptions,
                         ),
                     ],
@@ -682,13 +677,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   // at the bottom behind their own tint is the difference
                   // between a control you can reach and one you have to decide
                   // to reach.
-                  const SectionHeader(label: 'Danger zone', danger: true),
+                  SectionHeader(
+                    label: l10n.settingsSectionDanger,
+                    danger: true,
+                  ),
                   Group(
                     danger: true,
                     children: [
                       ActionRow(
-                        title: 'Reset progress',
-                        detail: 'Erase every star and start from level 1',
+                        title: l10n.settingsResetRowTitle,
+                        detail: l10n.settingsResetRowDetail,
                         onTap: _confirmReset,
                       ),
                       // Required by Play for any app that lets people create
@@ -696,8 +694,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       // than only on the web.
                       if (account.available)
                         ActionRow(
-                          title: 'Delete account',
-                          detail: 'Remove your account and everything with it',
+                          title: l10n.settingsDeleteRowTitle,
+                          detail: l10n.settingsDeleteRowDetail,
                           onTap: _confirmDeleteAccount,
                           destructive: true,
                         ),
@@ -706,12 +704,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                   const SizedBox(height: 28),
                   Text(
-                    [
-                      'Pourfect ${_version.isEmpty ? '—' : _version}',
-                      if (boards != null)
-                        'made with $boards proven-solvable '
-                            'boards',
-                    ].join(' · '),
+                    boards == null
+                        ? l10n.settingsFooterVersion(version)
+                        : l10n.settingsFooterVersionBoards(boards, version),
                     textAlign: TextAlign.center,
                     style: Toy.ui(12, color: Toy.inkMuted),
                   ),
@@ -741,17 +736,17 @@ class _RemoveAdsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (adsRemoved) {
-      return const ActionRow(
-        icon: Icon(Icons.check_rounded),
+      return ActionRow(
+        icon: const Icon(Icons.check_rounded),
         iconColor: Toy.mint,
-        title: 'Ads removed — thank you',
+        title: context.l10n.settingsAdsRemoved,
         onTap: null,
       );
     }
 
     return Pressable(
       onPressed: onBuy,
-      semanticLabel: 'Remove ads',
+      semanticLabel: context.l10n.settingsRemoveAdsTitle,
       depth: 1.5,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -764,14 +759,14 @@ class _RemoveAdsRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Remove ads',
+                    context.l10n.settingsRemoveAdsTitle,
                     style: Toy.ui(15, weight: FontWeight.w700),
                   ),
                   const SizedBox(height: 1),
                   Text(
                     // Says what it does NOT do as well, so nobody buys it
                     // expecting hints to become free.
-                    'No ads between levels. Hint videos stay.',
+                    context.l10n.settingsRemoveAdsDetail,
                     style: Toy.ui(
                       12,
                       weight: FontWeight.w500,
@@ -825,11 +820,12 @@ class _PlayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = account.handle ?? 'Naming you…';
+    final l10n = context.l10n;
+    final name = account.handle ?? l10n.settingsNamingYou;
 
     return Pressable(
       onPressed: onRename,
-      semanticLabel: 'Your name',
+      semanticLabel: l10n.settingsYourName,
       child: ToyBox(
         color: Toy.lilac,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -869,9 +865,9 @@ class _PlayerCard extends StatelessWidget {
                     // does not survive is a new phone.
                     account.signedIn
                         ? (account.email == null
-                              ? 'Signed in'
+                              ? l10n.settingsSignedIn
                               : maskEmail(account.email!))
-                        : 'Playing as a guest',
+                        : l10n.settingsGuest,
                     style: Toy.ui(12),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -880,9 +876,17 @@ class _PlayerCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            _MiniStat(value: solved, label: 'SOLVED', color: Toy.card),
+            _MiniStat(
+              value: solved,
+              label: l10n.settingsStatSolved,
+              color: Toy.card,
+            ),
             const SizedBox(width: 6),
-            _MiniStat(value: stars, label: 'STARS', color: Toy.yellow),
+            _MiniStat(
+              value: stars,
+              label: l10n.settingsStatStars,
+              color: Toy.yellow,
+            ),
           ],
         ),
       ),
@@ -959,31 +963,32 @@ class _SymbolPreview extends StatelessWidget {
 /// The Smooth motion row's detail: what the screen is actually doing, so a
 /// choice that cannot change anything on this phone says why instead of
 /// looking broken.
-String _smoothMotionDetail(DisplayRateState display, SmoothMotion mode) {
+String _smoothMotionDetail(
+  AppLocalizations l10n,
+  DisplayRateState display,
+  SmoothMotion mode,
+) {
   final rate = display.rate;
-  String hz(double v) =>
-      v % 1 == 0 ? '${v.toInt()} Hz' : '${v.toStringAsFixed(1)} Hz';
-  if (!rate.isKnown) {
-    return 'Auto uses your screen\'s fastest rate if this phone keeps up';
-  }
-  if (!rate.canGoHigh) return 'This screen only runs at ${hz(rate.max)}';
+  // The number alone; each message carries its own unit.
+  String hz(double v) => v % 1 == 0 ? '${v.toInt()}' : v.toStringAsFixed(1);
+  if (!rate.isKnown) return l10n.settingsMotionUnknown;
+  if (!rate.canGoHigh) return l10n.settingsMotionFixed(hz(rate.max));
   if (mode != SmoothMotion.standard && rate.lowPower) {
-    return 'Battery Saver is holding it at ${hz(rate.current)}';
+    return l10n.settingsMotionBatterySaver(hz(rate.current));
   }
   return switch (mode) {
     SmoothMotion.auto when display.autoStepdown =>
-      'Running at ${hz(rate.current)} · this phone stuttered at '
-          '${hz(rate.max)}',
-    SmoothMotion.auto =>
-      'Running at ${hz(rate.current)} · drops to 60 Hz if it stutters',
+      l10n.settingsMotionAutoStuttered(hz(rate.current), hz(rate.max)),
+    SmoothMotion.auto => l10n.settingsMotionAuto(hz(rate.current)),
     // Some phones (Samsung's "High" motion smoothness) hold the panel at its
     // top rate whatever an app asks. Say so, rather than claim 60.
     SmoothMotion.standard when rate.current > 61 =>
-      "Your phone's display setting keeps it at ${hz(rate.current)}",
-    SmoothMotion.standard =>
-      'Running at ${hz(rate.current)} · this screen can do ${hz(rate.max)}',
-    SmoothMotion.max =>
-      'Running at ${hz(rate.current)}, the fastest this screen goes',
+      l10n.settingsMotionPinnedByPhone(hz(rate.current)),
+    SmoothMotion.standard => l10n.settingsMotionStandard(
+      hz(rate.current),
+      hz(rate.max),
+    ),
+    SmoothMotion.max => l10n.settingsMotionMax(hz(rate.current)),
   };
 }
 
@@ -1003,10 +1008,10 @@ class _NotificationsGroup extends ConsumerWidget {
     final controller = ref.read(notificationPrefsProvider.notifier);
     final allowed = state.permission == PushPermission.granted;
 
+    final unreachable = context.l10n.settingsServerUnreachable;
+
     Future<void> save(Future<bool> Function() change) async {
-      if (!await change()) {
-        onProblem('Could not reach the server, so nothing changed.');
-      }
+      if (!await change()) onProblem(unreachable);
     }
 
     return Group(
@@ -1016,10 +1021,10 @@ class _NotificationsGroup extends ConsumerWidget {
             icon: const Icon(Icons.notifications_off_rounded),
             iconColor: Toy.tomato,
             iconInk: Colors.white,
-            title: 'Turn on notifications',
+            title: context.l10n.settingsNotifyTurnOnTitle,
             detail: state.permission == PushPermission.denied
-                ? "Off in your phone's settings. Tap to open them."
-                : "Pourfect can't notify you yet",
+                ? context.l10n.settingsNotifyDeniedDetail
+                : context.l10n.settingsNotifyNotYetDetail,
             onTap: () async {
               final granted = await controller.turnOn();
               ref
@@ -1036,16 +1041,16 @@ class _NotificationsGroup extends ConsumerWidget {
           icon: const Icon(Icons.wb_twilight_rounded),
           iconColor: Toy.blue,
           iconInk: Colors.white,
-          title: 'Daily Pour reminders',
-          detail: 'Morning and evening, never more than two a day',
+          title: context.l10n.settingsRemindersTitle,
+          detail: context.l10n.settingsRemindersDetail,
           value: state.prefs.reminders,
           onChanged: (on) => save(() => controller.setReminders(on)),
         ),
         ToggleRow(
           icon: const Icon(Icons.auto_awesome_rounded),
           iconColor: Toy.lilac,
-          title: 'Game news',
-          detail: 'New worlds and announcements',
+          title: context.l10n.settingsNewsTitle,
+          detail: context.l10n.settingsNewsDetail,
           value: state.prefs.news,
           onChanged: (on) => save(() => controller.setNews(on)),
         ),

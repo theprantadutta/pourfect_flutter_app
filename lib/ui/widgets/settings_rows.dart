@@ -15,6 +15,7 @@ library;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/audio/audio_service.dart';
 
 import '../theme/toy.dart';
@@ -232,7 +233,9 @@ class ToggleRow extends StatelessWidget {
   Widget build(BuildContext context) => Pressable(
     cue: UiCue.toggle,
     onPressed: () => onChanged(!value),
-    semanticLabel: '$title, ${value ? "on" : "off"}',
+    semanticLabel: value
+        ? context.l10n.settingsToggleOn(title)
+        : context.l10n.settingsToggleOff(title),
     depth: 1.5,
     child: _RowBody(
       icon: RowIcon(icon: icon, color: iconColor, ink: iconInk),
@@ -457,7 +460,7 @@ Future<bool> showRowConfirm({
   required String title,
   required String body,
   required String confirmLabel,
-  String cancelLabel = 'Cancel',
+  String? cancelLabel,
   bool destructive = false,
   bool confirmEnabled = true,
 }) async {
@@ -488,7 +491,7 @@ Future<bool> showRowConfirm({
             children: [
               Expanded(
                 child: ToyButton.secondary(
-                  label: cancelLabel,
+                  label: cancelLabel ?? context.l10n.commonCancel,
                   onPressed: () => Navigator.of(context).pop(false),
                 ),
               ),

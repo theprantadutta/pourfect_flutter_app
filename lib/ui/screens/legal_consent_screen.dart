@@ -21,6 +21,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/l10n.dart';
 import '../../state/legal_acceptance.dart';
 import '../theme/toy.dart';
 import '../widgets/toy_kit.dart';
@@ -37,15 +38,11 @@ class LegalConsentScreen extends StatefulWidget {
 }
 
 class _LegalConsentScreenState extends State<LegalConsentScreen> {
-  static const _privacy = _Document(
-    'Privacy Policy',
-    'assets/legal/privacy.md',
-  );
-  static const _terms = _Document('Terms of Service', 'assets/legal/terms.md');
-  static const _refund = _Document('Refund Policy', 'assets/legal/refund.md');
-  static const _documents = <_Document>[_privacy, _terms, _refund];
-
   final Map<String, String> _contents = {};
+
+  /// Assets that failed to load. The message is resolved when shown, in the
+  /// reader's language, rather than stored here.
+  final Set<String> _failed = {};
   bool _loaded = false;
   bool _acceptedTerms = false;
   bool _readPrivacy = false;
@@ -58,15 +55,13 @@ class _LegalConsentScreenState extends State<LegalConsentScreen> {
   }
 
   Future<void> _load() async {
-    for (final doc in _documents) {
+    for (final doc in _Document.values) {
       try {
         _contents[doc.asset] = await rootBundle.loadString(doc.asset);
       } catch (_) {
         // A missing asset must not leave a blank document behind a link —
         // say what happened and point at the hosted copy.
-        _contents[doc.asset] =
-            'This document could not be loaded on this device.\n\n'
-            'You can read it at legal.pranta.dev before accepting.';
+        _failed.add(doc.asset);
       }
     }
     if (mounted) setState(() => _loaded = true);
@@ -118,13 +113,13 @@ class _LegalConsentScreenState extends State<LegalConsentScreen> {
             ),
             const SizedBox(height: 8),
             ToyButton(
-              label: "LET'S POUR!",
+              label: context.l10n.settingsLegalAccept,
               height: 62,
               onPressed: _ready ? _accept : null,
             ),
             const SizedBox(height: 12),
             Text(
-              'You can read these again any time in Settings.',
+              context.l10n.settingsLegalReadAgain,
               textAlign: TextAlign.center,
               style: Toy.ui(12, color: Toy.inkMuted),
             ),
@@ -134,68 +129,89 @@ class _LegalConsentScreenState extends State<LegalConsentScreen> {
     );
   }
 
-  Widget _card() => Container(
-    padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-    decoration: Toy.box(radius: Toy.rHero, shadow: 6, strokeWidth: 3),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('Before we pour', style: Toy.display(32)),
-        const SizedBox(height: 14),
-        Text(
-          "Pourfect is free, works offline and doesn't need an account. "
-          'Please read and accept these first.',
-          style: Toy.ui(
-            14,
-            weight: FontWeight.w500,
-            color: const Color(0xFF4A4460),
-            height: 1.5,
+  Widget _card() {
+    final l10n = context.l10n;
+    final terms = _Document.terms.label(l10n);
+    final privacy = _Document.privacy.label(l10n);
+    final refund = _Document.refund.label(l10n);
+    final (beforeRefund, afterRefund) = _around(
+      l10n.settingsLegalAlsoCovers(refund, LegalAcceptance.currentLegalVersion),
+      refund,
+    );
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+      decoration: Toy.box(radius: Toy.rHero, shadow: 6, strokeWidth: 3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.settingsLegalTitle, style: Toy.display(32)),
+          const SizedBox(height: 14),
+          Text(
+            l10n.settingsLegalIntro,
+            style: Toy.ui(
+              14,
+              weight: FontWeight.w500,
+              color: const Color(0xFF4A4460),
+              height: 1.5,
+            ),
           ),
-        ),
-        const SizedBox(height: 14),
-        _CheckRow(
-          checked: _acceptedTerms,
-          lead: 'I accept the ',
-          link: _terms.label,
-          onToggle: () => setState(() => _acceptedTerms = !_acceptedTerms),
-          onOpen: () => _open(_terms),
-        ),
-        const SizedBox(height: 12),
-        _CheckRow(
-          checked: _readPrivacy,
-          lead: "I've read the ",
-          link: _privacy.label,
-          onToggle: () => setState(() => _readPrivacy = !_readPrivacy),
-          onOpen: () => _open(_privacy),
-        ),
-        const SizedBox(height: 14),
-        // The third document is accepted too, and says so, with its own link.
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              'Accepting also covers our ',
-              style: Toy.ui(12, weight: FontWeight.w500, color: Toy.inkMuted),
-            ),
-            _Link(
-              label: _refund.label,
-              size: 12,
-              color: Toy.inkMuted,
-              onPressed: () => _open(_refund),
-            ),
-            Text(
-              ' (version ${LegalAcceptance.currentLegalVersion}).',
-              style: Toy.ui(12, weight: FontWeight.w500, color: Toy.inkMuted),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 14),
+          _CheckRow(
+            checked: _acceptedTerms,
+            text: l10n.settingsLegalAcceptTerms(terms),
+            link: terms,
+            onToggle: () => setState(() => _acceptedTerms = !_acceptedTerms),
+            onOpen: () => _open(_Document.terms),
+          ),
+          const SizedBox(height: 12),
+          _CheckRow(
+            checked: _readPrivacy,
+            text: l10n.settingsLegalReadPrivacy(privacy),
+            link: privacy,
+            onToggle: () => setState(() => _readPrivacy = !_readPrivacy),
+            onOpen: () => _open(_Document.privacy),
+          ),
+          const SizedBox(height: 14),
+          // The third document is accepted too, and says so, with its own link.
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (beforeRefund.isNotEmpty)
+                Text(
+                  beforeRefund,
+                  style: Toy.ui(
+                    12,
+                    weight: FontWeight.w500,
+                    color: Toy.inkMuted,
+                  ),
+                ),
+              _Link(
+                label: refund,
+                size: 12,
+                color: Toy.inkMuted,
+                onPressed: () => _open(_Document.refund),
+              ),
+              if (afterRefund.isNotEmpty)
+                Text(
+                  afterRefund,
+                  style: Toy.ui(
+                    12,
+                    weight: FontWeight.w500,
+                    color: Toy.inkMuted,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Opens a bundled document to read in place.
   Future<void> _open(_Document doc) async {
-    final body = _contents[doc.asset];
+    final body = _failed.contains(doc.asset)
+        ? context.l10n.settingsLegalLoadFailed
+        : _contents[doc.asset];
     await showToyDialog<void>(
       context: context,
       builder: (context) {
@@ -206,7 +222,7 @@ class _LegalConsentScreenState extends State<LegalConsentScreen> {
         return ToyDialogCard(
           headerColor: Toy.blue,
           header: Text(
-            doc.label,
+            doc.label(context.l10n),
             style: Toy.display(22, color: Colors.white, shadow: 2),
           ),
           child: Column(
@@ -229,7 +245,7 @@ class _LegalConsentScreenState extends State<LegalConsentScreen> {
               ),
               const SizedBox(height: 16),
               ToyButton(
-                label: 'Close',
+                label: context.l10n.commonClose,
                 color: Toy.mint,
                 textColor: Toy.ink,
                 height: 52,
@@ -386,14 +402,16 @@ class _Wordmark extends StatelessWidget {
 class _CheckRow extends StatelessWidget {
   const _CheckRow({
     required this.checked,
-    required this.lead,
+    required this.text,
     required this.link,
     required this.onToggle,
     required this.onOpen,
   });
 
   final bool checked;
-  final String lead;
+
+  /// The whole sentence, which contains [link] somewhere in it.
+  final String text;
   final String link;
   final VoidCallback onToggle;
   final VoidCallback onOpen;
@@ -401,11 +419,12 @@ class _CheckRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final calm = Toy.calm(context);
+    final (before, after) = _around(text, link);
     return Semantics(
       checked: checked,
       child: Pressable(
         onPressed: onToggle,
-        semanticLabel: '$lead$link',
+        semanticLabel: text,
         depth: 1.5,
         child: Container(
           padding: const EdgeInsets.all(12),
@@ -435,8 +454,9 @@ class _CheckRow extends StatelessWidget {
                 child: Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(lead, style: Toy.ui(14)),
+                    if (before.isNotEmpty) Text(before, style: Toy.ui(14)),
                     _Link(label: link, onPressed: onOpen),
+                    if (after.isNotEmpty) Text(after, style: Toy.ui(14)),
                   ],
                 ),
               ),
@@ -465,7 +485,7 @@ class _Link extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Pressable(
     onPressed: onPressed,
-    semanticLabel: 'Read the $label',
+    semanticLabel: context.l10n.settingsLegalReadDocument(label),
     depth: 1,
     child: Text(
       label,
@@ -478,9 +498,27 @@ class _Link extends StatelessWidget {
   );
 }
 
-class _Document {
-  final String label;
+/// A translated sentence split around the document name it contains, so the
+/// name can be drawn as a link wherever the language puts it. A translation
+/// that dropped the name keeps the whole sentence before the link.
+(String, String) _around(String sentence, String link) {
+  final at = sentence.indexOf(link);
+  if (at < 0) return (sentence, '');
+  return (sentence.substring(0, at), sentence.substring(at + link.length));
+}
+
+enum _Document {
+  privacy('assets/legal/privacy.md'),
+  terms('assets/legal/terms.md'),
+  refund('assets/legal/refund.md');
+
   final String asset;
 
-  const _Document(this.label, this.asset);
+  const _Document(this.asset);
+
+  String label(AppLocalizations l) => switch (this) {
+    privacy => l.settingsLegalPrivacyPolicy,
+    terms => l.settingsLegalTermsOfService,
+    refund => l.settingsLegalRefundPolicy,
+  };
 }
