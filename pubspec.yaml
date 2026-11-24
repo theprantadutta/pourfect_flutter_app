@@ -85,6 +85,12 @@ dependencies:
   refresh_rate: ^2.0.1
   app_tracking_transparency: ^2.0.7
   material_ui: ^1.11.0
+  # Translations: gen-l10n reads lib/l10n/*.arb (see l10n.yaml) and writes
+  # lib/l10n/generated/. The generated file imports flutter_localizations, so
+  # it stays even though MaterialApp uses material_ui's own delegates.
+  flutter_localizations:
+    sdk: flutter
+  intl: any
 
 dev_dependencies:
   flutter_test:
@@ -119,6 +125,7 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
@@ -172,6 +179,24 @@ flutter:
           weight: 700
         - asset: assets/fonts/Outfit-ExtraBold.ttf
           weight: 800
+    # FALLBACK for the letters the two faces above lack: all of Cyrillic
+    # (Russian) and the Turkish İ ş ğ that Bagel Fat One is missing. Flutter
+    # uses it only per missing glyph, so Latin text still renders in Outfit and
+    # Bagel. Static weights cut from the Rubik variable font, subset to Latin,
+    # Latin Extended and Cyrillic. Japanese and Chinese fall back to the
+    # system's CJK font; Korean is in Bagel Fat One already.
+    - family: Rubik
+      fonts:
+        - asset: assets/fonts/Rubik-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Rubik-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Rubik-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Rubik-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Rubik-Black.ttf
+          weight: 900
 
   # To add assets to your application, add an assets section, like this:
   # assets:

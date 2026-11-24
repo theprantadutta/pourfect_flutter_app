@@ -1,0 +1,40 @@
+{
+  "@@locale": "en",
+  "commonCancel": "Cancel",
+  "@commonCancel": {
+    "description": "Generic cancel button."
+  },
+  "commonClose": "Close",
+  "@commonClose": {
+    "description": "Generic close button."
+  },
+  "commonBack": "Back",
+  "@commonBack": {
+    "description": "Generic back button, also its accessibility label."
+  },
+  "commonOk": "OK",
+  "@commonOk": {
+    "description": "Generic acknowledge button."
+  },
+  "commonSave": "Save",
+  "@commonSave": {
+    "description": "Generic save button."
+  },
+  "commonRetry": "Try again",
+  "@commonRetry": {
+    "description": "Button to retry something that failed."
+  },
+  "commonNotNow": "Not now",
+  "@commonNotNow": {
+    "description": "Dismisses an offer without accepting it."
+  },
+  "commonLevelN": "Level {level}",
+  "@commonLevelN": {
+    "description": "A campaign level's name, e.g. 'Level 25'.",
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  }
+}

@@ -44,6 +44,7 @@ TextStyle titleStyle(PourfectTokens tokens) =>
 /// Body copy.
 TextStyle bodyStyle(PourfectTokens tokens) => TextStyle(
   fontFamily: kUiFontFamily,
+  fontFamilyFallback: Toy.fontFallback,
   fontSize: 15,
   fontWeight: FontWeight.w500,
   height: 1.45,
@@ -53,6 +54,7 @@ TextStyle bodyStyle(PourfectTokens tokens) => TextStyle(
 /// Button and action labels.
 TextStyle actionStyle(PourfectTokens tokens, {Color? color}) => TextStyle(
   fontFamily: kUiFontFamily,
+  fontFamilyFallback: Toy.fontFallback,
   fontSize: 14,
   fontWeight: FontWeight.w800,
   letterSpacing: 0.2,

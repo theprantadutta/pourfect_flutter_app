@@ -18,6 +18,8 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    # gen-l10n output; still imports the deprecated flutter_localizations.
+    - lib/l10n/generated/**
 
 linter:
   # The lint rules applied to this project can be customized in the

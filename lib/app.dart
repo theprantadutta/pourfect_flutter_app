@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'l10n/l10n.dart';
 import 'state/account_controller.dart';
 import 'state/cosmetics_controller.dart';
 import 'state/campaign_worlds.dart';
@@ -69,12 +70,22 @@ class PourfectApp extends ConsumerWidget {
       // One theme. Toybox replaced the original dark direction outright; there
       // is no dark variant to fall back to or keep in sync.
       theme: _buildTheme(tokens),
-      // material_ui's own localizations (Material, Cupertino and Widgets).
-      // Its MaterialLocalizations is a different type from the old
-      // framework's, so without these every dialog, text-selection menu and
-      // tooltip fails with "No MaterialLocalizations found". English only,
-      // like the rest of the app.
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      // The game's own strings (lib/l10n), then material_ui's localizations
+      // (Material, Cupertino and Widgets). material_ui's MaterialLocalizations
+      // is a different type from the old framework's, so without its
+      // delegates every dialog, text-selection menu and tooltip fails with
+      // "No MaterialLocalizations found". Do NOT add flutter_localizations'
+      // delegates as well: the types clash.
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        ...GlobalMaterialLocalizations.delegates,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      // The phone's language if we have it (Portuguese for pt-PT as well as
+      // pt-BR, Traditional Chinese for Taiwan and Hong Kong), else English.
+      localeListResolutionCallback: (locales, _) => resolveSupportedLocale(
+        locales?.isNotEmpty == true ? locales!.first : null,
+      ),
       // Tablets draw the phone layout scaled up; a phone passes straight
       // through. See ui_scale.dart.
       //
@@ -112,6 +123,7 @@ class PourfectApp extends ConsumerWidget {
         bodyColor: tokens.textPrimary,
         displayColor: tokens.textPrimary,
         fontFamily: kUiFontFamily,
+        fontFamilyFallback: Toy.fontFallback,
       ),
       textSelectionTheme: const TextSelectionThemeData(
         cursorColor: Toy.tomato,

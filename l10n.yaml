@@ -1,0 +1,12 @@
+# gen-l10n. The ARB files under lib/l10n/ are BUILT by tool/merge_arb.dart
+# from the per-area sources in lib/l10n/src/<locale>/*.arb, so edit those,
+# then run:  dart run tool/merge_arb.dart && flutter gen-l10n
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-dir: lib/l10n/generated
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false
+# Missing translations fall back to English at runtime (gen-l10n does this per
+# message); this file lists them so a release can see what is still English.
+untranslated-messages-file: build/l10n_untranslated.json

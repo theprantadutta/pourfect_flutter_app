@@ -112,6 +112,11 @@ abstract final class Toy {
   static const displayFamily = 'BagelFatOne';
   static const uiFamily = 'Outfit';
 
+  /// For the letters Bagel and Outfit lack: Cyrillic and some Turkish. Used
+  /// per missing glyph only, so Latin text is untouched. CJK falls through to
+  /// the system font after this (Korean is in Bagel already).
+  static const fontFallback = <String>['Rubik'];
+
   /// Display face. Bagel Fat One has one weight; the ink drop is what gives it
   /// its sticker weight, so [shadow] defaults on. Pass 0 for flat ink titles.
   static TextStyle display(
@@ -122,6 +127,10 @@ abstract final class Toy {
     double letterSpacing = 0,
   }) => TextStyle(
     fontFamily: displayFamily,
+    fontFamilyFallback: fontFallback,
+    // Bagel has one weight, so this only picks Rubik Black for fallback
+    // letters, the closest match to Bagel's weight.
+    fontWeight: FontWeight.w900,
     fontSize: size,
     height: height,
     letterSpacing: letterSpacing,
@@ -140,6 +149,7 @@ abstract final class Toy {
     double letterSpacing = 0,
   }) => TextStyle(
     fontFamily: uiFamily,
+    fontFamilyFallback: fontFallback,
     fontSize: size,
     fontWeight: weight,
     color: color,
@@ -151,6 +161,7 @@ abstract final class Toy {
   static TextStyle caps({double size = 11, Color color = inkMuted}) =>
       TextStyle(
         fontFamily: uiFamily,
+        fontFamilyFallback: fontFallback,
         fontSize: size,
         fontWeight: FontWeight.w800,
         letterSpacing: 2,
@@ -165,6 +176,7 @@ abstract final class Toy {
     FontWeight weight = FontWeight.w800,
   }) => TextStyle(
     fontFamily: uiFamily,
+    fontFamilyFallback: fontFallback,
     fontSize: size,
     fontWeight: weight,
     height: 1.1,
