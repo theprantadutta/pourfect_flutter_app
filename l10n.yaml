@@ -7,6 +7,5 @@ output-dir: lib/l10n/generated
 output-localization-file: app_localizations.dart
 output-class: AppLocalizations
 nullable-getter: false
-# Missing translations fall back to English at runtime (gen-l10n does this per
-# message); this file lists them so a release can see what is still English.
-untranslated-messages-file: build/l10n_untranslated.json
+# A message missing from a translation falls back to English at runtime;
+# gen-l10n prints which ones are missing when it runs.
