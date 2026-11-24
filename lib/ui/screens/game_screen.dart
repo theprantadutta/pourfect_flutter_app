@@ -271,7 +271,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
       // there: the card was asked for twice in a month. Awaited before the
       // next board starts, so its clock is not running behind the sheet; and
       // one interruption per break, so an ask here means no interstitial.
-      final asked = await ref.read(reviewPrompterProvider.notifier).maybeAsk();
+      final asked = await ref
+          .read(reviewPrompterProvider.notifier)
+          .maybeAsk(placement: 'next_level');
       if (!mounted) return;
       if (!asked) {
         await ref

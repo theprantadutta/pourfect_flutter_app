@@ -404,6 +404,13 @@ registered 2026-11-24; use them, not Level ID / Stars, for the per-level
 funnel. Any new numeric parameter you want as a dimension goes in
 `kTextCopies`.
 
+**What to look at, and where:** `docs/ANALYTICS_CHECKS.md` has the
+baselines from 2026-11-24 (impressions, visitors, install clicks, ratings,
+retention) and the report for each question: the per-level funnel, the
+rating ask (`review_prompt` with `placement` = `hub` or `next_level`), the
+icon experiment and the localized listings. Start there before reading the
+consoles cold.
+
 The debug mirror uses `debugPrint`, not `dart:developer.log`: the latter posts
 to the VM service and never reaches `adb logcat`, so a funnel "verified"
 through it is only verified against DevTools being attached.

@@ -136,7 +136,7 @@ class ReviewPrompter extends Notifier<ReviewState> {
   ///
   /// Returns whether it asked, so a caller at a break can skip anything else
   /// it would have shown there (one interruption per break).
-  Future<bool> maybeAsk({DateTime? now}) async {
+  Future<bool> maybeAsk({DateTime? now, String placement = 'hub'}) async {
     if (!state.delighted) return false;
 
     await _restored;
@@ -173,7 +173,10 @@ class ReviewPrompter extends Notifier<ReviewState> {
     ref
         .read(analyticsServiceProvider)
         .log(
-          ReviewPromptShown(levelsSolved: ref.read(progressProvider).length),
+          ReviewPromptShown(
+            levelsSolved: ref.read(progressProvider).length,
+            placement: placement,
+          ),
         );
 
     try {

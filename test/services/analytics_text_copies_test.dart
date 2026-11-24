@@ -26,6 +26,20 @@ void main() {
     expect(sent['stars'], 3);
   });
 
+  test('the rating ask says where it happened', () {
+    expect(
+      const ReviewPromptShown(levelsSolved: 4).parameters['placement'],
+      'hub',
+    );
+    expect(
+      const ReviewPromptShown(
+        levelsSolved: 4,
+        placement: 'next_level',
+      ).parameters['placement'],
+      'next_level',
+    );
+  });
+
   test('events without those numbers are left alone', () {
     const event = AudioSettingsSnapshot(
       sound: true,

@@ -569,13 +569,21 @@ final class ReviewPromptShown extends AnalyticsEvent {
   /// in it came.
   final int levelsSolved;
 
-  const ReviewPromptShown({required this.levelsSolved});
+  /// Where it asked: `hub` (back on the home screen) or `next_level` (the
+  /// break after NEXT, added 2026-11-24). Lets the console say which moment
+  /// earns ratings.
+  final String placement;
+
+  const ReviewPromptShown({required this.levelsSolved, this.placement = 'hub'});
 
   @override
   String get name => 'review_prompt';
 
   @override
-  Map<String, Object> get parameters => {'levels_solved': levelsSolved};
+  Map<String, Object> get parameters => {
+    'levels_solved': levelsSolved,
+    'placement': placement,
+  };
 }
 
 /// Today's Daily Pour was solved and the server took the result.
