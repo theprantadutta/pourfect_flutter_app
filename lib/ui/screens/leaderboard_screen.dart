@@ -15,6 +15,7 @@ library;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/api/api_result.dart';
 import '../../services/api/leaderboard_api.dart';
 import '../../state/account_controller.dart';
@@ -94,16 +95,17 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   @override
   Widget build(BuildContext context) {
     final account = ref.watch(accountProvider);
+    final l = context.l10n;
 
     return ToyScaffold(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ToyHeader(title: 'Rankings', onBack: widget.onBack),
+          ToyHeader(title: l.ranksTitle, onBack: widget.onBack),
           const SizedBox(height: 14),
           ToyTabs(
-            labels: const ['Today', 'Campaign'],
+            labels: [l.ranksTabToday, l.ranksTabCampaign],
             index: _tab.index,
             onChanged: (i) => _select(LeaderboardTab.values[i]),
           ),
@@ -129,10 +131,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   }
 
   Widget _body() {
+    final l = context.l10n;
     if (_loading) {
-      return const Center(
-        child: PourLoader(ballSize: 22, caption: 'Fetching the leaderboard…'),
-      );
+      return Center(child: PourLoader(ballSize: 22, caption: l.ranksLoading));
     }
 
     final board = _board;
@@ -153,11 +154,11 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         const SizedBox(height: 18),
         _Message(
           title: _tab == LeaderboardTab.daily
-              ? 'Nobody has finished today’s board yet'
-              : 'No ranked players yet',
+              ? l.ranksEmptyDailyTitle
+              : l.ranksEmptyCampaignTitle,
           detail: _tab == LeaderboardTab.daily
-              ? 'Be the first.'
-              : 'Stars decide this one.',
+              ? l.ranksEmptyDailyDetail
+              : l.ranksEmptyCampaignDetail,
         ),
       ];
     } else {
@@ -172,15 +173,13 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         ],
         if (_showOwnRowSeparately(board)) ...[
           const SizedBox(height: 14),
-          const ToySectionLabel('Your spot'),
+          ToySectionLabel(l.ranksYourSpot),
           _RowsCard(rows: [board.you!], tab: _tab),
         ],
         if (board.totalPlayers > 0) ...[
           const SizedBox(height: 14),
           Text(
-            board.totalPlayers == 1
-                ? '1 player on this board'
-                : '${formatCount(board.totalPlayers)} players on this board',
+            l.ranksPlayerCount(board.totalPlayers),
             textAlign: TextAlign.center,
             style: Toy.ui(12, color: Toy.inkMuted),
           ),
@@ -227,16 +226,20 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
 // ---- how a score reads -------------------------------------------------------
 
 /// The headline figure for a row: stars on the campaign, moves on the daily.
-String _valueText(LeaderboardRow row, LeaderboardTab tab) =>
-    tab == LeaderboardTab.daily ? plural(row.value, 'move') : '${row.value}';
+String _valueText(AppLocalizations l, LeaderboardRow row, LeaderboardTab tab) =>
+    tab == LeaderboardTab.daily ? l.ranksMoves(row.value) : '${row.value}';
 
 /// The second axis: levels cleared, or the daily's time.
-String? _tieBreakText(LeaderboardRow row, LeaderboardTab tab) {
+String? _tieBreakText(
+  AppLocalizations l,
+  LeaderboardRow row,
+  LeaderboardTab tab,
+) {
   final tie = row.tieBreak;
   if (tie == null) return null;
   return tab == LeaderboardTab.daily
-      ? 'in ${formatClock(tie)}'
-      : plural(tie, 'level');
+      ? l.ranksInTime(formatClock(tie))
+      : l.ranksLevels(tie);
 }
 
 /// The score as a line: "38 ★" on the campaign, "14 moves" on the daily.
@@ -255,13 +258,14 @@ class _Score extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final text = Text(
-      _valueText(row, tab),
+      _valueText(l, row, tab),
       style: Toy.numbers(size, color: color),
     );
     if (tab == LeaderboardTab.daily) return text;
     return Semantics(
-      label: plural(row.value, 'star'),
+      label: l.ranksStars(row.value),
       excludeSemantics: true,
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -348,10 +352,11 @@ class _Step extends StatelessWidget {
             strokeWidth: _first ? 3 : Toy.stroke,
           );
 
+    final l = context.l10n;
     final name = row == null
-        ? 'Open spot'
+        ? l.ranksOpenSpot
         : row.isYou
-        ? '${row.displayName} (you)'
+        ? l.ranksNameYou(row.displayName)
         : row.displayName;
 
     // Ink on yellow, white on blue and pink: the contrast each one needs.
@@ -364,8 +369,8 @@ class _Step extends StatelessWidget {
 
     return Semantics(
       label: row == null
-          ? 'Place ${place + 1}, open'
-          : 'Place ${row.rank}, $name, ${_semanticScore(row)}',
+          ? l.ranksPlaceOpen(place + 1)
+          : l.ranksPlaceSemantic(row.rank, name, _semanticScore(l, row)),
       excludeSemantics: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -448,12 +453,12 @@ class _Step extends StatelessWidget {
     );
   }
 
-  String _semanticScore(LeaderboardRow row) {
+  String _semanticScore(AppLocalizations l, LeaderboardRow row) {
     final value = tab == LeaderboardTab.daily
-        ? plural(row.value, 'move')
-        : plural(row.value, 'star');
-    final tie = _tieBreakText(row, tab);
-    return tie == null ? value : '$value, $tie';
+        ? l.ranksMoves(row.value)
+        : l.ranksStars(row.value);
+    final tie = _tieBreakText(l, row, tab);
+    return tie == null ? value : l.ranksScoreWithTieBreak(value, tie);
   }
 }
 
@@ -575,7 +580,26 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tie = _tieBreakText(row, tab);
+    final l = context.l10n;
+    final tie = _tieBreakText(l, row, tab);
+
+    // The player's own row reads "Name (you)" with the marker muted. The
+    // marker's position comes from the translation, so the name is found in
+    // it rather than the two being glued together here.
+    final name = row.displayName;
+    final full = row.isYou ? l.ranksNameYou(name) : name;
+    final at = row.isYou ? full.indexOf(name) : 0;
+    final muted = Toy.ui(13, color: Toy.inkMuted);
+    final nameSpan = at < 0
+        ? TextSpan(text: full)
+        : TextSpan(
+            children: [
+              if (at > 0) TextSpan(text: full.substring(0, at), style: muted),
+              TextSpan(text: name),
+              if (at + name.length < full.length)
+                TextSpan(text: full.substring(at + name.length), style: muted),
+            ],
+          );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -609,16 +633,7 @@ class _Row extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text.rich(
-                  TextSpan(
-                    text: row.displayName,
-                    children: [
-                      if (row.isYou)
-                        TextSpan(
-                          text: ' (you)',
-                          style: Toy.ui(13, color: Toy.inkMuted),
-                        ),
-                    ],
-                  ),
+                  nameSpan,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Toy.ui(14, weight: FontWeight.w700),
@@ -646,25 +661,22 @@ class _Unavailable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     if (kind == ApiFailureKind.notConfigured) {
-      return const _Message(
-        title: 'Leaderboards are off in this build',
-        detail: 'The campaign is unaffected.',
-      );
+      return _Message(title: l.ranksOffTitle, detail: l.ranksOffDetail);
     }
 
     final detail = switch (kind) {
-      ApiFailureKind.offline =>
-        'You look offline. Every level still plays without a connection.',
-      ApiFailureKind.timeout => 'The server took too long to answer.',
-      _ => 'Something went wrong on our side. Your progress is safe.',
+      ApiFailureKind.offline => l.ranksOffline,
+      ApiFailureKind.timeout => l.ranksTimeout,
+      _ => l.ranksServerError,
     };
 
     return _Message(
-      title: 'Could not load the board',
+      title: l.ranksLoadFailed,
       detail: detail,
       action: ToyButton(
-        label: 'Try again',
+        label: l.commonRetry,
         onPressed: onRetry,
         height: 50,
         radius: 16,
@@ -739,13 +751,12 @@ class _HiddenNotice extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'You are hidden',
+                  context.l10n.ranksHiddenTitle,
                   style: Toy.ui(15, weight: FontWeight.w800),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Your stars and streak still count — you just do not '
-                  'appear here. Settings has the switch.',
+                  context.l10n.ranksHiddenDetail,
                   style: Toy.ui(
                     13,
                     weight: FontWeight.w500,

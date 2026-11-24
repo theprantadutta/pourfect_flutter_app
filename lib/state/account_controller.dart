@@ -27,6 +27,7 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../l10n/l10n.dart';
 import '../services/analytics/analytics_service.dart';
 import '../services/api/api_result.dart';
 import '../services/api/identity.dart';
@@ -196,8 +197,10 @@ class AccountController extends Notifier<AccountState> {
       }(),
       ApiFailure(:final kind, :final detail) =>
         kind == ApiFailureKind.refused
-            ? (detail ?? 'That name was not accepted.')
-            : 'Could not reach the server. Try again in a moment.',
+            // The server's own reason when it gave one; it is not ours to
+            // translate.
+            ? (detail ?? appL10n().accountRenameRefused)
+            : appL10n().accountRenameOffline,
     };
   }
 

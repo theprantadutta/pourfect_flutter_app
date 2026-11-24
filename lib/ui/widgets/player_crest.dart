@@ -33,6 +33,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../l10n/l10n.dart';
 import '../theme/ball_palette.dart';
 import '../theme/toy.dart';
 import 'ball.dart';
@@ -91,7 +92,9 @@ class PlayerCrest extends StatelessWidget {
     final radius = size * 0.3;
 
     return Semantics(
-      label: signedIn ? 'Your account' : 'Playing as a guest',
+      label: signedIn
+          ? context.l10n.accountCrestSignedIn
+          : context.l10n.accountCrestGuest,
       button: true,
       child: Container(
         width: size,

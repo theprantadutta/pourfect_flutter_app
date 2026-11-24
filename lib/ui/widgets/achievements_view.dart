@@ -4,6 +4,7 @@ library;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/l10n.dart';
 import '../../state/achievements.dart';
 import '../theme/toy.dart';
 import 'toy_kit.dart';
@@ -26,7 +27,7 @@ class AchievementsView extends ConsumerWidget {
       ),
       children: [
         Text(
-          '${earned.length} of ${kAchievements.length} unlocked',
+          context.l10n.badgeUnlockedCount(earned.length, kAchievements.length),
           style: Toy.ui(15, weight: FontWeight.w800),
         ),
         const SizedBox(height: 10),
@@ -71,10 +72,15 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) {
     final target = achievement.target;
     final shown = progress.clamp(0, target);
+    final l = context.l10n;
+    final title = achievement.titleIn(l);
+    final description = achievement.descriptionIn(l);
     return Semantics(
-      label:
-          '${achievement.title}: ${achievement.description} '
-          '${unlocked ? 'Unlocked' : '$shown of $target'}',
+      label: l.badgeSemantic(
+        title,
+        description,
+        unlocked ? l.badgeUnlocked : l.badgeProgress(shown, target),
+      ),
       excludeSemantics: true,
       child: ToyBox(
         color: unlocked ? Toy.yellow : Toy.card,
@@ -94,7 +100,7 @@ class _Badge extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    achievement.title,
+                    title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Toy.ui(14.5, weight: FontWeight.w800),
@@ -104,14 +110,14 @@ class _Badge extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              achievement.description,
+              description,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Toy.ui(12.5, color: unlocked ? Toy.ink : Toy.inkMuted),
             ),
             const SizedBox(height: 8),
             if (unlocked)
-              Text('Unlocked', style: Toy.ui(12, weight: FontWeight.w800))
+              Text(l.badgeUnlocked, style: Toy.ui(12, weight: FontWeight.w800))
             else if (target > 1) ...[
               ToyProgressBar(value: shown / target, fill: Toy.mint, height: 10),
               const SizedBox(height: 4),
@@ -120,7 +126,7 @@ class _Badge extends StatelessWidget {
                 style: Toy.numbers(12, color: Toy.inkMuted),
               ),
             ] else
-              Text('Not yet', style: Toy.ui(12, color: Toy.inkMuted)),
+              Text(l.badgeNotYet, style: Toy.ui(12, color: Toy.inkMuted)),
           ],
         ),
       ),
