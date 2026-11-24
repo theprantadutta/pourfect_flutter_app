@@ -7,6 +7,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import 'toy_kit.dart';
 
@@ -45,14 +46,14 @@ class GuideCaption extends StatelessWidget {
         // Always there. A tutorial you cannot leave is a toll booth.
         Semantics(
           button: true,
-          label: 'Skip the tutorial',
+          label: context.l10n.playTutorialSkipLabel,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: onSkip,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               child: Text(
-                'Skip',
+                context.l10n.playTutorialSkip,
                 style: Toy.ui(13, weight: FontWeight.w800, color: Toy.inkMuted),
               ),
             ),
@@ -74,7 +75,7 @@ class TipBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
-    label: '$text. Dismiss',
+    label: context.l10n.playTipBubbleLabel(text),
     child: GestureDetector(
       onTap: onDismiss,
       child: Column(

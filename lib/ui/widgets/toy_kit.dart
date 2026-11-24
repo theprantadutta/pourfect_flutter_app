@@ -13,6 +13,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/audio/audio_service.dart';
 import '../../state/providers.dart';
 
@@ -273,7 +274,7 @@ class ToyBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ToySquareButton(
-    semanticLabel: 'Back',
+    semanticLabel: context.l10n.commonBack,
     cue: UiCue.back,
     color: color,
     onPressed: onPressed ?? () => Navigator.of(context).maybePop(),
@@ -1060,7 +1061,7 @@ class ToyStars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: '$earned of $total stars',
+    label: context.l10n.playStarsOfTotal(earned, total),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1330,7 +1331,7 @@ Future<T?> showToyDialog<T>({
   return showGeneralDialog<T>(
     context: context,
     barrierDismissible: barrierDismissible,
-    barrierLabel: 'Dismiss',
+    barrierLabel: context.l10n.playDismiss,
     barrierColor: Toy.scrim,
     transitionDuration: calm
         ? Duration.zero
@@ -1424,8 +1425,8 @@ Future<bool> showToyConfirm({
   required BuildContext context,
   required String title,
   required String body,
-  String confirmLabel = 'OK',
-  String cancelLabel = 'Cancel',
+  String? confirmLabel,
+  String? cancelLabel,
   Color confirmColor = Toy.mint,
   Color confirmTextColor = Toy.ink,
 }) async {
@@ -1452,14 +1453,14 @@ Future<bool> showToyConfirm({
             children: [
               Expanded(
                 child: ToyButton.secondary(
-                  label: cancelLabel,
+                  label: cancelLabel ?? context.l10n.commonCancel,
                   onPressed: () => Navigator.of(context).pop(false),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: ToyButton(
-                  label: confirmLabel,
+                  label: confirmLabel ?? context.l10n.commonOk,
                   color: confirmColor,
                   textColor: confirmTextColor,
                   height: 52,

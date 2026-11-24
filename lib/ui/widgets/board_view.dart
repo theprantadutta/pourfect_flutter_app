@@ -30,6 +30,7 @@ import '../../state/game_state.dart';
 import '../../state/providers.dart';
 import '../theme/tokens.dart';
 import '../theme/cosmetics.dart';
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import 'ball.dart';
 import 'board_geometry.dart';
@@ -518,7 +519,7 @@ class _BoardViewState extends ConsumerState<BoardView>
                         boxShadow: Toy.hard(2.5 * k),
                       ),
                       child: Text(
-                        'SORTED!',
+                        context.l10n.playTubeSorted,
                         maxLines: 1,
                         style: Toy.ui(
                           10 * k,

@@ -1,0 +1,371 @@
+{
+  "playHudLevel": "Level",
+  "@playHudLevel": {"description": "Game screen header title word when no level number follows. Short: it sits in the HUD."},
+  "playHudTitle": "{label} {value}",
+  "@playHudTitle": {
+    "description": "Game screen header title: a mode word followed by its number, e.g. 'Level 12' or 'Daily 5'. Short.",
+    "placeholders": {"label": {"type": "String"}, "value": {"type": "String"}}
+  },
+  "playHudHard": "HARD ×1.5",
+  "@playHudHard": {"description": "Small sticker next to the level title on a hard level (worth 1.5 times the points). Very short, uppercase."},
+  "playHudHardLabel": "Hard level, one and a half times the points",
+  "@playHudHardLabel": {"description": "Screen-reader label for the HARD ×1.5 sticker."},
+  "playHudMoves": "MOVES",
+  "@playHudMoves": {"description": "Tiny caption under the move count in a 44px square. Must stay very short (about 6 characters)."},
+  "playHudMovesLabel": "{count, plural, =1{1 move} other{{count} moves}}",
+  "@playHudMovesLabel": {
+    "description": "Screen-reader label for the move counter.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playParLeftFor3Stars": "{count, plural, =1{1 move left for 3 stars} other{{count} moves left for 3 stars}}",
+  "@playParLeftFor3Stars": {
+    "description": "Par meter line under the progress bar: moves left before the run drops to 2 stars. One short line.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playParSpent": "Par spent · 2 stars from here",
+  "@playParSpent": {"description": "Par meter line once the player has used exactly par moves. One short line."},
+  "playParLeftFor2Stars": "{count, plural, =1{1 move left for 2 stars} other{{count} moves left for 2 stars}}",
+  "@playParLeftFor2Stars": {
+    "description": "Par meter line: moves left before the run drops to 1 star. One short line.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playParOneStarFromHere": "1 star from here · any finish",
+  "@playParOneStarFromHere": {"description": "Par meter line once only 1 star is still possible. One short line."},
+  "playParAnyFinish": "Any finish earns 1 star",
+  "@playParAnyFinish": {"description": "Par meter line far past par: finishing at all earns 1 star. One short line."},
+  "playParMeterLabel": "{stars} star pace, {used} of par {par} moves. {words}",
+  "@playParMeterLabel": {
+    "description": "Screen-reader label for the par meter. {words} is one of the par meter lines (e.g. '2 moves left for 3 stars').",
+    "placeholders": {"stars": {"type": "int"}, "used": {"type": "int"}, "par": {"type": "int"}, "words": {"type": "String"}}
+  },
+  "playHudBusyLabel": "{label}, working. Tap to cancel",
+  "@playHudBusyLabel": {
+    "description": "Screen-reader label for a board button (e.g. Hint) while it is working; tapping again cancels.",
+    "placeholders": {"label": {"type": "String"}}
+  },
+  "playHudUndo": "Undo",
+  "@playHudUndo": {"description": "Board action button: take back the last pour. Short (button under an icon)."},
+  "playHudHint": "Hint",
+  "@playHudHint": {"description": "Board action button: show a good next move. Short (button under an icon)."},
+  "playHudRestart": "Restart",
+  "@playHudRestart": {"description": "Board action button: start the level over. Also the action on the 'no way to finish' message. Short."},
+  "playExtraTubeLabel": "Watch a video for an extra tube",
+  "@playExtraTubeLabel": {"description": "Screen-reader label for the '+ Tube' chip, which plays a rewarded video for one extra empty tube."},
+  "playExtraTubeChip": "+ Tube",
+  "@playExtraTubeChip": {"description": "Small pill button offering one extra empty tube (for a video). Very short."},
+  "playStarsOfTotal": "{earned} of {total} stars",
+  "@playStarsOfTotal": {
+    "description": "Screen-reader label for a row of stars, e.g. '2 of 3 stars'.",
+    "placeholders": {"earned": {"type": "int"}, "total": {"type": "int"}}
+  },
+  "playDismiss": "Dismiss",
+  "@playDismiss": {"description": "Screen-reader label for the dimmed area behind a dialog; tapping it closes the dialog."},
+  "playLeaveTitleSoSoon": "Leaving so soon?",
+  "@playLeaveTitleSoSoon": {"description": "Playful title of the dialog asked before leaving a half-played board (one of four picked at random)."},
+  "playLeaveTitleMissYou": "The balls will miss you",
+  "@playLeaveTitleMissYou": {"description": "Playful title of the dialog asked before leaving a half-played board (one of four picked at random)."},
+  "playLeaveTitleAbandon": "Abandon the pour?",
+  "@playLeaveTitleAbandon": {"description": "Playful title of the dialog asked before leaving a half-played board (one of four picked at random)."},
+  "playLeaveTitleMidPour": "Walking out mid-pour?",
+  "@playLeaveTitleMidPour": {"description": "Playful title of the dialog asked before leaving a half-played board (one of four picked at random)."},
+  "playLeaveBody": "Your moves and time on this board won't be saved.",
+  "@playLeaveBody": {"description": "Body of the leave-the-board dialog: says plainly what is lost."},
+  "playLeaveKeepPouring": "Keep pouring",
+  "@playLeaveKeepPouring": {"description": "Leave-the-board dialog: button to stay on the board. Short (half-width button)."},
+  "playLeaveConfirm": "Leave",
+  "@playLeaveConfirm": {"description": "Leave-the-board dialog: button to leave. Short (half-width button)."},
+  "playTutorialSkipLabel": "Skip the tutorial",
+  "@playTutorialSkipLabel": {"description": "Screen-reader label for the Skip link on the first-level tutorial caption."},
+  "playTutorialSkip": "Skip",
+  "@playTutorialSkip": {"description": "Small link on the tutorial caption that ends the tutorial. Very short."},
+  "playTipBubbleLabel": "{text}. Dismiss",
+  "@playTipBubbleLabel": {
+    "description": "Screen-reader label for a one-time tip bubble; {text} is the tip, tapping dismisses it.",
+    "placeholders": {"text": {"type": "String"}}
+  },
+  "playTipPar": "Finish within par for three stars. The bar shows how much you've used.",
+  "@playTipPar": {"description": "One-time tip on level 2 about par and the par meter bar. Shown in a toast; keep to two lines."},
+  "playTipTallTubes": "Taller tubes! Each one holds five balls now.",
+  "@playTipTallTubes": {"description": "One-time tip on the first board whose tubes hold five balls instead of four."},
+  "playTipHint": "Stuck? Hint shows you a good next move.",
+  "@playTipHint": {"description": "One-time tip after 40 seconds stuck, pointing at the Hint button."},
+  "playTipUndo": "Past par? Undo is free — step back as far as you like.",
+  "@playTipUndo": {"description": "One-time tip the first time a run goes past par: undo costs nothing."},
+  "playGuideSorted": "Sorted! Now make every tube a single color.",
+  "@playGuideSorted": {"description": "Tutorial caption after the player completes their first tube. Max two lines."},
+  "playGuideDrop": "Now tap where they go: onto the same color, or an empty tube.",
+  "@playGuideDrop": {"description": "Tutorial caption while holding balls: tap a tube to pour into. Max two lines."},
+  "playGuideWrongTube": "Tap the tube the hand points at to pick those up instead.",
+  "@playGuideWrongTube": {"description": "Tutorial caption when the player picked up a different tube than the one the hand points at. Max two lines."},
+  "playGuideFirstTap": "Tap a tube to pick up the balls on top.",
+  "@playGuideFirstTap": {"description": "First tutorial caption on level 1. Max two lines."},
+  "playGuideFirstPour": "That's a pour! Keep going.",
+  "@playGuideFirstPour": {"description": "Tutorial caption after the first pour. Max two lines."},
+  "playGuideKeepGoing": "Keep going: one color per tube.",
+  "@playGuideKeepGoing": {"description": "Tutorial caption after the second pour onward. Max two lines."},
+  "playCoachHolding": "Holding {count} · drop into a bouncing tube",
+  "@playCoachHolding": {
+    "description": "Toast above the board while balls are picked up: how many are held and where they can go (tubes that accept them bounce).",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playExtraTubeAdTitle": "Watch a video for an extra tube?",
+  "@playExtraTubeAdTitle": {"description": "Title of the dialog asking before a rewarded video for an extra tube."},
+  "playExtraTubeAdBody": "One more empty tube for this level. A level finished with an extra tube earns up to two stars.",
+  "@playExtraTubeAdBody": {"description": "Body of the extra-tube video dialog."},
+  "playExtraTubeNotFinished": "No tube — the video was not finished.",
+  "@playExtraTubeNotFinished": {"description": "Toast when the player closed the extra-tube video early."},
+  "playExtraTubeSaved": "Saved — your next tube is free.",
+  "@playExtraTubeSaved": {"description": "Toast when a watched video's extra tube could not be given now and is kept for next time."},
+  "playNoVideo": "No video available right now.",
+  "@playNoVideo": {"description": "Toast when no rewarded video can be shown."},
+  "playRewardFailed": "Something went wrong. Nothing was used.",
+  "@playRewardFailed": {"description": "Toast when a rewarded video failed for another reason; nothing was charged."},
+  "playHintShowing": "Your hint is showing: pour into the glowing tube.",
+  "@playHintShowing": {"description": "Toast when the player taps Hint while a hint is already on the board."},
+  "playHintNoneNothingUsed": "No hint for this position. Nothing was used.",
+  "@playHintNoneNothingUsed": {"description": "Toast when no hint can be found; no hint or video was spent."},
+  "playHintNotFinished": "No hint — the video was not finished.",
+  "@playHintNotFinished": {"description": "Toast when the player closed the hint video early."},
+  "playHintVideoSaved": "Your video is saved for the next hint.",
+  "@playHintVideoSaved": {"description": "Toast when the board changed while the hint video played; the reward is kept for the next hint."},
+  "playHintNoneVideoSaved": "No hint for this position — your video is saved for the next one.",
+  "@playHintNoneVideoSaved": {"description": "Toast after a hint video when no hint exists for the position; the reward is kept."},
+  "playHintNone": "No hint available for this position.",
+  "@playHintNone": {"description": "Toast when a free hint found nothing for the position (the hint was given back)."},
+  "playHintHere": "Here is your hint — pour into the glowing tube.",
+  "@playHintHere": {"description": "Toast after a rewarded hint video, pointing at the glowing destination tube."},
+  "playDeadEndRestart": "No way to finish from here. Restart to try another line.",
+  "@playDeadEndRestart": {"description": "Dead-end hint toast when undoing cannot help; has a Restart action."},
+  "playDeadEndRestartTube": "No way to finish from here. Restart to try another line. Or tap + Tube for a spare tube.",
+  "@playDeadEndRestartTube": {"description": "Dead-end hint toast, variant when the '+ Tube' button (an extra empty tube) is also offered."},
+  "playDeadEndUndo": "{count, plural, =1{No way to finish from here. Undo 1 move to get back on track.} other{No way to finish from here. Undo {count} moves to get back on track.}}",
+  "@playDeadEndUndo": {
+    "description": "Dead-end hint toast: how many moves to undo to reach a solvable position. Has an 'Undo N' action.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playDeadEndUndoTube": "{count, plural, =1{No way to finish from here. Undo 1 move to get back on track. Or tap + Tube for a spare tube.} other{No way to finish from here. Undo {count} moves to get back on track. Or tap + Tube for a spare tube.}}",
+  "@playDeadEndUndoTube": {
+    "description": "Dead-end hint toast, variant when the '+ Tube' button (an extra empty tube) is also offered.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playDeadEndUndoAction": "Undo {count}",
+  "@playDeadEndUndoAction": {
+    "description": "Action button on the dead-end toast: undo that many moves. Very short.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playHintAdTitle": "Watch a video for a hint?",
+  "@playHintAdTitle": {"description": "Title of the dialog asking before a rewarded video for a hint."},
+  "playHintAdFreeLeft": "{count, plural, =1{You have 1 free hint left.} other{You have {count} free hints left.}}",
+  "@playHintAdFreeLeft": {
+    "description": "Body of the hint video dialog while free hints remain.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playHintAdNoneLeft": "Your free hints are used up. A short video earns one more.",
+  "@playHintAdNoneLeft": {"description": "Body of the hint video dialog once the free hints are gone."},
+  "playWatch": "Watch",
+  "@playWatch": {"description": "Confirm button on a rewarded-video dialog. Short (half-width button)."},
+  "playLoadFailed": "Could not load levels",
+  "@playLoadFailed": {"description": "Title on the game screen when the level data failed to load."},
+  "playTubeSorted": "SORTED!",
+  "@playTubeSorted": {"description": "Tiny badge on a tube that is finished (one color, full). Very short, uppercase."},
+  "playWinTitlePerfect": "Perfect\nPour!",
+  "@playWinTitlePerfect": {"description": "Big result title for a 3-star clear, over two lines (keep the line break). Very short words."},
+  "playWinTitleNice": "Nice\nPour!",
+  "@playWinTitleNice": {"description": "Big result title for a 2-star clear, over two lines (keep the line break). Very short words."},
+  "playWinTitlePoured": "Poured!",
+  "@playWinTitlePoured": {"description": "Big result title for a 1-star clear. Very short."},
+  "playWinLastPour": "Last pour…",
+  "@playWinLastPour": {"description": "Big caption where the board buttons were, during the final pour celebration. Short."},
+  "playWinMovesPar": "{count, plural, =1{1 MOVE · PAR {par}} other{{count} MOVES · PAR {par}}}",
+  "@playWinMovesPar": {
+    "description": "Pill under 'Last pour…': moves used and par. Uppercase, short.",
+    "placeholders": {"count": {"type": "int"}, "par": {"type": "int"}}
+  },
+  "playWinLevelBand": "Level {level} · {band}",
+  "@playWinLevelBand": {
+    "description": "Chip at the top of the result screen: level number and its band (world) name.",
+    "placeholders": {"level": {"type": "int"}, "band": {"type": "String"}}
+  },
+  "playWinNewBest": "NEW BEST!",
+  "@playWinNewBest": {"description": "Sticker on the result screen for a personal best. Very short, uppercase."},
+  "playWinMovesChip": "moves · par {par}",
+  "@playWinMovesChip": {
+    "description": "Caption under the move count chip on the result screen. Short (a third of the screen width).",
+    "placeholders": {"par": {"type": "int"}}
+  },
+  "playWinUntimed": "untimed",
+  "@playWinUntimed": {"description": "Caption under the time chip when the run had no clock (the tutorial). Short, lowercase."},
+  "playWinFastest": "fastest yet!",
+  "@playWinFastest": {"description": "Caption under the time chip for the player's fastest clear of the level. Short, lowercase."},
+  "playWinTime": "time",
+  "@playWinTime": {"description": "Caption under the time chip on the result screen. Short, lowercase."},
+  "playWinUnderPar": "UNDER PAR!",
+  "@playWinUnderPar": {"description": "Small sticker on the time chip when the clear beat the time par. Very short, uppercase."},
+  "playWinPoints": "points",
+  "@playWinPoints": {"description": "Caption under the points chip on the result screen. Short, lowercase."},
+  "playWinWorldBand": "WORLD {world} · {band}",
+  "@playWinWorldBand": {
+    "description": "Label over the world progress bar on the result screen. {band} is already uppercase. Uppercase, one line.",
+    "placeholders": {"world": {"type": "int"}, "band": {"type": "String"}}
+  },
+  "playWinTryAssisted": "Three stars need a clear without the extra tube.",
+  "@playWinTryAssisted": {"description": "Result screen nudge to replay, when the clear used the extra tube (capped at 2 stars). Two lines max."},
+  "playWinTryShort": "{short, plural, =1{Par {par}, you took {took}. One move from 3★.} other{Par {par}, you took {took}. {short} moves from 3★.}}",
+  "@playWinTryShort": {
+    "description": "Result screen nudge to replay: par, moves taken, and how many moves short of 3 stars. Two lines max.",
+    "placeholders": {"par": {"type": "int"}, "took": {"type": "int"}, "short": {"type": "int"}}
+  },
+  "playWinTryInReach": "Par {par}. Three stars are in reach.",
+  "@playWinTryInReach": {
+    "description": "Result screen nudge to replay for 3 stars. Two lines max.",
+    "placeholders": {"par": {"type": "int"}}
+  },
+  "playWinTryButton": "TRY FOR 3★",
+  "@playWinTryButton": {"description": "Compact button on the result screen to replay for three stars. Very short, uppercase."},
+  "playWinTryButtonLabel": "Replay this level for three stars",
+  "@playWinTryButtonLabel": {"description": "Screen-reader label for the TRY FOR 3★ button."},
+  "playWinReplayLabel": "Replay this level",
+  "@playWinReplayLabel": {"description": "Screen-reader label for the replay icon button on the result screen."},
+  "playWinHomeLabel": "Back to the home screen",
+  "@playWinHomeLabel": {"description": "Screen-reader label for the home icon button on the result screen."},
+  "playWinNextLevel": "NEXT LEVEL",
+  "@playWinNextLevel": {"description": "Main button on the result screen. Uppercase, short (large font)."},
+  "playWinBackToLevels": "BACK TO LEVELS",
+  "@playWinBackToLevels": {"description": "Main result-screen button when there is no next level. Uppercase, short (large font)."},
+  "playChestNextAtLabel": "Next star chest at {stars} stars",
+  "@playChestNextAtLabel": {
+    "description": "Screen-reader label for the star chest card before the next chest is earned.",
+    "placeholders": {"stars": {"type": "int"}}
+  },
+  "playChestOpenLabel": "Open star chest",
+  "@playChestOpenLabel": {"description": "Screen-reader label for the star chest card when a chest is ready."},
+  "playChestReady": "A star chest is ready!",
+  "@playChestReady": {"description": "Star chest card text when a chest can be opened. One line."},
+  "playChestNextAt": "Next chest at {stars} ★",
+  "@playChestNextAt": {
+    "description": "Star chest card text above its progress bar: the star total that earns the next chest. One short line.",
+    "placeholders": {"stars": {"type": "int"}}
+  },
+  "playChestOpen": "OPEN",
+  "@playChestOpen": {"description": "Small button on the star chest card. Very short, uppercase."},
+  "playChestDoubleFailed": "Could not double it this time.",
+  "@playChestDoubleFailed": {"description": "Toast when doubling a chest's reward after the video failed."},
+  "playChestDoubleNotFinished": "Not doubled — the video was not finished.",
+  "@playChestDoubleNotFinished": {"description": "Toast when the player closed the chest-doubling video early."},
+  "playChestOpening": "Opening…",
+  "@playChestOpening": {"description": "Star chest dialog title while it is being opened. Short."},
+  "playChestTitle": "Star chest {index}",
+  "@playChestTitle": {
+    "description": "Star chest dialog title once opened: which chest this is (1st, 2nd, ...). Short.",
+    "placeholders": {"index": {"type": "int"}}
+  },
+  "playChestNotYetTitle": "Almost there",
+  "@playChestNotYetTitle": {"description": "Star chest dialog title when the server has not counted the stars yet. Short."},
+  "playChestAlreadyOpenTitle": "Already open",
+  "@playChestAlreadyOpenTitle": {"description": "Star chest dialog title when the chest was already opened. Short."},
+  "playChestFailedTitle": "Could not open it",
+  "@playChestFailedTitle": {"description": "Star chest dialog title when opening failed. Short."},
+  "playChestNotYetNote": "Your newest stars are still on their way to the server. Try again in a moment.",
+  "@playChestNotYetNote": {"description": "Star chest dialog body when the server has not counted the newest stars yet."},
+  "playChestAlreadyOpenNote": "This chest was opened on another device.",
+  "@playChestAlreadyOpenNote": {"description": "Star chest dialog body when the chest was opened elsewhere."},
+  "playChestFailedNote": "Check your connection and try again.",
+  "@playChestFailedNote": {"description": "Star chest dialog body when opening failed (network)."},
+  "playChestRewardCount": "+{count}",
+  "@playChestRewardCount": {
+    "description": "Big number on a chest reward chip, e.g. '+2'.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playChestHintsCaption": "{count, plural, other{hints}}",
+  "@playChestHintsCaption": {
+    "description": "Caption under the '+N' hints reward chip in the star chest. One short word.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playChestTubesCaption": "{count, plural, =1{extra tube} other{extra tubes}}",
+  "@playChestTubesCaption": {
+    "description": "Caption under the '+N' extra tubes reward chip in the star chest. Short.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playChestUnlocked": "Unlocked: {name}",
+  "@playChestUnlocked": {
+    "description": "Star chest reward pill for a new cosmetic. {name} is e.g. 'Glossy ball skin' or 'a new look'.",
+    "placeholders": {"name": {"type": "String"}}
+  },
+  "playChestBallSkinName": "{skin} ball skin",
+  "@playChestBallSkinName": {
+    "description": "A cosmetic's name in the star chest: a ball skin. {skin} is the skin's name.",
+    "placeholders": {"skin": {"type": "String"}}
+  },
+  "playChestTubeThemeName": "{theme} tubes",
+  "@playChestTubeThemeName": {
+    "description": "A cosmetic's name in the star chest: a tube theme. {theme} is the theme's name.",
+    "placeholders": {"theme": {"type": "String"}}
+  },
+  "playChestNewLook": "a new look",
+  "@playChestNewLook": {"description": "Fallback cosmetic name in 'Unlocked: a new look' when the app does not know the item."},
+  "playChestSavedNote": "Saved for when you need them. Hint and + Tube use these first.",
+  "@playChestSavedNote": {"description": "Small note under the chest rewards: hints and extra tubes are banked; Hint and + Tube are button names."},
+  "playChestLoadingVideo": "Loading video…",
+  "@playChestLoadingVideo": {"description": "Chest dialog button while the doubling video loads. Fits one button line."},
+  "playChestDouble": "Double it with a video",
+  "@playChestDouble": {"description": "Chest dialog button: watch a video to double the reward. Fits one button line."},
+  "playChestCollect": "Collect",
+  "@playChestCollect": {"description": "Chest dialog button that closes it after a reward. Short."},
+  "playClockLabel": "Time {time}",
+  "@playClockLabel": {
+    "description": "Screen-reader label for the level clock. {time} is a spoken duration.",
+    "placeholders": {"time": {"type": "String"}}
+  },
+  "playClockDetailLabel": "Time {time} of par {par}, {sign, select, plus{plus} other{minus}} {percent} percent points",
+  "@playClockDetailLabel": {
+    "description": "Screen-reader label for the level clock with its time par and the score bonus (plus) or penalty (minus) in percent. {sign} is 'plus' or 'minus'.",
+    "placeholders": {"time": {"type": "String"}, "par": {"type": "String"}, "sign": {"type": "String"}, "percent": {"type": "int"}}
+  },
+  "playClockBonusChip": "{sign}{percent}% pts",
+  "@playClockBonusChip": {
+    "description": "Tiny chip next to the clock: how the time changes the points, e.g. '+25% pts'. {sign} is +, − or ±. Very short.",
+    "placeholders": {"sign": {"type": "String"}, "percent": {"type": "int"}}
+  },
+  "playLoading": "Loading",
+  "@playLoading": {"description": "Screen-reader label for the pouring-balls loading animation."},
+  "playWorking": "Working",
+  "@playWorking": {"description": "Screen-reader label for the small busy indicator."},
+  "playZenTitle": "Zen",
+  "@playZenTitle": {"description": "Name of the endless relaxed mode, as the screen title and board header. Short."},
+  "playZenIntro": "Endless boards. No clock, no stars, no leaderboard — just pour.",
+  "@playZenIntro": {"description": "Intro line on the Zen mode picker."},
+  "playZenPaceCalm": "Calm",
+  "@playZenPaceCalm": {"description": "Zen mode pace option with the fewest colors. One short word (large font)."},
+  "playZenPaceSteady": "Steady",
+  "@playZenPaceSteady": {"description": "Zen mode pace option with a medium number of colors. One short word (large font)."},
+  "playZenPaceDeep": "Deep",
+  "@playZenPaceDeep": {"description": "Zen mode pace option with the most colors. One short word (large font)."},
+  "playZenPaceColors": "{count, plural, =1{1 color} other{{count} colors}}",
+  "@playZenPaceColors": {
+    "description": "Under a Zen pace option: how many ball colors its boards use (always 4 or more).",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playZenPaceLabel": "{count, plural, =1{{pace}, 1 color} other{{pace}, {count} colors}}",
+  "@playZenPaceLabel": {
+    "description": "Screen-reader label for a Zen pace option: its name and how many colors (always 4 or more).",
+    "placeholders": {"pace": {"type": "String"}, "count": {"type": "int"}}
+  },
+  "playZenBandPoured": "{pace} · {count} poured",
+  "@playZenBandPoured": {
+    "description": "Zen board header subtitle: the pace name and how many boards were finished this session. Short.",
+    "placeholders": {"pace": {"type": "String"}, "count": {"type": "int"}}
+  },
+  "playZenPoured": "{count, plural, =1{Poured!} other{Poured! {count} so far.}}",
+  "@playZenPoured": {
+    "description": "Shown when a Zen board is finished, with the session's running count of boards (1 or more).",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "playZenNext": "NEXT",
+  "@playZenNext": {"description": "Button for the next Zen board. Uppercase, very short."},
+  "playZenLeaveBody": "This board's moves won't be saved. Your poured count stays.",
+  "@playZenLeaveBody": {"description": "Body of the leave dialog on a Zen board: what is and is not lost."},
+  "playZenDeadEnd": "No way to finish from here. Undo or restart.",
+  "@playZenDeadEnd": {"description": "Toast when Hint finds no way to finish the Zen board."},
+  "playZenNoHint": "No hint for this position right now.",
+  "@playZenNoHint": {"description": "Toast when no Zen hint is available."}
+}

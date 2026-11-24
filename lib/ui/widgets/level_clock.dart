@@ -22,6 +22,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../engine/level.dart' show timeMultiplierFor;
 import '../format.dart';
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 
 class LevelClock extends StatefulWidget {
@@ -108,7 +109,7 @@ class _LevelClockState extends State<LevelClock> {
 
     if (!widget.detailed || widget.parSeconds <= 0) {
       return Semantics(
-        label: 'Time ${formatSpan(_seconds)}',
+        label: context.l10n.playClockLabel(formatSpan(_seconds)),
         // Its own layer: a tick once a second must not repaint the board.
         child: ExcludeSemantics(
           child: RepaintBoundary(
@@ -128,9 +129,12 @@ class _LevelClockState extends State<LevelClock> {
         ? Toy.yellow
         : Toy.tomato;
     return Semantics(
-      label:
-          'Time ${formatSpan(_seconds)} of par ${formatSpan(widget.parSeconds)}, '
-          '${percent >= 0 ? 'plus' : 'minus'} ${percent.abs()} percent points',
+      label: context.l10n.playClockDetailLabel(
+        formatSpan(_seconds),
+        formatSpan(widget.parSeconds),
+        percent >= 0 ? 'plus' : 'minus',
+        percent.abs(),
+      ),
       child: ExcludeSemantics(
         child: RepaintBoundary(
           child: Row(
@@ -150,12 +154,14 @@ class _LevelClockState extends State<LevelClock> {
                   border: Border.all(color: Toy.ink, width: 1.5),
                 ),
                 child: Text(
-                  '${percent > 0
-                      ? '+'
-                      : percent < 0
-                      ? '−'
-                      : '±'}'
-                  '${percent.abs()}% pts',
+                  context.l10n.playClockBonusChip(
+                    percent > 0
+                        ? '+'
+                        : percent < 0
+                        ? '−'
+                        : '±',
+                    percent.abs(),
+                  ),
                   style: Toy.numbers(
                     widget.fontSize - 1,
                     weight: FontWeight.w800,

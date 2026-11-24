@@ -15,6 +15,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../engine/level.dart' show kTwoStarMoveMultiplier;
 import '../../services/audio/audio_service.dart';
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import 'toy_kit.dart';
 
@@ -68,12 +69,12 @@ class BoardHud extends StatelessWidget {
 
   bool get _meterShown => showParMeter && minMoves > 0;
 
-  String get _title {
+  String _title(AppLocalizations l10n) {
     final label = titleLabel == null
-        ? 'Level'
+        ? l10n.playHudLevel
         : titleLabel![0].toUpperCase() + titleLabel!.substring(1).toLowerCase();
     final value = titleValue ?? '$levelId';
-    return value.isEmpty ? label : '$label $value';
+    return value.isEmpty ? label : l10n.playHudTitle(label, value);
   }
 
   @override
@@ -103,18 +104,17 @@ class BoardHud extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            _title,
+                            _title(context.l10n),
                             maxLines: 1,
                             style: Toy.display(30, color: titleColor),
                           ),
                           if (hard) ...[
                             const SizedBox(width: 8),
                             Semantics(
-                              label:
-                                  'Hard level, one and a half times the points',
+                              label: context.l10n.playHudHardLabel,
                               excludeSemantics: true,
                               child: ToySticker.text(
-                                'HARD ×1.5',
+                                context.l10n.playHudHard,
                                 color: Toy.tomato,
                                 size: 12,
                                 angle: -4,
@@ -177,7 +177,7 @@ class _MovesCounter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: '$moves moves',
+    label: context.l10n.playHudMovesLabel(moves),
     child: ExcludeSemantics(
       child: ToyBox(
         width: 44,
@@ -196,7 +196,7 @@ class _MovesCounter extends StatelessWidget {
               ),
             ),
             Text(
-              'MOVES',
+              context.l10n.playHudMoves,
               style: Toy.ui(8, weight: FontWeight.w800, height: 1.1),
             ),
           ],
@@ -226,20 +226,24 @@ class ParMeter extends StatelessWidget {
     this.clock,
   });
 
-  /// What this attempt can still earn, in words.
-  static String pace({required int movesUsed, required int minMoves}) {
+  /// What this attempt can still earn, in words. [l10n] defaults to the
+  /// device's language.
+  static String pace({
+    required int movesUsed,
+    required int minMoves,
+    AppLocalizations? l10n,
+  }) {
+    final t = l10n ?? appL10n();
     final twoStarCeiling = (minMoves * kTwoStarMoveMultiplier).ceil();
     if (movesUsed < minMoves) {
-      final left = minMoves - movesUsed;
-      return '$left ${left == 1 ? 'move' : 'moves'} left for 3 stars';
+      return t.playParLeftFor3Stars(minMoves - movesUsed);
     }
-    if (movesUsed == minMoves) return 'Par spent · 2 stars from here';
+    if (movesUsed == minMoves) return t.playParSpent;
     if (movesUsed < twoStarCeiling) {
-      final left = twoStarCeiling - movesUsed;
-      return '$left ${left == 1 ? 'move' : 'moves'} left for 2 stars';
+      return t.playParLeftFor2Stars(twoStarCeiling - movesUsed);
     }
-    if (movesUsed == twoStarCeiling) return '1 star from here · any finish';
-    return 'Any finish earns 1 star';
+    if (movesUsed == twoStarCeiling) return t.playParOneStarFromHere;
+    return t.playParAnyFinish;
   }
 
   @override
@@ -257,9 +261,13 @@ class ParMeter extends StatelessWidget {
       _ => Toy.tomato,
     };
 
-    final words = pace(movesUsed: movesUsed, minMoves: minMoves);
+    final words = pace(
+      movesUsed: movesUsed,
+      minMoves: minMoves,
+      l10n: context.l10n,
+    );
     return Semantics(
-      label: '$stars star pace, $movesUsed of par $minMoves moves. $words',
+      label: context.l10n.playParMeterLabel(stars, movesUsed, minMoves, words),
       child: ExcludeSemantics(
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 7, 12, 7),
@@ -447,7 +455,7 @@ class HudAction extends StatelessWidget {
     return Pressable(
       cue: cue,
       onPressed: onPressed,
-      semanticLabel: busy ? '$label, working. Tap to cancel' : label,
+      semanticLabel: busy ? context.l10n.playHudBusyLabel(label) : label,
       child: content,
     );
   }
@@ -510,7 +518,7 @@ class BoardControls extends StatelessWidget {
                 child: HudAction(
                   cue: UiCue.undo,
                   icon: const ToyIcon(ToyGlyph.undo, size: 22),
-                  label: 'Undo',
+                  label: context.l10n.playHudUndo,
                   onPressed: onUndo,
                 ),
               ),
@@ -518,7 +526,7 @@ class BoardControls extends StatelessWidget {
               Expanded(
                 child: HudAction(
                   icon: const ToyIcon(ToyGlyph.hint, size: 24),
-                  label: 'Hint',
+                  label: context.l10n.playHudHint,
                   color: Toy.yellow,
                   onPressed: onHint,
                   busy: hintBusy,
@@ -529,7 +537,7 @@ class BoardControls extends StatelessWidget {
               Expanded(
                 child: HudAction(
                   icon: const ToyIcon(ToyGlyph.restart, size: 22),
-                  label: 'Restart',
+                  label: context.l10n.playHudRestart,
                   onPressed: onRestart,
                 ),
               ),
@@ -583,7 +591,7 @@ class _ExtraTubeChip extends StatelessWidget {
   Widget build(BuildContext context) => Center(
     child: Pressable(
       onPressed: onPressed,
-      semanticLabel: 'Watch a video for an extra tube',
+      semanticLabel: context.l10n.playExtraTubeLabel,
       depth: 2,
       child: ToyBox(
         color: Toy.lilac,
@@ -593,7 +601,10 @@ class _ExtraTubeChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('+ Tube', style: Toy.ui(14, weight: FontWeight.w800)),
+            Text(
+              context.l10n.playExtraTubeChip,
+              style: Toy.ui(14, weight: FontWeight.w800),
+            ),
             const SizedBox(width: 8),
             const ToyIcon(ToyGlyph.play, size: 12),
           ],

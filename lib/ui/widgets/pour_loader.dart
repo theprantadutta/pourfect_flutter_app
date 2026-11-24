@@ -16,6 +16,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import 'ball.dart';
 
@@ -73,7 +74,7 @@ class _PourLoaderState extends State<PourLoader>
   Widget build(BuildContext context) {
     final calm = Toy.calm(context);
     return Semantics(
-      label: widget.caption ?? 'Loading',
+      label: widget.caption ?? context.l10n.playLoading,
       liveRegion: true,
       child: ExcludeSemantics(
         child: Column(
@@ -282,7 +283,7 @@ class _BounceDotsState extends State<BounceDots>
   Widget build(BuildContext context) {
     final s = widget.size;
     return Semantics(
-      label: 'Working',
+      label: context.l10n.playWorking,
       child: SizedBox(
         width: s * 3 + s * 1.2,
         height: s * 2.4,
