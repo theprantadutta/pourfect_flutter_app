@@ -5,6 +5,7 @@ library;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/ads/ad_ids.dart';
 import '../../services/api/cosmetics_api.dart';
 import '../../services/iap/billing_service.dart';
@@ -39,7 +40,12 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
 
   Future<void> _wear(CosmeticItem item) async {
     if (!item.owned) {
-      showToyToast(context, 'Unlock it with: ${item.unlockHint}.');
+      showToyToast(
+        context,
+        context.l10n.settingsCollectionUnlockWith(
+          _unlockHint(context.l10n, item),
+        ),
+      );
       return;
     }
     final ok = await ref
@@ -49,7 +55,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
           tubeTheme: item.isBallSkin ? null : item.id,
         );
     if (!mounted || ok) return;
-    showToyToast(context, 'Could not change it right now. Try again later.');
+    showToyToast(context, context.l10n.settingsCollectionChangeFailed);
   }
 
   Future<void> _buyPack() async {
@@ -57,16 +63,14 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     final outcome = await ref.read(cosmeticsProvider.notifier).buySkinPack();
     if (!mounted) return;
     setState(() => _buying = false);
+    final l10n = context.l10n;
     final message = switch (outcome) {
-      PurchaseOutcome.purchased => 'Thank you! The pack unlocks in a moment.',
-      PurchaseOutcome.alreadyOwned => 'Already yours. Restoring it now.',
-      PurchaseOutcome.pending =>
-        'Payment pending. The pack unlocks once it clears.',
+      PurchaseOutcome.purchased => l10n.settingsPackThanks,
+      PurchaseOutcome.alreadyOwned => l10n.settingsPackAlreadyOwned,
+      PurchaseOutcome.pending => l10n.settingsPackPending,
       PurchaseOutcome.cancelled => null,
-      PurchaseOutcome.unavailable =>
-        'The store is not available on this device right now.',
-      PurchaseOutcome.failed =>
-        'The purchase did not go through. You have not been charged.',
+      PurchaseOutcome.unavailable => l10n.settingsStoreUnavailable,
+      PurchaseOutcome.failed => l10n.settingsPurchaseFailed,
     };
     if (message != null) showToyToast(context, message);
   }
@@ -81,6 +85,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     final balls = state.items.where((i) => i.isBallSkin).toList();
     final tubes = state.items.where((i) => !i.isBallSkin).toList();
     final columns = MediaQuery.sizeOf(context).width >= 700 ? 4 : 2;
+    final l10n = context.l10n;
 
     return Scaffold(
       backgroundColor: Toy.cream,
@@ -90,7 +95,10 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ToyHeader(title: 'Collection', onBack: widget.onClose),
+            ToyHeader(
+              title: l10n.settingsCollectionTitle,
+              onBack: widget.onClose,
+            ),
             const SizedBox(height: 12),
             Expanded(
               child: Center(
@@ -118,12 +126,12 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                       if (state.items.isEmpty) ...[
                         const SizedBox(height: 16),
                         Text(
-                          'Connect to the internet to see your collection.',
+                          l10n.settingsCollectionOffline,
                           textAlign: TextAlign.center,
                           style: Toy.ui(14, color: Toy.inkMuted),
                         ),
                       ] else ...[
-                        const SectionHeader(label: 'Ball skins'),
+                        SectionHeader(label: l10n.settingsCollectionBallSkins),
                         _Grid(
                           columns: columns,
                           children: [
@@ -151,7 +159,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                               ),
                           ],
                         ),
-                        const SectionHeader(label: 'Tube themes'),
+                        SectionHeader(label: l10n.settingsCollectionTubeThemes),
                         _Grid(
                           columns: columns,
                           children: [
@@ -214,7 +222,10 @@ class _Preview extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          '${skin.label} balls · ${theme.label} tubes',
+          context.l10n.settingsCollectionPreview(
+            skin.displayName(context.l10n),
+            theme.displayName(context.l10n),
+          ),
           style: Toy.ui(14, weight: FontWeight.w800),
         ),
       ],
@@ -320,60 +331,90 @@ class _Card extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Pressable(
-    onPressed: onTap,
-    semanticLabel: worn
-        ? '${item.name}, worn'
-        : item.owned
-        ? '${item.name}, tap to wear'
-        : '${item.name}, locked: ${item.unlockHint}',
-    child: ToyBox(
-      radius: 18,
-      shadow: worn ? 5 : 3,
-      color: worn ? Toy.mint : Toy.card,
-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 80,
-            child: Center(
-              child: Opacity(opacity: item.owned ? 1 : 0.45, child: preview),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            item.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Toy.ui(14, weight: FontWeight.w800),
-          ),
-          const SizedBox(height: 2),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (!item.owned) ...[
-                const ToyIcon(ToyGlyph.lock, size: 12),
-                const SizedBox(width: 4),
-              ],
-              Flexible(
-                child: Text(
-                  worn
-                      ? 'Wearing'
-                      : item.owned
-                      ? 'Tap to wear'
-                      : item.unlockHint,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Toy.ui(12, color: worn ? Toy.ink : Toy.inkMuted),
-                ),
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final name = _itemName(l10n, item);
+    final hint = _unlockHint(l10n, item);
+    return Pressable(
+      onPressed: onTap,
+      semanticLabel: worn
+          ? l10n.settingsCollectionItemWorn(name)
+          : item.owned
+          ? l10n.settingsCollectionItemTapToWear(name)
+          : l10n.settingsCollectionItemLocked(name, hint),
+      child: ToyBox(
+        radius: 18,
+        shadow: worn ? 5 : 3,
+        color: worn ? Toy.mint : Toy.card,
+        padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 80,
+              child: Center(
+                child: Opacity(opacity: item.owned ? 1 : 0.45, child: preview),
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Toy.ui(14, weight: FontWeight.w800),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (!item.owned) ...[
+                  const ToyIcon(ToyGlyph.lock, size: 12),
+                  const SizedBox(width: 4),
+                ],
+                Flexible(
+                  child: Text(
+                    worn
+                        ? l10n.settingsCollectionWearing
+                        : item.owned
+                        ? l10n.settingsCollectionTapToWear
+                        : hint,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Toy.ui(12, color: worn ? Toy.ink : Toy.inkMuted),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
+
+/// An item's name in the reader's language when it is a skin or theme this
+/// build knows, else the name the server sent.
+String _itemName(AppLocalizations l, CosmeticItem item) {
+  if (item.isBallSkin) {
+    for (final skin in BallSkin.values) {
+      if (skin.id == item.id) return skin.displayName(l);
+    }
+  } else {
+    for (final theme in TubeTheme.values) {
+      if (theme.id == item.id) return theme.displayName(l);
+    }
+  }
+  return item.name;
+}
+
+/// How a locked item is unlocked, in a few words: the translated form of
+/// `CosmeticItem.unlockHint`.
+String _unlockHint(AppLocalizations l, CosmeticItem item) =>
+    switch (item.source) {
+      'chest' => l.settingsUnlockChest(item.value),
+      'streak' => l.settingsUnlockStreak(item.value),
+      'pack' => l.settingsSkinPack,
+      _ => l.settingsUnlockFree,
+    };
 
 class _SkinPackCard extends StatelessWidget {
   final bool owned;
@@ -401,12 +442,12 @@ class _SkinPackCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Skin pack',
+                context.l10n.settingsSkinPack,
                 style: Toy.display(22, color: Colors.white, height: 1.1),
               ),
               const SizedBox(height: 2),
               Text(
-                'Marble, Pearl and Checker balls, Wood and Lilac tubes.',
+                context.l10n.settingsSkinPackDetail,
                 style: Toy.ui(13, color: Colors.white, weight: FontWeight.w700),
               ),
             ],
@@ -416,11 +457,14 @@ class _SkinPackCard extends StatelessWidget {
         if (owned)
           ToyChip(
             color: Toy.card,
-            child: Text('OWNED', style: Toy.ui(13, weight: FontWeight.w800)),
+            child: Text(
+              context.l10n.settingsOwned,
+              style: Toy.ui(13, weight: FontWeight.w800),
+            ),
           )
         else
           ToyButton(
-            label: busy ? '…' : (price ?? 'Soon'),
+            label: busy ? '…' : (price ?? context.l10n.settingsSoon),
             onPressed: busy || price == null ? null : onBuy,
             color: Toy.yellow,
             textColor: Toy.ink,

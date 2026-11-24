@@ -12,38 +12,66 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+import '../../l10n/l10n.dart';
+
 enum BallSkin {
-  classic('classic', 'Classic'),
-  glossy('glossy', 'Glossy'),
-  striped('striped', 'Candy stripe'),
-  glow('glow', 'Glow'),
-  speckled('speckled', 'Sprinkles'),
-  marble('marble', 'Marble'),
-  pearl('pearl', 'Pearl'),
-  checker('checker', 'Checker');
+  classic('classic'),
+  glossy('glossy'),
+  striped('striped'),
+  glow('glow'),
+  speckled('speckled'),
+  marble('marble'),
+  pearl('pearl'),
+  checker('checker');
 
   final String id;
-  final String label;
 
-  const BallSkin(this.id, this.label);
+  const BallSkin(this.id);
+
+  /// The skin's name in [l]'s language.
+  String displayName(AppLocalizations l) => switch (this) {
+    classic => l.settingsSkinClassic,
+    glossy => l.settingsSkinGlossy,
+    striped => l.settingsSkinStriped,
+    glow => l.settingsSkinGlow,
+    speckled => l.settingsSkinSpeckled,
+    marble => l.settingsSkinMarble,
+    pearl => l.settingsSkinPearl,
+    checker => l.settingsSkinChecker,
+  };
+
+  /// The name in the device's language, for code with no BuildContext.
+  /// Widgets use [displayName] with `context.l10n`.
+  String get label => displayName(appL10n());
 
   static BallSkin byId(String? id) =>
       values.firstWhere((s) => s.id == id, orElse: () => classic);
 }
 
 enum TubeTheme {
-  toy('toy', 'Toy', Color(0xFFFFFFFF)),
-  frost('frost', 'Frost', Color(0xFFEFF5FF)),
-  wood('wood', 'Wood', Color(0xFFF6E7D2)),
-  lilac('lilac', 'Lilac', Color(0xFFF5EEFF));
+  toy('toy', Color(0xFFFFFFFF)),
+  frost('frost', Color(0xFFEFF5FF)),
+  wood('wood', Color(0xFFF6E7D2)),
+  lilac('lilac', Color(0xFFF5EEFF));
 
   final String id;
-  final String label;
 
   /// The resting tube's fill.
   final Color glass;
 
-  const TubeTheme(this.id, this.label, this.glass);
+  const TubeTheme(this.id, this.glass);
+
+  /// The theme's name in [l]'s language.
+  String displayName(AppLocalizations l) => switch (this) {
+    toy => l.settingsTubeToy,
+    frost => l.settingsTubeFrost,
+    wood => l.settingsTubeWood,
+    lilac => l.settingsTubeLilac,
+  };
+
+  /// The name in the device's language, for code with no BuildContext.
+  /// Widgets use [displayName] with `context.l10n`.
+  String get label => displayName(appL10n());
 
   static TubeTheme byId(String? id) =>
       values.firstWhere((t) => t.id == id, orElse: () => toy);

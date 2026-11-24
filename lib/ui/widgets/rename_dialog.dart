@@ -10,6 +10,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/api/leaderboard_api.dart';
 import '../theme/toy.dart';
 import 'toy_kit.dart';
@@ -60,6 +61,7 @@ class RenameDialogState extends State<RenameDialog> {
   @override
   Widget build(BuildContext context) {
     final calm = Toy.calm(context);
+    final l10n = context.l10n;
 
     final card = ToyDialogCard(
       headerColor: Toy.tomato,
@@ -67,12 +69,12 @@ class RenameDialogState extends State<RenameDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'HELLO',
+            l10n.settingsRenameHello,
             style: Toy.display(46, color: Colors.white, shadow: 2),
           ),
           const SizedBox(height: 2),
           Text(
-            'MY NAME IS',
+            l10n.settingsRenameMyNameIs,
             style: Toy.caps(size: 15, color: Colors.white),
           ),
         ],
@@ -93,10 +95,12 @@ class RenameDialogState extends State<RenameDialog> {
             children: [
               Expanded(
                 child: Text(
-                  _problem ?? 'Other players see this on the boards',
+                  _problem ?? l10n.settingsRenameHint,
                   style: Toy.ui(
                     12,
-                    weight: _problem == null ? FontWeight.w600 : FontWeight.w700,
+                    weight: _problem == null
+                        ? FontWeight.w600
+                        : FontWeight.w700,
                     color: _problem == null ? Toy.inkMuted : Toy.tomatoDark,
                   ),
                 ),
@@ -116,14 +120,14 @@ class RenameDialogState extends State<RenameDialog> {
             children: [
               Expanded(
                 child: ToyButton.secondary(
-                  label: 'Cancel',
+                  label: l10n.commonCancel,
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: ToyButton(
-                  label: 'SAVE',
+                  label: l10n.settingsRenameSave,
                   color: Toy.mint,
                   textColor: Toy.ink,
                   height: 52,
@@ -214,9 +218,12 @@ class _NameField extends StatelessWidget {
           autofocus: true,
           maxLength: kMaxDisplayName,
           // The counter is drawn under the box, as part of the tag.
-          buildCounter:
-              (_, {required currentLength, required isFocused, maxLength}) =>
-                  null,
+          buildCounter: (
+            _, {
+            required currentLength,
+            required isFocused,
+            maxLength,
+          }) => null,
           cursorColor: Toy.tomato,
           cursorWidth: 3,
           cursorRadius: const Radius.circular(2),

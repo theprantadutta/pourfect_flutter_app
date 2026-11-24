@@ -16,6 +16,7 @@ library;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../l10n/l10n.dart';
 import '../../state/monetization_controller.dart' show kFreeHints;
 import '../theme/toy.dart';
 import '../widgets/settings_rows.dart';
@@ -24,140 +25,51 @@ import '../widgets/toy_kit.dart';
 /// One question and its answer.
 typedef Faq = ({String question, String answer});
 
-/// The questions, by section. Public so a test can hold the copy to the rules.
-const List<(String, List<Faq>)> kFaqSections = [
+/// The questions, by section, in [l]'s language. Public so a test can hold
+/// the copy to the rules.
+List<(String, List<Faq>)> faqSections(AppLocalizations l) => [
   (
-    'Playing',
+    l.settingsFaqSectionPlaying,
     [
-      (
-        question: 'How do I play?',
-        answer:
-            'Tap a tube to pick up its top balls, then tap another tube to '
-            'pour them in. Balls only land on the same color or in an empty '
-            'tube. Sort every tube to one color and the level is done. '
-            'Settings → How to play replays the guided first level.',
-      ),
-      (
-        question: 'What do the stars mean?',
-        answer:
-            'Stars count moves, nothing else. Finish in par or fewer for '
-            'three stars, within one and a half times par for two, and any '
-            'finish earns one. Par is the fewest moves the level can be '
-            'solved in.',
-      ),
-      (
-        question: 'Does the clock cost me stars?',
-        answer:
-            'Never. Time only changes your points. Beat the time par for '
-            'bonus points, or take as long as you like and keep every star.',
-      ),
-      (
-        question: 'Is every level solvable?',
-        answer:
-            'Yes. Every board was solved before it shipped, and par comes '
-            'from that solution, so it is always reachable.',
-      ),
-      (
-        question: 'What is the Daily Pour?',
-        answer:
-            'A new board every day, with its own leaderboard. It needs an '
-            'internet connection. The campaign levels do not.',
-      ),
+      (question: l.settingsFaqHowToPlayQ, answer: l.settingsFaqHowToPlayA),
+      (question: l.settingsFaqStarsQ, answer: l.settingsFaqStarsA),
+      (question: l.settingsFaqClockQ, answer: l.settingsFaqClockA),
+      (question: l.settingsFaqSolvableQ, answer: l.settingsFaqSolvableA),
+      (question: l.settingsFaqDailyQ, answer: l.settingsFaqDailyA),
     ],
   ),
   (
-    'Stuck?',
+    l.settingsFaqSectionStuck,
     [
-      (
-        question: 'Is undo limited?',
-        answer: 'No. Undo is free and unlimited, on every level.',
-      ),
-      (
-        question: 'How do hints work?',
-        answer:
-            'Your first $kFreeHints hints are free. After that, a short '
-            'video earns one. If a hint cannot be found, the video still '
-            'counts toward your next one.',
-      ),
-      (
-        question: 'What is the + Tube button?',
-        answer:
-            'When your moves reach par, or a hint shows there is no way to '
-            'finish, you can watch a video for an extra empty tube, up to two '
-            'per attempt. Undo will '
-            'not take it away. A level finished with an extra tube earns up '
-            'to two stars.',
-      ),
-      (
-        question: 'What are HARD levels?',
-        answer:
-            'The toughest level in every ten wears a red HARD badge. It plays '
-            'like any other level, and it is worth one and a half times the '
-            'points.',
-      ),
-      (
-        question: 'What are star chests?',
-        answer:
-            'Every 30 stars opens a chest on your Journey: two hints and an '
-            'extra tube, saved for when you need them. Every third chest also '
-            'unlocks a ball skin.',
-      ),
-      (
-        question: 'What is a streak freeze?',
-        answer:
-            'Miss a day of the Daily Pour and a freeze covers it, so your '
-            'streak carries on. You get one free every Monday, can earn one '
-            'a day with a video, and can hold two.',
-      ),
+      (question: l.settingsFaqUndoQ, answer: l.settingsFaqUndoA),
+      (question: l.settingsFaqHintsQ, answer: l.settingsFaqHintsA(kFreeHints)),
+      (question: l.settingsFaqTubeQ, answer: l.settingsFaqTubeA),
+      (question: l.settingsFaqHardQ, answer: l.settingsFaqHardA),
+      (question: l.settingsFaqChestsQ, answer: l.settingsFaqChestsA),
+      (question: l.settingsFaqFreezeQ, answer: l.settingsFaqFreezeA),
     ],
   ),
   (
-    'Your progress',
+    l.settingsFaqSectionProgress,
     [
-      (
-        question: 'Do I need an account?',
-        answer:
-            'No. You play as a guest and your progress is saved on this '
-            'phone. Signing in keeps your stars when you move to a new phone.',
-      ),
-      (
-        question: 'Can I play offline?',
-        answer:
-            'Yes, the whole campaign. The Daily Pour and leaderboards need a '
-            'connection, and your progress syncs when you are back online.',
-      ),
-      (
-        question: 'How do I change my leaderboard name?',
-        answer:
-            'Settings → Change your name. You can also hide yourself from '
-            'the boards there; your stars still count.',
-      ),
+      (question: l.settingsFaqAccountQ, answer: l.settingsFaqAccountA),
+      (question: l.settingsFaqOfflineQ, answer: l.settingsFaqOfflineA),
+      (question: l.settingsFaqNameQ, answer: l.settingsFaqNameA),
     ],
   ),
   (
-    'Ads & sound',
+    l.settingsFaqSectionAds,
     [
-      (
-        question: 'What does Remove ads do?',
-        answer:
-            'It turns off the ads between levels. Hint and tube videos stay, '
-            'because you only ever see one when you ask for it.',
-      ),
-      (
-        question: 'I reinstalled. Where did Remove ads go?',
-        answer:
-            'It belongs to the store account you bought it with and usually '
-            'comes back on its own. If not, tap Settings → Restore purchases.',
-      ),
-      (
-        question: 'Will the game stop my music?',
-        answer:
-            'No. Pourfect plays its sounds alongside your music or podcast. '
-            'Sound and haptics can be turned off in Settings.',
-      ),
+      (question: l.settingsFaqRemoveAdsQ, answer: l.settingsFaqRemoveAdsA),
+      (question: l.settingsFaqReinstallQ, answer: l.settingsFaqReinstallA),
+      (question: l.settingsFaqMusicQ, answer: l.settingsFaqMusicA),
     ],
   ),
 ];
+
+/// [faqSections] in the device's language, for code with no BuildContext
+/// (the tests that pin the copy to the game's constants).
+List<(String, List<Faq>)> get kFaqSections => faqSections(appL10n());
 
 class FaqScreen extends StatelessWidget {
   final VoidCallback onClose;
@@ -173,7 +85,10 @@ class FaqScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ToyHeader(title: 'Questions', onBack: onClose),
+          ToyHeader(
+            title: context.l10n.settingsQuestionsTitle,
+            onBack: onClose,
+          ),
           const SizedBox(height: 12),
           Expanded(
             child: ListView(
@@ -184,7 +99,7 @@ class FaqScreen extends StatelessWidget {
                 24 + MediaQuery.paddingOf(context).bottom,
               ),
               children: [
-                for (final (section, faqs) in kFaqSections) ...[
+                for (final (section, faqs) in faqSections(context.l10n)) ...[
                   SectionHeader(label: section),
                   Group(children: [for (final faq in faqs) _FaqRow(faq: faq)]),
                 ],

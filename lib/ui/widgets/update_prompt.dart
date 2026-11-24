@@ -8,6 +8,7 @@ library;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import 'ball.dart';
 import 'toy_kit.dart';
@@ -44,18 +45,17 @@ Future<bool> showUpdatePrompt(
             ),
             const SizedBox(height: 14),
             Text(
-              mandatory ? 'Time to update' : 'A new Pourfect is ready',
+              mandatory
+                  ? context.l10n.settingsUpdateMandatoryTitle
+                  : context.l10n.settingsUpdateTitle,
               textAlign: TextAlign.center,
               style: Toy.display(26, height: 1.1),
             ),
             const SizedBox(height: 8),
             Text(
               mandatory
-                  ? 'This version of Pourfect is no longer supported. Google '
-                        'Play will download the update and open the game '
-                        'again. Your stars are safe.'
-                  : 'Google Play will download it and open the game again '
-                        'when it is done. Your stars are safe.',
+                  ? context.l10n.settingsUpdateMandatoryBody
+                  : context.l10n.settingsUpdateBody,
               textAlign: TextAlign.center,
               style: Toy.ui(
                 14,
@@ -66,7 +66,7 @@ Future<bool> showUpdatePrompt(
             ),
             const SizedBox(height: 18),
             ToyButton(
-              label: 'Update now',
+              label: context.l10n.settingsUpdateNow,
               height: 56,
               fontSize: 22,
               onPressed: () => Navigator.of(context).pop(true),
@@ -74,7 +74,7 @@ Future<bool> showUpdatePrompt(
             if (!mandatory) ...[
               const SizedBox(height: 10),
               ToyButton.secondary(
-                label: 'Not now',
+                label: context.l10n.commonNotNow,
                 onPressed: () => Navigator.of(context).pop(false),
               ),
             ],
