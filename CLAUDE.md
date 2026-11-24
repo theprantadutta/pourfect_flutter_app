@@ -394,6 +394,16 @@ GA shows a parameter only once it is registered: event dimensions `level_id`,
 (seconds). A new parameter worth reporting on needs registering there too.
 Registration is not retroactive.
 
+**GA won't fill a dimension from a NUMBER parameter.** Two weeks after
+registering, `level_id` and `stars` read "(not set)" on every event, while
+the text-valued `reason` beside them filled in fine. So the Firebase sink
+also sends a text copy (`withTextCopies` in `firebase_analytics_service.dart`):
+`level_id` → `level` and `stars` → `star_count`. The numbers are unchanged.
+The GA dimensions **Level** (`level`) and **Star count** (`star_count`) were
+registered 2026-11-24; use them, not Level ID / Stars, for the per-level
+funnel. Any new numeric parameter you want as a dimension goes in
+`kTextCopies`.
+
 The debug mirror uses `debugPrint`, not `dart:developer.log`: the latter posts
 to the VM service and never reaches `adb logcat`, so a funnel "verified"
 through it is only verified against DevTools being attached.
@@ -416,6 +426,16 @@ contentment does not.
 `ReviewPrompter` owns the decision and the rules ARE the feature. Calling the
 API is one line; asking at the wrong moment earns the one-star review it was
 fishing for.
+
+**Loosened 2026-11-24.** In the first month the card was asked for twice and
+the listing had one rating, so search rows showed no stars at all. Now:
+asked after 3 solved levels (was 5), 30-day cooldown (was 120 days), and it
+also asks at the **NEXT-level break** in `GameScreen._advanceFrom`, not only
+on a return to the hub. Players who chain levels never went back to the hub.
+At that break the ask is awaited before the next board starts, so its clock
+isn't running behind the sheet; and if it asks, there's no interstitial
+(`maybeAsk` returns whether it asked). Play's own quota still caps how often
+the card really appears. Everything below still holds.
 
 - **Only after a `WinProfile.full` win** — three stars, a personal best, or a
   band's last level. That test already exists and is not re-derived, because

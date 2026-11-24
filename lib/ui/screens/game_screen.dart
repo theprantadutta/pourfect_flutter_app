@@ -266,9 +266,18 @@ class _GameScreenState extends ConsumerState<GameScreen>
     if (_advancing) return;
     _advancing = true;
     try {
-      await ref
-          .read(monetizationProvider.notifier)
-          .maybeShowInterstitialAfter(completedLevelId);
+      // THE RATING ASK GETS THIS BREAK TOO. It used to wait for a return to
+      // the hub, and players who chain levels with NEXT almost never go back
+      // there: the card was asked for twice in a month. Awaited before the
+      // next board starts, so its clock is not running behind the sheet; and
+      // one interruption per break, so an ask here means no interstitial.
+      final asked = await ref.read(reviewPrompterProvider.notifier).maybeAsk();
+      if (!mounted) return;
+      if (!asked) {
+        await ref
+            .read(monetizationProvider.notifier)
+            .maybeShowInterstitialAfter(completedLevelId);
+      }
       if (!mounted) return;
       _startLevel(nextLevelId);
     } finally {

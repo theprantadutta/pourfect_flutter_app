@@ -12,6 +12,30 @@ import 'package:flutter/foundation.dart';
 
 import 'analytics_service.dart';
 
+/// Number parameters that Google Analytics reports should split by, and the
+/// text copy each one is also sent as.
+///
+/// GA would not fill a custom DIMENSION from a number. Registered on
+/// 2026-11-09, `level_id` still read "(not set)" on every event two weeks
+/// later, while the text-valued `reason` beside it filled in fine. So each
+/// of these goes out twice: the number, unchanged, for anything already
+/// built on it, and a text copy that the GA dimension is registered on.
+const Map<String, String> kTextCopies = {
+  'level_id': 'level',
+  'stars': 'star_count',
+};
+
+/// [parameters] plus a text copy of each number listed in [kTextCopies].
+@visibleForTesting
+Map<String, Object> withTextCopies(Map<String, Object> parameters) {
+  final extra = <String, Object>{
+    for (final MapEntry(:key, :value) in kTextCopies.entries)
+      if (parameters[key] case final num n) value: '$n',
+  };
+  if (extra.isEmpty) return parameters;
+  return {...parameters, ...extra};
+}
+
 class FirebaseAnalyticsService implements AnalyticsService {
   final FirebaseAnalytics _analytics;
 
@@ -50,7 +74,7 @@ class FirebaseAnalyticsService implements AnalyticsService {
         default:
           await _analytics.logEvent(
             name: event.name,
-            parameters: event.parameters,
+            parameters: withTextCopies(event.parameters),
           );
       }
     } catch (error, stack) {

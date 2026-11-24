@@ -94,6 +94,26 @@ void main() {
       expect(built.review.requests, isZero);
     });
 
+    test('it says whether it asked, so a break shows nothing else', () async {
+      // The NEXT-level break uses this to skip the interstitial: one
+      // interruption per break, never a rating card and then an ad.
+      final built = harness();
+      final prompter = built.container.read(reviewPrompterProvider.notifier);
+
+      expect(await prompter.maybeAsk(), isFalse);
+      prompter.noteDelight();
+      expect(await prompter.maybeAsk(), isTrue);
+      prompter.noteDelight();
+      expect(await prompter.maybeAsk(), isFalse, reason: 'cooldown');
+    });
+
+    test('three good clears is enough to be asked', () async {
+      // Lowered from five on 2026-11-24: a month of play produced two asks
+      // and one rating.
+      expect(kMinSolvedBeforeReview, 3);
+      expect(kReviewCooldown, const Duration(days: 30));
+    });
+
     test('a player five minutes in is not asked', () async {
       // Play gives an app very few chances to show the card. Spending one on
       // somebody who has not decided whether they like the game yet buys a

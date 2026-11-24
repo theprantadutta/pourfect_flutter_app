@@ -35,15 +35,18 @@ import 'providers.dart';
 
 /// Levels that must be solved before the card is ever requested.
 ///
-/// Five is roughly the point where somebody has decided they are playing this
-/// rather than trying it.
-const int kMinSolvedBeforeReview = 5;
+/// Was five. Lowered 2026-11-24: in the first month the card was asked for
+/// twice in total and the listing had one rating, so search results showed
+/// no stars at all beside games with thousands. Three good clears is still
+/// somebody who has chosen to keep playing.
+const int kMinSolvedBeforeReview = 3;
 
 /// How long to leave it after asking, whether or not a card appeared.
 ///
-/// Play will not show one anywhere near this often anyway; the point of the
-/// gap is that OUR side never becomes the thing that nags.
-const Duration kReviewCooldown = Duration(days: 120);
+/// Was 120 days. Play keeps its own, stricter quota on how often the card
+/// really appears, so this only stops OUR side from asking on consecutive
+/// sessions; a month is plenty for that.
+const Duration kReviewCooldown = Duration(days: 30);
 
 /// How many times to ask across the whole life of the install.
 ///
@@ -130,16 +133,19 @@ class ReviewPrompter extends Notifier<ReviewState> {
   /// of comparisons that decide not to. **Never throws** — it is called
   /// fire-and-forget, right after the best moment the player has had all
   /// session, and it must not be able to spoil it.
-  Future<void> maybeAsk({DateTime? now}) async {
-    if (!state.delighted) return;
+  ///
+  /// Returns whether it asked, so a caller at a break can skip anything else
+  /// it would have shown there (one interruption per break).
+  Future<bool> maybeAsk({DateTime? now}) async {
+    if (!state.delighted) return false;
 
     await _restored;
 
     final at = now ?? DateTime.now();
-    if (!_isAllowed(at)) return;
+    if (!_isAllowed(at)) return false;
 
     final service = ref.read(reviewServiceProvider);
-    if (!await service.isAvailable()) return;
+    if (!await service.isAvailable()) return false;
 
     // RECORDED BEFORE THE REQUEST, not after.
     //
@@ -175,6 +181,7 @@ class ReviewPrompter extends Notifier<ReviewState> {
     } catch (error) {
       debugPrint('[review] request failed: $error');
     }
+    return true;
   }
 
   bool _isAllowed(DateTime at) {
