@@ -20,6 +20,7 @@ import '../../state/hint_controller.dart';
 import '../../state/monetization_controller.dart';
 import '../../state/providers.dart';
 import '../../state/zen.dart';
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
@@ -106,7 +107,7 @@ class _ZenScreenState extends ConsumerState<ZenScreen> {
     try {
       final leave = await confirmLeaveBoard(
         context,
-        lost: "This board's moves won't be saved. Your poured count stays.",
+        lost: context.l10n.playZenLeaveBody,
       );
       if (!mounted || !leave) return;
       setState(() => _leaving = true);
@@ -169,9 +170,9 @@ class _ZenScreenState extends ConsumerState<ZenScreen> {
       case HintAvailability.available:
         await hints.request();
       case HintAvailability.deadEnd:
-        showToyToast(context, 'No way to finish from here. Undo or restart.');
+        showToyToast(context, context.l10n.playZenDeadEnd);
       default:
-        showToyToast(context, 'No hint for this position right now.');
+        showToyToast(context, context.l10n.playZenNoHint);
     }
   }
 
@@ -190,22 +191,33 @@ class _ZenScreenState extends ConsumerState<ZenScreen> {
     );
   }
 
+  /// The pace's name in the player's language (the enum's own label is
+  /// the English one).
+  String _paceName(BuildContext context, ZenPace pace) => switch (pace) {
+    ZenPace.calm => context.l10n.playZenPaceCalm,
+    ZenPace.steady => context.l10n.playZenPaceSteady,
+    ZenPace.deep => context.l10n.playZenPaceDeep,
+  };
+
   Widget _picker() => Padding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ToyHeader(title: 'Zen', onBack: widget.onExit),
+        ToyHeader(title: context.l10n.playZenTitle, onBack: widget.onExit),
         const SizedBox(height: 16),
         Text(
-          'Endless boards. No clock, no stars, no leaderboard — just pour.',
+          context.l10n.playZenIntro,
           style: Toy.ui(15, color: Toy.inkMuted, height: 1.35),
         ),
         const SizedBox(height: 18),
         for (final pace in ZenPace.values) ...[
           Pressable(
             onPressed: () => _start(pace),
-            semanticLabel: '${pace.label}, ${pace.colors} colors',
+            semanticLabel: context.l10n.playZenPaceLabel(
+              _paceName(context, pace),
+              pace.colors,
+            ),
             child: ToyBox(
               color: switch (pace) {
                 ZenPace.calm => Toy.mint,
@@ -221,9 +233,12 @@ class _ZenScreenState extends ConsumerState<ZenScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(pace.label, style: Toy.display(24, height: 1.05)),
                         Text(
-                          '${pace.colors} colors',
+                          _paceName(context, pace),
+                          style: Toy.display(24, height: 1.05),
+                        ),
+                        Text(
+                          context.l10n.playZenPaceColors(pace.colors),
                           style: Toy.ui(13, weight: FontWeight.w700),
                         ),
                       ],
@@ -247,9 +262,12 @@ class _ZenScreenState extends ConsumerState<ZenScreen> {
       children: [
         BoardHud(
           levelId: 0,
-          titleLabel: 'Zen',
+          titleLabel: context.l10n.playZenTitle,
           titleValue: '',
-          bandName: '${pace.label} · $_poured poured',
+          bandName: context.l10n.playZenBandPoured(
+            _paceName(context, pace),
+            _poured,
+          ),
           movesUsed: state?.movesUsed ?? 0,
           minMoves: 0,
           showParMeter: false,
@@ -286,12 +304,12 @@ class _ZenScreenState extends ConsumerState<ZenScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    _poured == 1 ? 'Poured!' : 'Poured! $_poured so far.',
+                    context.l10n.playZenPoured(_poured),
                     style: Toy.display(22),
                   ),
                 ),
                 ToyButton(
-                  label: 'NEXT',
+                  label: context.l10n.playZenNext,
                   onPressed: _nextBoard,
                   height: 54,
                   radius: 16,

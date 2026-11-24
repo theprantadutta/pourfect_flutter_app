@@ -24,6 +24,7 @@ import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../../state/review_prompter.dart';
 import '../../state/sync_controller.dart';
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
@@ -349,15 +350,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
     // Level 2, the first level after the guided one: what the par meter says.
     if (id == 2 && !ref.read(progressProvider).containsKey(2)) {
-      _showTip(
-        Tip.par,
-        'Finish within par for three stars. The bar shows how much you\'ve used.',
-      );
+      _showTip(Tip.par, context.l10n.playTipPar);
     }
     // The first board with five-ball tubes. Nothing else announces the change,
     // and a player counting four to a tube would misread their first pour.
     if (level.level.board.capacity > 4) {
-      _showTip(Tip.tallTubes, 'Taller tubes! Each one holds five balls now.');
+      _showTip(Tip.tallTubes, context.l10n.playTipTallTubes);
     }
     // Level 4 onward, a while in without finishing: hints exist.
     if (id >= 4) {
@@ -365,7 +363,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       _hintTipTimer = Timer(const Duration(seconds: 40), () {
         if (!mounted || !_game.isCurrentSession(session)) return;
         if (ref.read(gameControllerProvider)?.isWon ?? true) return;
-        _showTip(Tip.hint, 'Stuck? Hint shows you a good next move.');
+        _showTip(Tip.hint, context.l10n.playTipHint);
       });
     }
   }
@@ -465,17 +463,17 @@ class _GameScreenState extends ConsumerState<GameScreen>
     if (state.board.tubes.any((t) => t.isComplete) &&
         _guideSteps >= 2 &&
         holding == null) {
-      return 'Sorted! Now make every tube a single color.';
+      return context.l10n.playGuideSorted;
     }
     if (holding != null) {
       return holding == move?.from
-          ? 'Now tap where they go: onto the same color, or an empty tube.'
-          : 'Tap the tube the hand points at to pick those up instead.';
+          ? context.l10n.playGuideDrop
+          : context.l10n.playGuideWrongTube;
     }
     return switch (_guideSteps) {
-      0 => 'Tap a tube to pick up the balls on top.',
-      1 => 'That\'s a pour! Keep going.',
-      _ => 'Keep going: one color per tube.',
+      0 => context.l10n.playGuideFirstTap,
+      1 => context.l10n.playGuideFirstPour,
+      _ => context.l10n.playGuideKeepGoing,
     };
   }
 
@@ -509,10 +507,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       if (_tip != null && state.level.id == 2) setState(() => _tip = null);
       // The first time a run goes past par, and only then: undo is free.
       if (state.movesUsed == state.level.minMoves + 1 && !state.isWon) {
-        _showTip(
-          Tip.undo,
-          'Past par? Undo is free — step back as far as you like.',
-        );
+        _showTip(Tip.undo, context.l10n.playTipUndo);
       }
     }
     if (state != null && state.isWon && _result == null) {
@@ -712,10 +707,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
       _game.pauseClock();
 
       if (!await _confirmWatchAd(
-        title: 'Watch a video for an extra tube?',
-        body:
-            'One more empty tube for this level. A level finished with an '
-            'extra tube earns up to two stars.',
+        title: context.l10n.playExtraTubeAdTitle,
+        body: context.l10n.playExtraTubeAdBody,
       )) {
         _game.resumeClock();
         return;
@@ -730,9 +723,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
       if (outcome != RewardOutcome.earned) {
         if (mounted) {
           _toast(switch (outcome) {
-            RewardOutcome.dismissed => 'No tube — the video was not finished.',
-            RewardOutcome.unavailable => 'No video available right now.',
-            _ => 'Something went wrong. Nothing was used.',
+            RewardOutcome.dismissed => context.l10n.playExtraTubeNotFinished,
+            RewardOutcome.unavailable => context.l10n.playNoVideo,
+            _ => context.l10n.playRewardFailed,
           });
         }
         return;
@@ -746,7 +739,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         // The board that asked for this is gone. The credit stays banked and
         // the next tube is free, which is what "your video is saved for the
         // next one" already promises elsewhere.
-        if (mounted) _toast('Saved — your next tube is free.');
+        if (mounted) _toast(context.l10n.playExtraTubeSaved);
         return;
       }
 
@@ -757,7 +750,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       // Could not be delivered after all — hand the credit straight back
       // rather than keeping a payment for nothing.
       await money.grantExtraTubeCredit();
-      if (mounted) _toast('Saved — your next tube is free.');
+      if (mounted) _toast(context.l10n.playExtraTubeSaved);
       return;
     }
 
@@ -797,7 +790,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
     // A hint already on the board is not bought twice.
     if (current.hintMove != null) {
-      _toast('Your hint is showing: pour into the glowing tube.');
+      _toast(context.l10n.playHintShowing);
       return;
     }
 
@@ -807,7 +800,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       case HintAvailability.deadEnd:
         break;
       case HintAvailability.unavailable:
-        _toast('No hint for this position. Nothing was used.');
+        _toast(context.l10n.playHintNoneNothingUsed);
         return;
       case HintAvailability.cancelled:
       case HintAvailability.notApplicable:
@@ -864,9 +857,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
         // needs a screen.
         if (mounted) {
           _toast(switch (outcome) {
-            RewardOutcome.dismissed => 'No hint — the video was not finished.',
-            RewardOutcome.unavailable => 'No video available right now.',
-            _ => 'Something went wrong. Nothing was used.',
+            RewardOutcome.dismissed => context.l10n.playHintNotFinished,
+            RewardOutcome.unavailable => context.l10n.playNoVideo,
+            _ => context.l10n.playRewardFailed,
           });
         }
         return;
@@ -892,7 +885,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       // elsewhere.
       if (!_game.isCurrentSession(session)) {
         if (mounted) {
-          _toast('Your video is saved for the next hint.');
+          _toast(context.l10n.playHintVideoSaved);
         }
         return;
       }
@@ -958,8 +951,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
         if (!mounted) return;
         _toast(
           wasRewarded
-              ? 'No hint for this position — your video is saved for the next one.'
-              : 'No hint available for this position.',
+              ? context.l10n.playHintNoneVideoSaved
+              : context.l10n.playHintNone,
         );
 
       case HintOutcome.resolved:
@@ -972,7 +965,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         // Saying nothing here is how a paid reward reads as nothing happening,
         // which is a refund request and a one-star review.
         if (wasRewarded && mounted) {
-          _toast('Here is your hint — pour into the glowing tube.');
+          _toast(context.l10n.playHintHere);
         }
 
       case HintOutcome.stale:
@@ -991,34 +984,34 @@ class _GameScreenState extends ConsumerState<GameScreen>
     // The paid hint is also where the spare tube is offered: the + Tube button
     // appears with this message (see _deadEndShown), and the message says so.
     final state = ref.read(gameControllerProvider);
-    final tube = state != null && _canOfferTube(state)
-        ? ' Or tap + Tube for a spare tube.'
-        : '';
+    final l10n = context.l10n;
+    final tube = state != null && _canOfferTube(state);
     if (stepsBack == null) {
       showToyToast(
         context,
-        'No way to finish from here. Restart to try another line.$tube',
-        actionLabel: 'Restart',
+        tube ? l10n.playDeadEndRestartTube : l10n.playDeadEndRestart,
+        actionLabel: l10n.playHudRestart,
         onAction: () {
           final state = ref.read(gameControllerProvider);
           if (state == null || !mounted) return;
           _restart(state);
         },
-        duration: Duration(seconds: tube.isEmpty ? 6 : 8),
+        duration: Duration(seconds: tube ? 8 : 6),
       );
       return;
     }
-    final moves = stepsBack == 1 ? '1 move' : '$stepsBack moves';
     showToyToast(
       context,
-      'No way to finish from here. Undo $moves to get back on track.$tube',
-      actionLabel: 'Undo $stepsBack',
+      tube
+          ? l10n.playDeadEndUndoTube(stepsBack)
+          : l10n.playDeadEndUndo(stepsBack),
+      actionLabel: l10n.playDeadEndUndoAction(stepsBack),
       onAction: () {
         for (var i = 0; i < stepsBack; i++) {
           if (!game.undo()) break;
         }
       },
-      duration: Duration(seconds: tube.isEmpty ? 6 : 8),
+      duration: Duration(seconds: tube ? 8 : 6),
     );
   }
 
@@ -1043,14 +1036,14 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final remaining = ref.read(monetizationProvider).freeHintsRemaining;
     return showToyConfirm(
       context: context,
-      title: title ?? 'Watch a video for a hint?',
+      title: title ?? context.l10n.playHintAdTitle,
       body:
           body ??
           (remaining > 0
-              ? 'You have $remaining free hints left.'
-              : 'Your free hints are used up. A short video earns one more.'),
-      cancelLabel: 'Not now',
-      confirmLabel: 'Watch',
+              ? context.l10n.playHintAdFreeLeft(remaining)
+              : context.l10n.playHintAdNoneLeft),
+      cancelLabel: context.l10n.commonNotNow,
+      confirmLabel: context.l10n.playWatch,
       confirmColor: Toy.yellow,
     );
   }
@@ -1263,9 +1256,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
                                       _coach!.color,
                                       size: 22,
                                     ),
-                                    text:
-                                        'Holding ${_coach!.count}'
-                                        ' · drop into a bouncing tube',
+                                    text: context.l10n.playCoachHolding(
+                                      _coach!.count,
+                                    ),
                                   ),
                           ),
                   ),
@@ -1416,7 +1409,7 @@ class _LoadFailed extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Could not load levels', style: Toy.display(26)),
+          Text(context.l10n.playLoadFailed, style: Toy.display(26)),
           const SizedBox(height: 8),
           Text(
             message,

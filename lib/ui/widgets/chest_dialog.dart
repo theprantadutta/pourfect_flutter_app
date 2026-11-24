@@ -15,6 +15,7 @@ import '../../state/chest_controller.dart';
 import '../../state/monetization_controller.dart';
 import '../../state/progress_repository.dart';
 import '../theme/cosmetics.dart';
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import 'toy_kit.dart';
 
@@ -139,8 +140,8 @@ class ChestStrip extends ConsumerWidget {
           ? null
           : () => showChestDialog(context, index: ready),
       semanticLabel: ready == null
-          ? 'Next star chest at $nextAt stars'
-          : 'Open star chest',
+          ? context.l10n.playChestNextAtLabel(nextAt)
+          : context.l10n.playChestOpenLabel,
       child: ToyBox(
         radius: 18,
         shadow: 4,
@@ -152,7 +153,7 @@ class ChestStrip extends ConsumerWidget {
             Expanded(
               child: ready != null
                   ? Text(
-                      'A star chest is ready!',
+                      context.l10n.playChestReady,
                       style: Toy.ui(15, weight: FontWeight.w800),
                     )
                   : Column(
@@ -160,7 +161,7 @@ class ChestStrip extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Next chest at $nextAt ★',
+                          context.l10n.playChestNextAt(nextAt),
                           style: Toy.ui(13, weight: FontWeight.w800),
                         ),
                         const SizedBox(height: 4),
@@ -175,7 +176,7 @@ class ChestStrip extends ConsumerWidget {
             if (ready != null) ...[
               const SizedBox(width: 8),
               ToyButton(
-                label: 'OPEN',
+                label: context.l10n.playChestOpen,
                 onPressed: () => showChestDialog(context, index: ready),
                 color: Toy.yellow,
                 textColor: Toy.ink,
@@ -268,14 +269,14 @@ class _ChestCardState extends ConsumerState<_ChestCard>
       if (!mounted) return;
       setState(() => _bonus = bonus);
       if (bonus == null) {
-        showToyToast(context, 'Could not double it this time.');
+        showToyToast(context, context.l10n.playChestDoubleFailed);
       }
     } else {
       showToyToast(
         context,
         outcome == RewardOutcome.unavailable
-            ? 'No video available right now.'
-            : 'Not doubled — the video was not finished.',
+            ? context.l10n.playNoVideo
+            : context.l10n.playChestDoubleNotFinished,
       );
     }
     if (mounted) setState(() => _doubling = false);
@@ -286,26 +287,24 @@ class _ChestCardState extends ConsumerState<_ChestCard>
     final reward = _reward;
     final bonus = _bonus;
 
+    final l10n = context.l10n;
     final String title = _opening
-        ? 'Opening…'
+        ? l10n.playChestOpening
         : reward != null
-        ? 'Star chest ${widget.index}'
+        ? l10n.playChestTitle(widget.index)
         : switch (_failure) {
-            ChestFailure.notYet => 'Almost there',
-            ChestFailure.alreadyOpen => 'Already open',
-            _ => 'Could not open it',
+            ChestFailure.notYet => l10n.playChestNotYetTitle,
+            ChestFailure.alreadyOpen => l10n.playChestAlreadyOpenTitle,
+            _ => l10n.playChestFailedTitle,
           };
 
     final String? note = reward != null
         ? null
         : switch (_failure) {
-            ChestFailure.notYet =>
-              'Your newest stars are still on their way to the server. '
-                  'Try again in a moment.',
-            ChestFailure.alreadyOpen =>
-              'This chest was opened on another device.',
+            ChestFailure.notYet => l10n.playChestNotYetNote,
+            ChestFailure.alreadyOpen => l10n.playChestAlreadyOpenNote,
             null => null,
-            _ => 'Check your connection and try again.',
+            _ => l10n.playChestFailedNote,
           };
 
     final hints = (reward?.hints ?? 0) + (bonus?.hints ?? 0);
@@ -329,11 +328,14 @@ class _ChestCardState extends ConsumerState<_ChestCard>
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _RewardChip(label: '+$hints', caption: 'hints'),
+                _RewardChip(
+                  label: l10n.playChestRewardCount(hints),
+                  caption: l10n.playChestHintsCaption(hints),
+                ),
                 const SizedBox(width: 12),
                 _RewardChip(
-                  label: '+$tubes',
-                  caption: tubes == 1 ? 'extra tube' : 'extra tubes',
+                  label: l10n.playChestRewardCount(tubes),
+                  caption: l10n.playChestTubesCaption(tubes),
                 ),
               ],
             ),
@@ -342,7 +344,7 @@ class _ChestCardState extends ConsumerState<_ChestCard>
               ToyChip(
                 color: Toy.lilac,
                 child: Text(
-                  'Unlocked: ${_cosmeticName(id)}',
+                  l10n.playChestUnlocked(_cosmeticName(l10n, id)),
                   textAlign: TextAlign.center,
                   style: Toy.ui(
                     14,
@@ -354,14 +356,16 @@ class _ChestCardState extends ConsumerState<_ChestCard>
             ],
             const SizedBox(height: 8),
             Text(
-              'Saved for when you need them. Hint and + Tube use these first.',
+              l10n.playChestSavedNote,
               textAlign: TextAlign.center,
               style: Toy.ui(12.5, color: Toy.inkMuted, height: 1.3),
             ),
             const SizedBox(height: 14),
             if (bonus == null)
               ToyButton(
-                label: _doubling ? 'Loading video…' : 'Double it with a video',
+                label: _doubling
+                    ? l10n.playChestLoadingVideo
+                    : l10n.playChestDouble,
                 onPressed: _doubling ? null : _double,
                 color: Toy.blue,
                 height: 48,
@@ -380,7 +384,7 @@ class _ChestCardState extends ConsumerState<_ChestCard>
           ],
           if (!_opening)
             ToyButton.secondary(
-              label: reward != null ? 'Collect' : 'Close',
+              label: reward != null ? l10n.playChestCollect : l10n.commonClose,
               onPressed: _doubling ? null : () => Navigator.of(context).pop(),
             ),
         ],
@@ -390,14 +394,14 @@ class _ChestCardState extends ConsumerState<_ChestCard>
 }
 
 /// "Glossy ball skin", from an id the app knows.
-String _cosmeticName(String id) {
+String _cosmeticName(AppLocalizations l10n, String id) {
   for (final skin in BallSkin.values) {
-    if (skin.id == id) return '${skin.label} ball skin';
+    if (skin.id == id) return l10n.playChestBallSkinName(skin.label);
   }
   for (final theme in TubeTheme.values) {
-    if (theme.id == id) return '${theme.label} tubes';
+    if (theme.id == id) return l10n.playChestTubeThemeName(theme.label);
   }
-  return 'a new look';
+  return l10n.playChestNewLook;
 }
 
 class _RewardChip extends StatelessWidget {

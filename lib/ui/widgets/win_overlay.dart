@@ -22,6 +22,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../engine/board.dart';
 import '../format.dart';
 import '../theme/ball_palette.dart';
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import 'ball.dart';
 import 'toy_kit.dart';
@@ -33,10 +34,10 @@ double _span(double elapsedMs, int at, int length) => length <= 0
 
 /// The title for a result. It does not always say the same thing: the words
 /// are part of the reward, and three stars should read differently from one.
-String winTitle(int stars) => switch (stars) {
-  >= 3 => 'Perfect\nPour!',
-  2 => 'Nice\nPour!',
-  _ => 'Poured!',
+String winTitle(AppLocalizations l10n, int stars) => switch (stars) {
+  >= 3 => l10n.playWinTitlePerfect,
+  2 => l10n.playWinTitleNice,
+  _ => l10n.playWinTitlePoured,
 };
 
 // ---------------------------------------------------------------------------
@@ -270,7 +271,7 @@ class WinMomentCaption extends StatelessWidget {
           Transform.rotate(
             angle: -3 * math.pi / 180,
             child: Text(
-              'Last pour…',
+              context.l10n.playWinLastPour,
               style: Toy.display(52, color: Toy.tomato, shadow: 3),
             ),
           ),
@@ -282,7 +283,7 @@ class WinMomentCaption extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              '$movesUsed ${movesUsed == 1 ? 'MOVE' : 'MOVES'} · PAR $minMoves',
+              context.l10n.playWinMovesPar(movesUsed, minMoves),
               style: Toy.numbers(
                 15,
                 color: Colors.white,
@@ -500,7 +501,7 @@ class _WinResultState extends State<WinResult>
             color: Toy.card,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
             child: Text(
-              'Level ${widget.levelId} · ${widget.bandName}',
+              context.l10n.playWinLevelBand(widget.levelId, widget.bandName),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Toy.ui(14, weight: FontWeight.w800),
@@ -529,7 +530,7 @@ class _WinResultState extends State<WinResult>
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                winTitle(widget.stars),
+                winTitle(context.l10n, widget.stars),
                 textAlign: TextAlign.center,
                 style: Toy.display(
                   66,
@@ -548,7 +549,7 @@ class _WinResultState extends State<WinResult>
   Widget _stars() {
     final p = widget.profile;
     return Semantics(
-      label: '${widget.stars} of 3 stars',
+      label: context.l10n.playStarsOfTotal(widget.stars, 3),
       child: ExcludeSemantics(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -605,7 +606,7 @@ class _WinResultState extends State<WinResult>
             right: -6,
             child: _Slap(
               t: sticker,
-              child: ToySticker.text('NEW BEST!', angle: 10),
+              child: ToySticker.text(context.l10n.playWinNewBest, angle: 10),
             ),
           ),
       ],
@@ -640,7 +641,7 @@ class _WinResultState extends State<WinResult>
           0,
           _ResultChip(
             value: '$shownMoves',
-            label: 'moves · par ${widget.minMoves}',
+            label: context.l10n.playWinMovesChip(widget.minMoves),
           ),
         ),
         const SizedBox(width: 10),
@@ -657,10 +658,10 @@ class _WinResultState extends State<WinResult>
                     ? formatClock(widget.elapsedSeconds)
                     : '—',
                 label: widget.elapsedSeconds <= 0
-                    ? 'untimed'
+                    ? context.l10n.playWinUntimed
                     : newFastest
-                    ? 'fastest yet!'
-                    : 'time',
+                    ? context.l10n.playWinFastest
+                    : context.l10n.playWinTime,
               ),
               if (beatPar && sticker > 0)
                 Positioned(
@@ -668,7 +669,7 @@ class _WinResultState extends State<WinResult>
                   child: _Slap(
                     t: sticker,
                     child: ToySticker.text(
-                      'UNDER PAR!',
+                      context.l10n.playWinUnderPar,
                       color: Toy.mint,
                       size: 11,
                       angle: -6,
@@ -689,7 +690,7 @@ class _WinResultState extends State<WinResult>
           2,
           _ResultChip(
             value: '+${formatCount(widget.points)}',
-            label: 'points',
+            label: context.l10n.playWinPoints,
             color: Toy.yellow,
           ),
         ),
@@ -713,7 +714,10 @@ class _WinResultState extends State<WinResult>
             children: [
               Expanded(
                 child: Text(
-                  'WORLD ${widget.worldNumber} · ${widget.bandName.toUpperCase()}',
+                  context.l10n.playWinWorldBand(
+                    widget.worldNumber,
+                    widget.bandName.toUpperCase(),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Toy.ui(
@@ -747,12 +751,12 @@ class _WinResultState extends State<WinResult>
     final p = widget.profile;
     final t = _s(p.cta.at, p.cta.length);
     final short = widget.movesUsed - widget.minMoves;
+    final l10n = context.l10n;
     final message = widget.assisted
-        ? 'Three stars need a clear without the extra tube.'
+        ? l10n.playWinTryAssisted
         : short > 0
-        ? 'Par ${widget.minMoves}, you took ${widget.movesUsed}. '
-              '${short == 1 ? 'One move' : '$short moves'} from 3★.'
-        : 'Par ${widget.minMoves}. Three stars are in reach.';
+        ? l10n.playWinTryShort(widget.minMoves, widget.movesUsed, short)
+        : l10n.playWinTryInReach(widget.minMoves);
     return Opacity(
       opacity: t,
       child: ToyBox(
@@ -769,7 +773,7 @@ class _WinResultState extends State<WinResult>
             ),
             const SizedBox(width: 10),
             ToyButton(
-              label: 'TRY FOR 3★',
+              label: l10n.playWinTryButton,
               onPressed: widget.onTryForStars ?? widget.onReplay,
               color: Toy.yellow,
               textColor: Toy.ink,
@@ -778,7 +782,7 @@ class _WinResultState extends State<WinResult>
               shadow: 3,
               fontSize: 15,
               compact: true,
-              semanticLabel: 'Replay this level for three stars',
+              semanticLabel: l10n.playWinTryButtonLabel,
             ),
           ],
         ),
@@ -800,7 +804,7 @@ class _WinResultState extends State<WinResult>
               width: 64,
               child: Pressable(
                 onPressed: widget.onReplay,
-                semanticLabel: 'Replay this level',
+                semanticLabel: context.l10n.playWinReplayLabel,
                 child: const ToyBox(
                   height: 64,
                   radius: Toy.rControl,
@@ -816,7 +820,7 @@ class _WinResultState extends State<WinResult>
                 width: 64,
                 child: Pressable(
                   onPressed: home,
-                  semanticLabel: 'Back to the home screen',
+                  semanticLabel: context.l10n.playWinHomeLabel,
                   child: const ToyBox(
                     height: 64,
                     radius: Toy.rControl,
@@ -836,7 +840,9 @@ class _WinResultState extends State<WinResult>
                   child: child,
                 ),
                 child: ToyButton(
-                  label: next == null ? 'BACK TO LEVELS' : 'NEXT LEVEL',
+                  label: next == null
+                      ? context.l10n.playWinBackToLevels
+                      : context.l10n.playWinNextLevel,
                   onPressed: next ?? widget.onLevels,
                   height: 64,
                   fontSize: 28,
