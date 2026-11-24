@@ -2108,6 +2108,1170 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No hint for this position right now.'**
   String get playZenNoHint;
+
+  /// Settings screen header title; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// Settings section label over sound, music, haptics and motion; shown in capitals; one short word.
+  ///
+  /// In en, this message translates to:
+  /// **'Feel'**
+  String get settingsSectionFeel;
+
+  /// Settings section label over the accessibility (bold symbols) toggle; shown in capitals; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Visibility'**
+  String get settingsSectionVisibility;
+
+  /// Settings section label over the name and leaderboard-visibility rows; shown in capitals; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaderboard'**
+  String get settingsSectionLeaderboard;
+
+  /// Settings section label over the notification switches; shown in capitals; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get settingsSectionNotifications;
+
+  /// Settings section label over help, rating, collection and purchase rows; shown in capitals; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get settingsSectionSupport;
+
+  /// Settings section label over sign-in and legal rows; shown in capitals; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Account & about'**
+  String get settingsSectionAccount;
+
+  /// Settings section label over reset progress and delete account; shown in capitals in red; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger zone'**
+  String get settingsSectionDanger;
+
+  /// Settings toggle row title for sound effects; one line, keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound effects'**
+  String get settingsSoundTitle;
+
+  /// Explanation under the Sound effects toggle; may wrap but keep brief.
+  ///
+  /// In en, this message translates to:
+  /// **'Pours, buttons and rewards'**
+  String get settingsSoundDetail;
+
+  /// Accessibility label of the sound effects volume slider.
+  ///
+  /// In en, this message translates to:
+  /// **'Effects volume'**
+  String get settingsSoundVolume;
+
+  /// Settings toggle row title for background music; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Music'**
+  String get settingsMusicTitle;
+
+  /// Explanation under the Music toggle: the game never interrupts the player's own music app.
+  ///
+  /// In en, this message translates to:
+  /// **'Never plays over your own music'**
+  String get settingsMusicDetail;
+
+  /// Accessibility label of the music volume slider.
+  ///
+  /// In en, this message translates to:
+  /// **'Music volume'**
+  String get settingsMusicVolume;
+
+  /// Settings toggle row title for vibration feedback; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Haptics'**
+  String get settingsHapticsTitle;
+
+  /// Explanation under the Haptics toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'A tick as each ball lands'**
+  String get settingsHapticsDetail;
+
+  /// Settings row title for the screen refresh-rate choice; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Smooth motion'**
+  String get settingsSmoothMotionTitle;
+
+  /// Segmented option: pick the refresh rate automatically. Very short (one of three tabs).
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get settingsSmoothMotionAuto;
+
+  /// Segmented option: always run at 60 Hz. Very short (one of three tabs).
+  ///
+  /// In en, this message translates to:
+  /// **'60 Hz'**
+  String get settingsSmoothMotion60;
+
+  /// Segmented option: always the screen's fastest refresh rate. Very short (one of three tabs).
+  ///
+  /// In en, this message translates to:
+  /// **'Max'**
+  String get settingsSmoothMotionMax;
+
+  /// Smooth motion detail line when the screen's refresh rate is not known yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto uses your screen\'s fastest rate if this phone keeps up'**
+  String get settingsMotionUnknown;
+
+  /// Smooth motion detail line when the screen has a single refresh rate. {max} is a number like 60 or 59.9.
+  ///
+  /// In en, this message translates to:
+  /// **'This screen only runs at {max} Hz'**
+  String settingsMotionFixed(String max);
+
+  /// Smooth motion detail line when the phone's power saving mode limits the refresh rate. {current} is a number like 60.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery Saver is holding it at {current} Hz'**
+  String settingsMotionBatterySaver(String current);
+
+  /// Smooth motion detail line in Auto after the game stepped down because frames were dropped. Both are numbers like 60 and 120.
+  ///
+  /// In en, this message translates to:
+  /// **'Running at {current} Hz · this phone stuttered at {max} Hz'**
+  String settingsMotionAutoStuttered(String current, String max);
+
+  /// Smooth motion detail line in Auto. {current} is a number like 120.
+  ///
+  /// In en, this message translates to:
+  /// **'Running at {current} Hz · drops to 60 Hz if it stutters'**
+  String settingsMotionAuto(String current);
+
+  /// Smooth motion detail line when 60 Hz was chosen but the phone's own setting forces a higher rate. {current} is a number like 90.
+  ///
+  /// In en, this message translates to:
+  /// **'Your phone\'s display setting keeps it at {current} Hz'**
+  String settingsMotionPinnedByPhone(String current);
+
+  /// Smooth motion detail line when 60 Hz is chosen. Both are numbers like 60 and 120.
+  ///
+  /// In en, this message translates to:
+  /// **'Running at {current} Hz · this screen can do {max} Hz'**
+  String settingsMotionStandard(String current, String max);
+
+  /// Smooth motion detail line when Max is chosen. {current} is a number like 120.
+  ///
+  /// In en, this message translates to:
+  /// **'Running at {current} Hz, the fastest this screen goes'**
+  String settingsMotionMax(String current);
+
+  /// Settings toggle title: draws the shapes on the balls with heavier strokes; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold symbols'**
+  String get settingsBoldSymbolsTitle;
+
+  /// Explanation under Bold symbols. Name the condition (color blindness) in the words players search for.
+  ///
+  /// In en, this message translates to:
+  /// **'Stronger shapes for color vision deficiency'**
+  String get settingsBoldSymbolsDetail;
+
+  /// Settings row title that opens the leaderboard name editor; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Change your name'**
+  String get settingsRenameTitle;
+
+  /// Detail under Change your name; one line, ellipsized if long.
+  ///
+  /// In en, this message translates to:
+  /// **'How you appear on the boards'**
+  String get settingsRenameDetail;
+
+  /// Settings toggle title: list the player on public leaderboards; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Show me on leaderboards'**
+  String get settingsShowOnBoardsTitle;
+
+  /// Explanation under Show me on leaderboards.
+  ///
+  /// In en, this message translates to:
+  /// **'Off hides your name and rank. Stars still count.'**
+  String get settingsShowOnBoardsDetail;
+
+  /// Settings row title that replays the tutorial level; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'How to play'**
+  String get settingsHowToPlayTitle;
+
+  /// Detail under How to play; one line, ellipsized if long.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay the guided first level'**
+  String get settingsHowToPlayDetail;
+
+  /// Settings row title and header of the FAQ screen; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions'**
+  String get settingsQuestionsTitle;
+
+  /// Detail under Questions (the FAQ); one line, ellipsized if long.
+  ///
+  /// In en, this message translates to:
+  /// **'Stars, hints, the clock and more'**
+  String get settingsQuestionsDetail;
+
+  /// Settings row title that opens the store listing to leave a rating; one line. 'Pourfect' is the game's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate Pourfect'**
+  String get settingsRateTitle;
+
+  /// Detail under Rate Pourfect; one line, ellipsized if long.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell other players what you think'**
+  String get settingsRateDetail;
+
+  /// Settings row title and header of the Collection screen (ball skins and tube themes); keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Collection'**
+  String get settingsCollectionTitle;
+
+  /// Detail under Collection; one line, ellipsized if long.
+  ///
+  /// In en, this message translates to:
+  /// **'Ball skins and tube themes'**
+  String get settingsCollectionDetail;
+
+  /// Settings row title that restores in-app purchases; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore purchases'**
+  String get settingsRestoreTitle;
+
+  /// Detail under Restore purchases, naming the two products; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Ads or the Skin pack'**
+  String get settingsRestoreDetail;
+
+  /// Toast after Restore purchases finishes.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchases restored, if there were any.'**
+  String get settingsRestoreDone;
+
+  /// Settings row title for the Remove Ads purchase, also its accessibility label; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove ads'**
+  String get settingsRemoveAdsTitle;
+
+  /// Detail under Remove ads: what it does and does not remove. Keep both halves.
+  ///
+  /// In en, this message translates to:
+  /// **'No ads between levels. Hint videos stay.'**
+  String get settingsRemoveAdsDetail;
+
+  /// Settings row shown instead of the purchase once ads are removed; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Ads removed — thank you'**
+  String get settingsAdsRemoved;
+
+  /// Toast after buying Remove Ads.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you. Ads between levels are off.'**
+  String get settingsPurchaseThanks;
+
+  /// Toast when Remove Ads was already bought.
+  ///
+  /// In en, this message translates to:
+  /// **'Already purchased — ads are off.'**
+  String get settingsPurchaseAlreadyOwned;
+
+  /// Toast when the Remove Ads payment is still pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment pending. Ads will switch off once it clears.'**
+  String get settingsPurchasePending;
+
+  /// Toast when the app store cannot be reached for a purchase (Settings and Collection).
+  ///
+  /// In en, this message translates to:
+  /// **'The store is not available on this device right now.'**
+  String get settingsStoreUnavailable;
+
+  /// Toast when a purchase failed (Settings and Collection).
+  ///
+  /// In en, this message translates to:
+  /// **'The purchase did not go through. You have not been charged.'**
+  String get settingsPurchaseFailed;
+
+  /// Toast when the store listing could not be opened from Rate Pourfect.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the store.'**
+  String get settingsStoreOpenFailed;
+
+  /// Toast when a legal document link could not open the web browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the browser.'**
+  String get settingsBrowserOpenFailed;
+
+  /// Settings row title (and player card line) for a signed-in player; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get settingsSignedIn;
+
+  /// Detail under Signed in when there is no email to show; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Your progress moves with you'**
+  String get settingsSignedInDetail;
+
+  /// Settings row title that opens sign-in for a guest player; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your progress'**
+  String get settingsSaveProgressTitle;
+
+  /// Detail under Save your progress; one line, ellipsized if long.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep your stars if you change phones'**
+  String get settingsSaveProgressDetail;
+
+  /// Settings row title that opens the privacy policy web page; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get settingsPrivacyPolicy;
+
+  /// Settings row title and dialog title for terms of use, refund policy and open-source licenses; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms & licenses'**
+  String get settingsTermsAndLicenses;
+
+  /// Button in the Terms & licenses dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of use'**
+  String get settingsTermsOfUse;
+
+  /// Button in the Terms & licenses dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Refund policy'**
+  String get settingsRefundPolicy;
+
+  /// Button in the Terms & licenses dialog that opens the license page.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source licenses'**
+  String get settingsOpenSourceLicenses;
+
+  /// Settings row title that reopens the advertising consent form; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad privacy options'**
+  String get settingsAdPrivacyTitle;
+
+  /// Detail under Ad privacy options; one line, ellipsized if long.
+  ///
+  /// In en, this message translates to:
+  /// **'Change what you agreed to for advertising'**
+  String get settingsAdPrivacyDetail;
+
+  /// Danger zone row title; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset progress'**
+  String get settingsResetRowTitle;
+
+  /// Detail under Reset progress; one line, ellipsized if long.
+  ///
+  /// In en, this message translates to:
+  /// **'Erase every star and start from level 1'**
+  String get settingsResetRowDetail;
+
+  /// Confirmation dialog title for resetting progress.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset progress?'**
+  String get settingsResetTitle;
+
+  /// Reset confirmation body when no level has been solved.
+  ///
+  /// In en, this message translates to:
+  /// **'There is nothing to reset yet.'**
+  String get settingsResetNothing;
+
+  /// Reset confirmation body. {count} is how many levels the player has solved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{This erases every star and best score across 1 solved level, and locks everything after level 1 again. It cannot be undone.} other{This erases every star and best score across {count} solved levels, and locks everything after level 1 again. It cannot be undone.}}'**
+  String settingsResetBody(int count);
+
+  /// Cancel button on the reset-progress and delete-account confirmations; short.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it'**
+  String get settingsKeepIt;
+
+  /// Destructive confirm button on the reset-progress dialog; short.
+  ///
+  /// In en, this message translates to:
+  /// **'Erase everything'**
+  String get settingsResetConfirm;
+
+  /// Toast after progress was reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress reset.'**
+  String get settingsResetDone;
+
+  /// Sign-out confirmation dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out?'**
+  String get settingsSignOutTitle;
+
+  /// Sign-out confirmation body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your progress stays on this phone. You can sign back in any time to pick it up somewhere else.'**
+  String get settingsSignOutBody;
+
+  /// Cancel button on the sign-out confirmation; short.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay signed in'**
+  String get settingsSignOutStay;
+
+  /// Confirm button on the sign-out confirmation; short.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get settingsSignOutConfirm;
+
+  /// Toast when a leaderboard or notification setting could not be saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the server, so nothing changed.'**
+  String get settingsServerUnreachable;
+
+  /// Danger zone row title; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get settingsDeleteRowTitle;
+
+  /// Detail under Delete account; one line, ellipsized if long.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove your account and everything with it'**
+  String get settingsDeleteRowDetail;
+
+  /// Delete-account confirmation dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get settingsDeleteTitle;
+
+  /// Delete-account confirmation body; two paragraphs. 'Remove Ads' is the purchase's name.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes your account, your stars, your streak and your leaderboard entry, on this phone and on our server. It cannot be undone.\n\nRemove Ads is not affected — it belongs to the store account you bought it with, and restores if you play again.'**
+  String get settingsDeleteBody;
+
+  /// Destructive confirm button on the delete-account dialog; short.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete everything'**
+  String get settingsDeleteConfirm;
+
+  /// Toast when account deletion failed because the server was unreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the server. Nothing was deleted — try again when you are back online.'**
+  String get settingsDeleteServerRefused;
+
+  /// Toast when account deletion failed because the login could not be verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not confirm it is you. Sign in again, then delete your account — nothing has been deleted yet.'**
+  String get settingsDeleteNotAuthenticated;
+
+  /// Small footer at the bottom of Settings: the game's name and version, e.g. 'Pourfect 2.8.0 (20)'.
+  ///
+  /// In en, this message translates to:
+  /// **'Pourfect {version}'**
+  String settingsFooterVersion(String version);
+
+  /// Small footer at the bottom of Settings: game name, version, and how many levels the game has (each proven solvable).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Pourfect {version} · made with 1 proven-solvable board} other{Pourfect {version} · made with {count} proven-solvable boards}}'**
+  String settingsFooterVersionBoards(int count, String version);
+
+  /// Shown on the player card while the server has not yet assigned a leaderboard name.
+  ///
+  /// In en, this message translates to:
+  /// **'Naming you…'**
+  String get settingsNamingYou;
+
+  /// Accessibility label of the player card, which opens the name editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get settingsYourName;
+
+  /// Player card line for a player who has not signed in; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing as a guest'**
+  String get settingsGuest;
+
+  /// Tiny caps label under the solved-levels count on the player card; very short.
+  ///
+  /// In en, this message translates to:
+  /// **'SOLVED'**
+  String get settingsStatSolved;
+
+  /// Tiny caps label under the stars count on the player card; very short.
+  ///
+  /// In en, this message translates to:
+  /// **'STARS'**
+  String get settingsStatStars;
+
+  /// Settings row title shown while the phone blocks notifications; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on notifications'**
+  String get settingsNotifyTurnOnTitle;
+
+  /// Detail under Turn on notifications when the system setting is off; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Off in your phone\'s settings. Tap to open them.'**
+  String get settingsNotifyDeniedDetail;
+
+  /// Detail under Turn on notifications before permission was asked; one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Pourfect can\'t notify you yet'**
+  String get settingsNotifyNotYetDetail;
+
+  /// Notification toggle title. 'Daily Pour' is the daily challenge's name; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Pour reminders'**
+  String get settingsRemindersTitle;
+
+  /// Explanation under Daily Pour reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning and evening, never more than two a day'**
+  String get settingsRemindersDetail;
+
+  /// Notification toggle title for announcements; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Game news'**
+  String get settingsNewsTitle;
+
+  /// Explanation under Game news.
+  ///
+  /// In en, this message translates to:
+  /// **'New worlds and announcements'**
+  String get settingsNewsDetail;
+
+  /// Accessibility label of a settings switch that is on. {title} is the row title.
+  ///
+  /// In en, this message translates to:
+  /// **'{title}, on'**
+  String settingsToggleOn(String title);
+
+  /// Accessibility label of a settings switch that is off. {title} is the row title.
+  ///
+  /// In en, this message translates to:
+  /// **'{title}, off'**
+  String settingsToggleOff(String title);
+
+  /// FAQ section label; shown in capitals; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing'**
+  String get settingsFaqSectionPlaying;
+
+  /// FAQ section label over undo, hints and power-up questions; shown in capitals; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Stuck?'**
+  String get settingsFaqSectionStuck;
+
+  /// FAQ section label; shown in capitals; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Your progress'**
+  String get settingsFaqSectionProgress;
+
+  /// FAQ section label; shown in capitals; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Ads & sound'**
+  String get settingsFaqSectionAds;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I play?'**
+  String get settingsFaqHowToPlayQ;
+
+  /// FAQ answer. 'Settings → How to play' must match the Settings screen and the How to play row titles.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a tube to pick up its top balls, then tap another tube to pour them in. Balls only land on the same color or in an empty tube. Sort every tube to one color and the level is done. Settings → How to play replays the guided first level.'**
+  String get settingsFaqHowToPlayA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'What do the stars mean?'**
+  String get settingsFaqStarsQ;
+
+  /// FAQ answer. The thresholds (par, 1.5x par) are game rules; keep them exact.
+  ///
+  /// In en, this message translates to:
+  /// **'Stars count moves, nothing else. Finish in par or fewer for three stars, within one and a half times par for two, and any finish earns one. Par is the fewest moves the level can be solved in.'**
+  String get settingsFaqStarsA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'Does the clock cost me stars?'**
+  String get settingsFaqClockQ;
+
+  /// FAQ answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Never. Time only changes your points. Beat the time par for bonus points, or take as long as you like and keep every star.'**
+  String get settingsFaqClockA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'Is every level solvable?'**
+  String get settingsFaqSolvableQ;
+
+  /// FAQ answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes. Every board was solved before it shipped, and par comes from that solution, so it is always reachable.'**
+  String get settingsFaqSolvableA;
+
+  /// FAQ question. 'Daily Pour' is the daily challenge's name.
+  ///
+  /// In en, this message translates to:
+  /// **'What is the Daily Pour?'**
+  String get settingsFaqDailyQ;
+
+  /// FAQ answer.
+  ///
+  /// In en, this message translates to:
+  /// **'A new board every day, with its own leaderboard. It needs an internet connection. The campaign levels do not.'**
+  String get settingsFaqDailyA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'Is undo limited?'**
+  String get settingsFaqUndoQ;
+
+  /// FAQ answer.
+  ///
+  /// In en, this message translates to:
+  /// **'No. Undo is free and unlimited, on every level.'**
+  String get settingsFaqUndoA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'How do hints work?'**
+  String get settingsFaqHintsQ;
+
+  /// FAQ answer. {count} is the number of free hints the game gives.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Your first hint is free. After that, a short video earns one. If a hint cannot be found, the video still counts toward your next one.} other{Your first {count} hints are free. After that, a short video earns one. If a hint cannot be found, the video still counts toward your next one.}}'**
+  String settingsFaqHintsA(int count);
+
+  /// FAQ question. '+ Tube' is the in-game button's label.
+  ///
+  /// In en, this message translates to:
+  /// **'What is the + Tube button?'**
+  String get settingsFaqTubeQ;
+
+  /// FAQ answer.
+  ///
+  /// In en, this message translates to:
+  /// **'When your moves reach par, or a hint shows there is no way to finish, you can watch a video for an extra empty tube, up to two per attempt. Undo will not take it away. A level finished with an extra tube earns up to two stars.'**
+  String get settingsFaqTubeA;
+
+  /// FAQ question. 'HARD' is the badge's text on the level.
+  ///
+  /// In en, this message translates to:
+  /// **'What are HARD levels?'**
+  String get settingsFaqHardQ;
+
+  /// FAQ answer. 'HARD' must match the badge's text.
+  ///
+  /// In en, this message translates to:
+  /// **'The toughest level in every ten wears a red HARD badge. It plays like any other level, and it is worth one and a half times the points.'**
+  String get settingsFaqHardA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'What are star chests?'**
+  String get settingsFaqChestsQ;
+
+  /// FAQ answer. 'Journey' is the level map screen's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Every 30 stars opens a chest on your Journey: two hints and an extra tube, saved for when you need them. Every third chest also unlocks a ball skin.'**
+  String get settingsFaqChestsA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'What is a streak freeze?'**
+  String get settingsFaqFreezeQ;
+
+  /// FAQ answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Miss a day of the Daily Pour and a freeze covers it, so your streak carries on. You get one free every Monday, can earn one a day with a video, and can hold two.'**
+  String get settingsFaqFreezeA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'Do I need an account?'**
+  String get settingsFaqAccountQ;
+
+  /// FAQ answer.
+  ///
+  /// In en, this message translates to:
+  /// **'No. You play as a guest and your progress is saved on this phone. Signing in keeps your stars when you move to a new phone.'**
+  String get settingsFaqAccountA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'Can I play offline?'**
+  String get settingsFaqOfflineQ;
+
+  /// FAQ answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, the whole campaign. The Daily Pour and leaderboards need a connection, and your progress syncs when you are back online.'**
+  String get settingsFaqOfflineA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I change my leaderboard name?'**
+  String get settingsFaqNameQ;
+
+  /// FAQ answer. 'Settings → Change your name' must match the screen and row titles.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings → Change your name. You can also hide yourself from the boards there; your stars still count.'**
+  String get settingsFaqNameA;
+
+  /// FAQ question. 'Remove ads' is the purchase's name.
+  ///
+  /// In en, this message translates to:
+  /// **'What does Remove ads do?'**
+  String get settingsFaqRemoveAdsQ;
+
+  /// FAQ answer.
+  ///
+  /// In en, this message translates to:
+  /// **'It turns off the ads between levels. Hint and tube videos stay, because you only ever see one when you ask for it.'**
+  String get settingsFaqRemoveAdsA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'I reinstalled. Where did Remove ads go?'**
+  String get settingsFaqReinstallQ;
+
+  /// FAQ answer. 'Settings → Restore purchases' must match the screen and row titles.
+  ///
+  /// In en, this message translates to:
+  /// **'It belongs to the store account you bought it with and usually comes back on its own. If not, tap Settings → Restore purchases.'**
+  String get settingsFaqReinstallA;
+
+  /// FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'Will the game stop my music?'**
+  String get settingsFaqMusicQ;
+
+  /// FAQ answer.
+  ///
+  /// In en, this message translates to:
+  /// **'No. Pourfect plays its sounds alongside your music or podcast. Sound and haptics can be turned off in Settings.'**
+  String get settingsFaqMusicA;
+
+  /// Title of the legal acceptance card shown before play; large display type, keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Before we pour'**
+  String get settingsLegalTitle;
+
+  /// Intro text on the legal acceptance card.
+  ///
+  /// In en, this message translates to:
+  /// **'Pourfect is free, works offline and doesn\'t need an account. Please read and accept these first.'**
+  String get settingsLegalIntro;
+
+  /// Checkbox text on the legal card. {document} is the Terms of Service name, shown as a tappable link.
+  ///
+  /// In en, this message translates to:
+  /// **'I accept the {document}'**
+  String settingsLegalAcceptTerms(String document);
+
+  /// Checkbox text on the legal card. {document} is the Privacy Policy name, shown as a tappable link.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ve read the {document}'**
+  String settingsLegalReadPrivacy(String document);
+
+  /// Small print under the checkboxes. {document} is the Refund Policy name, shown as a tappable link; {version} is the legal documents' version.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepting also covers our {document} (version {version}).'**
+  String settingsLegalAlsoCovers(String document, String version);
+
+  /// The privacy policy document's name: a link on the legal card and the reader dialog's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get settingsLegalPrivacyPolicy;
+
+  /// The terms document's name: a link on the legal card and the reader dialog's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Service'**
+  String get settingsLegalTermsOfService;
+
+  /// The refund policy document's name: a link on the legal card and the reader dialog's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Refund Policy'**
+  String get settingsLegalRefundPolicy;
+
+  /// Accessibility label of a document link on the legal card.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the {document}'**
+  String settingsLegalReadDocument(String document);
+
+  /// Big button that accepts the legal documents and starts the game; all caps, short.
+  ///
+  /// In en, this message translates to:
+  /// **'LET\'S POUR!'**
+  String get settingsLegalAccept;
+
+  /// Small note under the accept button.
+  ///
+  /// In en, this message translates to:
+  /// **'You can read these again any time in Settings.'**
+  String get settingsLegalReadAgain;
+
+  /// Shown in the document reader when a bundled legal document is missing. Keep the address legal.pranta.dev unchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'This document could not be loaded on this device.\n\nYou can read it at legal.pranta.dev before accepting.'**
+  String get settingsLegalLoadFailed;
+
+  /// Title of the in-app update prompt; display type, keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'A new Pourfect is ready'**
+  String get settingsUpdateTitle;
+
+  /// Body of the in-app update prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Play will download it and open the game again when it is done. Your stars are safe.'**
+  String get settingsUpdateBody;
+
+  /// Title of the update prompt when this version is no longer supported; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to update'**
+  String get settingsUpdateMandatoryTitle;
+
+  /// Body of the mandatory update prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'This version of Pourfect is no longer supported. Google Play will download the update and open the game again. Your stars are safe.'**
+  String get settingsUpdateMandatoryBody;
+
+  /// Primary button on the update prompt; short.
+  ///
+  /// In en, this message translates to:
+  /// **'Update now'**
+  String get settingsUpdateNow;
+
+  /// Big header of the name editor, styled as a 'HELLO my name is' sticker; one short word, caps.
+  ///
+  /// In en, this message translates to:
+  /// **'HELLO'**
+  String get settingsRenameHello;
+
+  /// Small line under HELLO on the name sticker; caps, short.
+  ///
+  /// In en, this message translates to:
+  /// **'MY NAME IS'**
+  String get settingsRenameMyNameIs;
+
+  /// Helper text under the name field in the name editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Other players see this on the boards'**
+  String get settingsRenameHint;
+
+  /// Save button of the name editor; caps, short.
+  ///
+  /// In en, this message translates to:
+  /// **'SAVE'**
+  String get settingsRenameSave;
+
+  /// Toast when tapping a locked skin. {how} is a short unlock condition like 'Star chest 3' or '7-day streak'.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock it with: {how}.'**
+  String settingsCollectionUnlockWith(String how);
+
+  /// Toast when wearing a skin failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not change it right now. Try again later.'**
+  String get settingsCollectionChangeFailed;
+
+  /// Toast after buying the Skin pack.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you! The pack unlocks in a moment.'**
+  String get settingsPackThanks;
+
+  /// Toast when the Skin pack was already bought.
+  ///
+  /// In en, this message translates to:
+  /// **'Already yours. Restoring it now.'**
+  String get settingsPackAlreadyOwned;
+
+  /// Toast when the Skin pack payment is still pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment pending. The pack unlocks once it clears.'**
+  String get settingsPackPending;
+
+  /// Shown on the Collection screen when the catalogue could not be loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to the internet to see your collection.'**
+  String get settingsCollectionOffline;
+
+  /// Collection section label; shown in capitals; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Ball skins'**
+  String get settingsCollectionBallSkins;
+
+  /// Collection section label; shown in capitals; keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Tube themes'**
+  String get settingsCollectionTubeThemes;
+
+  /// Caption under the preview of what is worn. {skin} is a ball skin name, {theme} a tube theme name.
+  ///
+  /// In en, this message translates to:
+  /// **'{skin} balls · {theme} tubes'**
+  String settingsCollectionPreview(String skin, String theme);
+
+  /// Accessibility label of a skin card that is being worn.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, worn'**
+  String settingsCollectionItemWorn(String name);
+
+  /// Accessibility label of an owned skin card.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, tap to wear'**
+  String settingsCollectionItemTapToWear(String name);
+
+  /// Accessibility label of a locked skin card. {how} is a short unlock condition.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, locked: {how}'**
+  String settingsCollectionItemLocked(String name, String how);
+
+  /// Status under a skin card that is being worn; one line, very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Wearing'**
+  String get settingsCollectionWearing;
+
+  /// Status under an owned skin card; one line, very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to wear'**
+  String get settingsCollectionTapToWear;
+
+  /// Unlock condition on a locked skin card: the numbered star chest that gives it. One line, very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Star chest {number}'**
+  String settingsUnlockChest(int number);
+
+  /// Unlock condition on a locked skin card: a Daily Pour streak of this many days. One line, very short.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, other{{days}-day streak}}'**
+  String settingsUnlockStreak(int days);
+
+  /// Unlock condition on a skin card that is free; very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get settingsUnlockFree;
+
+  /// Name of the paid cosmetics pack: title of its card, and the unlock condition on skins it contains. Short.
+  ///
+  /// In en, this message translates to:
+  /// **'Skin pack'**
+  String get settingsSkinPack;
+
+  /// What the Skin pack contains. Use the same skin and theme names as elsewhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Marble, Pearl and Checker balls, Wood and Lilac tubes.'**
+  String get settingsSkinPackDetail;
+
+  /// Chip on the Skin pack card once bought; caps, very short.
+  ///
+  /// In en, this message translates to:
+  /// **'OWNED'**
+  String get settingsOwned;
+
+  /// Shown on the Skin pack buy button when no price is available yet; very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Soon'**
+  String get settingsSoon;
+
+  /// Ball skin name: the plain default look. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic'**
+  String get settingsSkinClassic;
+
+  /// Ball skin name: shiny highlight. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Glossy'**
+  String get settingsSkinGlossy;
+
+  /// Ball skin name: candy-like stripes. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Candy stripe'**
+  String get settingsSkinStriped;
+
+  /// Ball skin name: glowing. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Glow'**
+  String get settingsSkinGlow;
+
+  /// Ball skin name: candy sprinkles. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Sprinkles'**
+  String get settingsSkinSpeckled;
+
+  /// Ball skin name: marbled stone. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Marble'**
+  String get settingsSkinMarble;
+
+  /// Ball skin name: pearly sheen. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Pearl'**
+  String get settingsSkinPearl;
+
+  /// Ball skin name: checkerboard pattern. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Checker'**
+  String get settingsSkinChecker;
+
+  /// Tube theme name: the plain default white tubes. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Toy'**
+  String get settingsTubeToy;
+
+  /// Tube theme name: frosted icy glass. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Frost'**
+  String get settingsTubeFrost;
+
+  /// Tube theme name: wooden. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Wood'**
+  String get settingsTubeWood;
+
+  /// Tube theme name: pale purple (lilac) tubes. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Lilac'**
+  String get settingsTubeLilac;
 }
 
 class _AppLocalizationsDelegate

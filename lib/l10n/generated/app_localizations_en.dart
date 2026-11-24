@@ -1402,4 +1402,702 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get playZenNoHint => 'No hint for this position right now.';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsSectionFeel => 'Feel';
+
+  @override
+  String get settingsSectionVisibility => 'Visibility';
+
+  @override
+  String get settingsSectionLeaderboard => 'Leaderboard';
+
+  @override
+  String get settingsSectionNotifications => 'Notifications';
+
+  @override
+  String get settingsSectionSupport => 'Support';
+
+  @override
+  String get settingsSectionAccount => 'Account & about';
+
+  @override
+  String get settingsSectionDanger => 'Danger zone';
+
+  @override
+  String get settingsSoundTitle => 'Sound effects';
+
+  @override
+  String get settingsSoundDetail => 'Pours, buttons and rewards';
+
+  @override
+  String get settingsSoundVolume => 'Effects volume';
+
+  @override
+  String get settingsMusicTitle => 'Music';
+
+  @override
+  String get settingsMusicDetail => 'Never plays over your own music';
+
+  @override
+  String get settingsMusicVolume => 'Music volume';
+
+  @override
+  String get settingsHapticsTitle => 'Haptics';
+
+  @override
+  String get settingsHapticsDetail => 'A tick as each ball lands';
+
+  @override
+  String get settingsSmoothMotionTitle => 'Smooth motion';
+
+  @override
+  String get settingsSmoothMotionAuto => 'Auto';
+
+  @override
+  String get settingsSmoothMotion60 => '60 Hz';
+
+  @override
+  String get settingsSmoothMotionMax => 'Max';
+
+  @override
+  String get settingsMotionUnknown =>
+      'Auto uses your screen\'s fastest rate if this phone keeps up';
+
+  @override
+  String settingsMotionFixed(String max) {
+    return 'This screen only runs at $max Hz';
+  }
+
+  @override
+  String settingsMotionBatterySaver(String current) {
+    return 'Battery Saver is holding it at $current Hz';
+  }
+
+  @override
+  String settingsMotionAutoStuttered(String current, String max) {
+    return 'Running at $current Hz · this phone stuttered at $max Hz';
+  }
+
+  @override
+  String settingsMotionAuto(String current) {
+    return 'Running at $current Hz · drops to 60 Hz if it stutters';
+  }
+
+  @override
+  String settingsMotionPinnedByPhone(String current) {
+    return 'Your phone\'s display setting keeps it at $current Hz';
+  }
+
+  @override
+  String settingsMotionStandard(String current, String max) {
+    return 'Running at $current Hz · this screen can do $max Hz';
+  }
+
+  @override
+  String settingsMotionMax(String current) {
+    return 'Running at $current Hz, the fastest this screen goes';
+  }
+
+  @override
+  String get settingsBoldSymbolsTitle => 'Bold symbols';
+
+  @override
+  String get settingsBoldSymbolsDetail =>
+      'Stronger shapes for color vision deficiency';
+
+  @override
+  String get settingsRenameTitle => 'Change your name';
+
+  @override
+  String get settingsRenameDetail => 'How you appear on the boards';
+
+  @override
+  String get settingsShowOnBoardsTitle => 'Show me on leaderboards';
+
+  @override
+  String get settingsShowOnBoardsDetail =>
+      'Off hides your name and rank. Stars still count.';
+
+  @override
+  String get settingsHowToPlayTitle => 'How to play';
+
+  @override
+  String get settingsHowToPlayDetail => 'Replay the guided first level';
+
+  @override
+  String get settingsQuestionsTitle => 'Questions';
+
+  @override
+  String get settingsQuestionsDetail => 'Stars, hints, the clock and more';
+
+  @override
+  String get settingsRateTitle => 'Rate Pourfect';
+
+  @override
+  String get settingsRateDetail => 'Tell other players what you think';
+
+  @override
+  String get settingsCollectionTitle => 'Collection';
+
+  @override
+  String get settingsCollectionDetail => 'Ball skins and tube themes';
+
+  @override
+  String get settingsRestoreTitle => 'Restore purchases';
+
+  @override
+  String get settingsRestoreDetail => 'Remove Ads or the Skin pack';
+
+  @override
+  String get settingsRestoreDone => 'Purchases restored, if there were any.';
+
+  @override
+  String get settingsRemoveAdsTitle => 'Remove ads';
+
+  @override
+  String get settingsRemoveAdsDetail =>
+      'No ads between levels. Hint videos stay.';
+
+  @override
+  String get settingsAdsRemoved => 'Ads removed — thank you';
+
+  @override
+  String get settingsPurchaseThanks => 'Thank you. Ads between levels are off.';
+
+  @override
+  String get settingsPurchaseAlreadyOwned => 'Already purchased — ads are off.';
+
+  @override
+  String get settingsPurchasePending =>
+      'Payment pending. Ads will switch off once it clears.';
+
+  @override
+  String get settingsStoreUnavailable =>
+      'The store is not available on this device right now.';
+
+  @override
+  String get settingsPurchaseFailed =>
+      'The purchase did not go through. You have not been charged.';
+
+  @override
+  String get settingsStoreOpenFailed => 'Could not open the store.';
+
+  @override
+  String get settingsBrowserOpenFailed => 'Could not open the browser.';
+
+  @override
+  String get settingsSignedIn => 'Signed in';
+
+  @override
+  String get settingsSignedInDetail => 'Your progress moves with you';
+
+  @override
+  String get settingsSaveProgressTitle => 'Save your progress';
+
+  @override
+  String get settingsSaveProgressDetail =>
+      'Keep your stars if you change phones';
+
+  @override
+  String get settingsPrivacyPolicy => 'Privacy policy';
+
+  @override
+  String get settingsTermsAndLicenses => 'Terms & licenses';
+
+  @override
+  String get settingsTermsOfUse => 'Terms of use';
+
+  @override
+  String get settingsRefundPolicy => 'Refund policy';
+
+  @override
+  String get settingsOpenSourceLicenses => 'Open-source licenses';
+
+  @override
+  String get settingsAdPrivacyTitle => 'Ad privacy options';
+
+  @override
+  String get settingsAdPrivacyDetail =>
+      'Change what you agreed to for advertising';
+
+  @override
+  String get settingsResetRowTitle => 'Reset progress';
+
+  @override
+  String get settingsResetRowDetail =>
+      'Erase every star and start from level 1';
+
+  @override
+  String get settingsResetTitle => 'Reset progress?';
+
+  @override
+  String get settingsResetNothing => 'There is nothing to reset yet.';
+
+  @override
+  String settingsResetBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'This erases every star and best score across $count solved levels, and locks everything after level 1 again. It cannot be undone.',
+      one: 'This erases every star and best score across 1 solved level, and locks everything after level 1 again. It cannot be undone.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get settingsKeepIt => 'Keep it';
+
+  @override
+  String get settingsResetConfirm => 'Erase everything';
+
+  @override
+  String get settingsResetDone => 'Progress reset.';
+
+  @override
+  String get settingsSignOutTitle => 'Sign out?';
+
+  @override
+  String get settingsSignOutBody =>
+      'Your progress stays on this phone. You can sign back in any time to pick it up somewhere else.';
+
+  @override
+  String get settingsSignOutStay => 'Stay signed in';
+
+  @override
+  String get settingsSignOutConfirm => 'Sign out';
+
+  @override
+  String get settingsServerUnreachable =>
+      'Could not reach the server, so nothing changed.';
+
+  @override
+  String get settingsDeleteRowTitle => 'Delete account';
+
+  @override
+  String get settingsDeleteRowDetail =>
+      'Remove your account and everything with it';
+
+  @override
+  String get settingsDeleteTitle => 'Delete your account?';
+
+  @override
+  String get settingsDeleteBody =>
+      'This removes your account, your stars, your streak and your leaderboard entry, on this phone and on our server. It cannot be undone.\n\nRemove Ads is not affected — it belongs to the store account you bought it with, and restores if you play again.';
+
+  @override
+  String get settingsDeleteConfirm => 'Delete everything';
+
+  @override
+  String get settingsDeleteServerRefused =>
+      'Could not reach the server. Nothing was deleted — try again when you are back online.';
+
+  @override
+  String get settingsDeleteNotAuthenticated =>
+      'Could not confirm it is you. Sign in again, then delete your account — nothing has been deleted yet.';
+
+  @override
+  String settingsFooterVersion(String version) {
+    return 'Pourfect $version';
+  }
+
+  @override
+  String settingsFooterVersionBoards(int count, String version) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Pourfect $version · made with $count proven-solvable boards',
+      one: 'Pourfect $version · made with 1 proven-solvable board',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get settingsNamingYou => 'Naming you…';
+
+  @override
+  String get settingsYourName => 'Your name';
+
+  @override
+  String get settingsGuest => 'Playing as a guest';
+
+  @override
+  String get settingsStatSolved => 'SOLVED';
+
+  @override
+  String get settingsStatStars => 'STARS';
+
+  @override
+  String get settingsNotifyTurnOnTitle => 'Turn on notifications';
+
+  @override
+  String get settingsNotifyDeniedDetail =>
+      'Off in your phone\'s settings. Tap to open them.';
+
+  @override
+  String get settingsNotifyNotYetDetail => 'Pourfect can\'t notify you yet';
+
+  @override
+  String get settingsRemindersTitle => 'Daily Pour reminders';
+
+  @override
+  String get settingsRemindersDetail =>
+      'Morning and evening, never more than two a day';
+
+  @override
+  String get settingsNewsTitle => 'Game news';
+
+  @override
+  String get settingsNewsDetail => 'New worlds and announcements';
+
+  @override
+  String settingsToggleOn(String title) {
+    return '$title, on';
+  }
+
+  @override
+  String settingsToggleOff(String title) {
+    return '$title, off';
+  }
+
+  @override
+  String get settingsFaqSectionPlaying => 'Playing';
+
+  @override
+  String get settingsFaqSectionStuck => 'Stuck?';
+
+  @override
+  String get settingsFaqSectionProgress => 'Your progress';
+
+  @override
+  String get settingsFaqSectionAds => 'Ads & sound';
+
+  @override
+  String get settingsFaqHowToPlayQ => 'How do I play?';
+
+  @override
+  String get settingsFaqHowToPlayA =>
+      'Tap a tube to pick up its top balls, then tap another tube to pour them in. Balls only land on the same color or in an empty tube. Sort every tube to one color and the level is done. Settings → How to play replays the guided first level.';
+
+  @override
+  String get settingsFaqStarsQ => 'What do the stars mean?';
+
+  @override
+  String get settingsFaqStarsA =>
+      'Stars count moves, nothing else. Finish in par or fewer for three stars, within one and a half times par for two, and any finish earns one. Par is the fewest moves the level can be solved in.';
+
+  @override
+  String get settingsFaqClockQ => 'Does the clock cost me stars?';
+
+  @override
+  String get settingsFaqClockA =>
+      'Never. Time only changes your points. Beat the time par for bonus points, or take as long as you like and keep every star.';
+
+  @override
+  String get settingsFaqSolvableQ => 'Is every level solvable?';
+
+  @override
+  String get settingsFaqSolvableA =>
+      'Yes. Every board was solved before it shipped, and par comes from that solution, so it is always reachable.';
+
+  @override
+  String get settingsFaqDailyQ => 'What is the Daily Pour?';
+
+  @override
+  String get settingsFaqDailyA =>
+      'A new board every day, with its own leaderboard. It needs an internet connection. The campaign levels do not.';
+
+  @override
+  String get settingsFaqUndoQ => 'Is undo limited?';
+
+  @override
+  String get settingsFaqUndoA =>
+      'No. Undo is free and unlimited, on every level.';
+
+  @override
+  String get settingsFaqHintsQ => 'How do hints work?';
+
+  @override
+  String settingsFaqHintsA(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Your first $count hints are free. After that, a short video earns one. If a hint cannot be found, the video still counts toward your next one.',
+      one: 'Your first hint is free. After that, a short video earns one. If a hint cannot be found, the video still counts toward your next one.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get settingsFaqTubeQ => 'What is the + Tube button?';
+
+  @override
+  String get settingsFaqTubeA =>
+      'When your moves reach par, or a hint shows there is no way to finish, you can watch a video for an extra empty tube, up to two per attempt. Undo will not take it away. A level finished with an extra tube earns up to two stars.';
+
+  @override
+  String get settingsFaqHardQ => 'What are HARD levels?';
+
+  @override
+  String get settingsFaqHardA =>
+      'The toughest level in every ten wears a red HARD badge. It plays like any other level, and it is worth one and a half times the points.';
+
+  @override
+  String get settingsFaqChestsQ => 'What are star chests?';
+
+  @override
+  String get settingsFaqChestsA =>
+      'Every 30 stars opens a chest on your Journey: two hints and an extra tube, saved for when you need them. Every third chest also unlocks a ball skin.';
+
+  @override
+  String get settingsFaqFreezeQ => 'What is a streak freeze?';
+
+  @override
+  String get settingsFaqFreezeA =>
+      'Miss a day of the Daily Pour and a freeze covers it, so your streak carries on. You get one free every Monday, can earn one a day with a video, and can hold two.';
+
+  @override
+  String get settingsFaqAccountQ => 'Do I need an account?';
+
+  @override
+  String get settingsFaqAccountA =>
+      'No. You play as a guest and your progress is saved on this phone. Signing in keeps your stars when you move to a new phone.';
+
+  @override
+  String get settingsFaqOfflineQ => 'Can I play offline?';
+
+  @override
+  String get settingsFaqOfflineA =>
+      'Yes, the whole campaign. The Daily Pour and leaderboards need a connection, and your progress syncs when you are back online.';
+
+  @override
+  String get settingsFaqNameQ => 'How do I change my leaderboard name?';
+
+  @override
+  String get settingsFaqNameA =>
+      'Settings → Change your name. You can also hide yourself from the boards there; your stars still count.';
+
+  @override
+  String get settingsFaqRemoveAdsQ => 'What does Remove ads do?';
+
+  @override
+  String get settingsFaqRemoveAdsA =>
+      'It turns off the ads between levels. Hint and tube videos stay, because you only ever see one when you ask for it.';
+
+  @override
+  String get settingsFaqReinstallQ => 'I reinstalled. Where did Remove ads go?';
+
+  @override
+  String get settingsFaqReinstallA =>
+      'It belongs to the store account you bought it with and usually comes back on its own. If not, tap Settings → Restore purchases.';
+
+  @override
+  String get settingsFaqMusicQ => 'Will the game stop my music?';
+
+  @override
+  String get settingsFaqMusicA =>
+      'No. Pourfect plays its sounds alongside your music or podcast. Sound and haptics can be turned off in Settings.';
+
+  @override
+  String get settingsLegalTitle => 'Before we pour';
+
+  @override
+  String get settingsLegalIntro =>
+      'Pourfect is free, works offline and doesn\'t need an account. Please read and accept these first.';
+
+  @override
+  String settingsLegalAcceptTerms(String document) {
+    return 'I accept the $document';
+  }
+
+  @override
+  String settingsLegalReadPrivacy(String document) {
+    return 'I\'ve read the $document';
+  }
+
+  @override
+  String settingsLegalAlsoCovers(String document, String version) {
+    return 'Accepting also covers our $document (version $version).';
+  }
+
+  @override
+  String get settingsLegalPrivacyPolicy => 'Privacy Policy';
+
+  @override
+  String get settingsLegalTermsOfService => 'Terms of Service';
+
+  @override
+  String get settingsLegalRefundPolicy => 'Refund Policy';
+
+  @override
+  String settingsLegalReadDocument(String document) {
+    return 'Read the $document';
+  }
+
+  @override
+  String get settingsLegalAccept => 'LET\'S POUR!';
+
+  @override
+  String get settingsLegalReadAgain =>
+      'You can read these again any time in Settings.';
+
+  @override
+  String get settingsLegalLoadFailed =>
+      'This document could not be loaded on this device.\n\nYou can read it at legal.pranta.dev before accepting.';
+
+  @override
+  String get settingsUpdateTitle => 'A new Pourfect is ready';
+
+  @override
+  String get settingsUpdateBody =>
+      'Google Play will download it and open the game again when it is done. Your stars are safe.';
+
+  @override
+  String get settingsUpdateMandatoryTitle => 'Time to update';
+
+  @override
+  String get settingsUpdateMandatoryBody =>
+      'This version of Pourfect is no longer supported. Google Play will download the update and open the game again. Your stars are safe.';
+
+  @override
+  String get settingsUpdateNow => 'Update now';
+
+  @override
+  String get settingsRenameHello => 'HELLO';
+
+  @override
+  String get settingsRenameMyNameIs => 'MY NAME IS';
+
+  @override
+  String get settingsRenameHint => 'Other players see this on the boards';
+
+  @override
+  String get settingsRenameSave => 'SAVE';
+
+  @override
+  String settingsCollectionUnlockWith(String how) {
+    return 'Unlock it with: $how.';
+  }
+
+  @override
+  String get settingsCollectionChangeFailed =>
+      'Could not change it right now. Try again later.';
+
+  @override
+  String get settingsPackThanks => 'Thank you! The pack unlocks in a moment.';
+
+  @override
+  String get settingsPackAlreadyOwned => 'Already yours. Restoring it now.';
+
+  @override
+  String get settingsPackPending =>
+      'Payment pending. The pack unlocks once it clears.';
+
+  @override
+  String get settingsCollectionOffline =>
+      'Connect to the internet to see your collection.';
+
+  @override
+  String get settingsCollectionBallSkins => 'Ball skins';
+
+  @override
+  String get settingsCollectionTubeThemes => 'Tube themes';
+
+  @override
+  String settingsCollectionPreview(String skin, String theme) {
+    return '$skin balls · $theme tubes';
+  }
+
+  @override
+  String settingsCollectionItemWorn(String name) {
+    return '$name, worn';
+  }
+
+  @override
+  String settingsCollectionItemTapToWear(String name) {
+    return '$name, tap to wear';
+  }
+
+  @override
+  String settingsCollectionItemLocked(String name, String how) {
+    return '$name, locked: $how';
+  }
+
+  @override
+  String get settingsCollectionWearing => 'Wearing';
+
+  @override
+  String get settingsCollectionTapToWear => 'Tap to wear';
+
+  @override
+  String settingsUnlockChest(int number) {
+    return 'Star chest $number';
+  }
+
+  @override
+  String settingsUnlockStreak(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days-day streak',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get settingsUnlockFree => 'Free';
+
+  @override
+  String get settingsSkinPack => 'Skin pack';
+
+  @override
+  String get settingsSkinPackDetail =>
+      'Marble, Pearl and Checker balls, Wood and Lilac tubes.';
+
+  @override
+  String get settingsOwned => 'OWNED';
+
+  @override
+  String get settingsSoon => 'Soon';
+
+  @override
+  String get settingsSkinClassic => 'Classic';
+
+  @override
+  String get settingsSkinGlossy => 'Glossy';
+
+  @override
+  String get settingsSkinStriped => 'Candy stripe';
+
+  @override
+  String get settingsSkinGlow => 'Glow';
+
+  @override
+  String get settingsSkinSpeckled => 'Sprinkles';
+
+  @override
+  String get settingsSkinMarble => 'Marble';
+
+  @override
+  String get settingsSkinPearl => 'Pearl';
+
+  @override
+  String get settingsSkinChecker => 'Checker';
+
+  @override
+  String get settingsTubeToy => 'Toy';
+
+  @override
+  String get settingsTubeFrost => 'Frost';
+
+  @override
+  String get settingsTubeWood => 'Wood';
+
+  @override
+  String get settingsTubeLilac => 'Lilac';
 }

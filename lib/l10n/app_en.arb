@@ -1870,5 +1870,944 @@
   "playZenNoHint": "No hint for this position right now.",
   "@playZenNoHint": {
     "description": "Toast when no Zen hint is available."
+  },
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Settings screen header title; keep short."
+  },
+  "settingsSectionFeel": "Feel",
+  "@settingsSectionFeel": {
+    "description": "Settings section label over sound, music, haptics and motion; shown in capitals; one short word."
+  },
+  "settingsSectionVisibility": "Visibility",
+  "@settingsSectionVisibility": {
+    "description": "Settings section label over the accessibility (bold symbols) toggle; shown in capitals; keep short."
+  },
+  "settingsSectionLeaderboard": "Leaderboard",
+  "@settingsSectionLeaderboard": {
+    "description": "Settings section label over the name and leaderboard-visibility rows; shown in capitals; keep short."
+  },
+  "settingsSectionNotifications": "Notifications",
+  "@settingsSectionNotifications": {
+    "description": "Settings section label over the notification switches; shown in capitals; keep short."
+  },
+  "settingsSectionSupport": "Support",
+  "@settingsSectionSupport": {
+    "description": "Settings section label over help, rating, collection and purchase rows; shown in capitals; keep short."
+  },
+  "settingsSectionAccount": "Account & about",
+  "@settingsSectionAccount": {
+    "description": "Settings section label over sign-in and legal rows; shown in capitals; keep short."
+  },
+  "settingsSectionDanger": "Danger zone",
+  "@settingsSectionDanger": {
+    "description": "Settings section label over reset progress and delete account; shown in capitals in red; keep short."
+  },
+  "settingsSoundTitle": "Sound effects",
+  "@settingsSoundTitle": {
+    "description": "Settings toggle row title for sound effects; one line, keep short."
+  },
+  "settingsSoundDetail": "Pours, buttons and rewards",
+  "@settingsSoundDetail": {
+    "description": "Explanation under the Sound effects toggle; may wrap but keep brief."
+  },
+  "settingsSoundVolume": "Effects volume",
+  "@settingsSoundVolume": {
+    "description": "Accessibility label of the sound effects volume slider."
+  },
+  "settingsMusicTitle": "Music",
+  "@settingsMusicTitle": {
+    "description": "Settings toggle row title for background music; keep short."
+  },
+  "settingsMusicDetail": "Never plays over your own music",
+  "@settingsMusicDetail": {
+    "description": "Explanation under the Music toggle: the game never interrupts the player's own music app."
+  },
+  "settingsMusicVolume": "Music volume",
+  "@settingsMusicVolume": {
+    "description": "Accessibility label of the music volume slider."
+  },
+  "settingsHapticsTitle": "Haptics",
+  "@settingsHapticsTitle": {
+    "description": "Settings toggle row title for vibration feedback; keep short."
+  },
+  "settingsHapticsDetail": "A tick as each ball lands",
+  "@settingsHapticsDetail": {
+    "description": "Explanation under the Haptics toggle."
+  },
+  "settingsSmoothMotionTitle": "Smooth motion",
+  "@settingsSmoothMotionTitle": {
+    "description": "Settings row title for the screen refresh-rate choice; keep short."
+  },
+  "settingsSmoothMotionAuto": "Auto",
+  "@settingsSmoothMotionAuto": {
+    "description": "Segmented option: pick the refresh rate automatically. Very short (one of three tabs)."
+  },
+  "settingsSmoothMotion60": "60 Hz",
+  "@settingsSmoothMotion60": {
+    "description": "Segmented option: always run at 60 Hz. Very short (one of three tabs)."
+  },
+  "settingsSmoothMotionMax": "Max",
+  "@settingsSmoothMotionMax": {
+    "description": "Segmented option: always the screen's fastest refresh rate. Very short (one of three tabs)."
+  },
+  "settingsMotionUnknown": "Auto uses your screen's fastest rate if this phone keeps up",
+  "@settingsMotionUnknown": {
+    "description": "Smooth motion detail line when the screen's refresh rate is not known yet."
+  },
+  "settingsMotionFixed": "This screen only runs at {max} Hz",
+  "@settingsMotionFixed": {
+    "description": "Smooth motion detail line when the screen has a single refresh rate. {max} is a number like 60 or 59.9.",
+    "placeholders": {
+      "max": {
+        "type": "String",
+        "example": "60"
+      }
+    }
+  },
+  "settingsMotionBatterySaver": "Battery Saver is holding it at {current} Hz",
+  "@settingsMotionBatterySaver": {
+    "description": "Smooth motion detail line when the phone's power saving mode limits the refresh rate. {current} is a number like 60.",
+    "placeholders": {
+      "current": {
+        "type": "String",
+        "example": "60"
+      }
+    }
+  },
+  "settingsMotionAutoStuttered": "Running at {current} Hz · this phone stuttered at {max} Hz",
+  "@settingsMotionAutoStuttered": {
+    "description": "Smooth motion detail line in Auto after the game stepped down because frames were dropped. Both are numbers like 60 and 120.",
+    "placeholders": {
+      "current": {
+        "type": "String",
+        "example": "60"
+      },
+      "max": {
+        "type": "String",
+        "example": "120"
+      }
+    }
+  },
+  "settingsMotionAuto": "Running at {current} Hz · drops to 60 Hz if it stutters",
+  "@settingsMotionAuto": {
+    "description": "Smooth motion detail line in Auto. {current} is a number like 120.",
+    "placeholders": {
+      "current": {
+        "type": "String",
+        "example": "120"
+      }
+    }
+  },
+  "settingsMotionPinnedByPhone": "Your phone's display setting keeps it at {current} Hz",
+  "@settingsMotionPinnedByPhone": {
+    "description": "Smooth motion detail line when 60 Hz was chosen but the phone's own setting forces a higher rate. {current} is a number like 90.",
+    "placeholders": {
+      "current": {
+        "type": "String",
+        "example": "90"
+      }
+    }
+  },
+  "settingsMotionStandard": "Running at {current} Hz · this screen can do {max} Hz",
+  "@settingsMotionStandard": {
+    "description": "Smooth motion detail line when 60 Hz is chosen. Both are numbers like 60 and 120.",
+    "placeholders": {
+      "current": {
+        "type": "String",
+        "example": "60"
+      },
+      "max": {
+        "type": "String",
+        "example": "120"
+      }
+    }
+  },
+  "settingsMotionMax": "Running at {current} Hz, the fastest this screen goes",
+  "@settingsMotionMax": {
+    "description": "Smooth motion detail line when Max is chosen. {current} is a number like 120.",
+    "placeholders": {
+      "current": {
+        "type": "String",
+        "example": "120"
+      }
+    }
+  },
+  "settingsBoldSymbolsTitle": "Bold symbols",
+  "@settingsBoldSymbolsTitle": {
+    "description": "Settings toggle title: draws the shapes on the balls with heavier strokes; keep short."
+  },
+  "settingsBoldSymbolsDetail": "Stronger shapes for color vision deficiency",
+  "@settingsBoldSymbolsDetail": {
+    "description": "Explanation under Bold symbols. Name the condition (color blindness) in the words players search for."
+  },
+  "settingsRenameTitle": "Change your name",
+  "@settingsRenameTitle": {
+    "description": "Settings row title that opens the leaderboard name editor; one line."
+  },
+  "settingsRenameDetail": "How you appear on the boards",
+  "@settingsRenameDetail": {
+    "description": "Detail under Change your name; one line, ellipsized if long."
+  },
+  "settingsShowOnBoardsTitle": "Show me on leaderboards",
+  "@settingsShowOnBoardsTitle": {
+    "description": "Settings toggle title: list the player on public leaderboards; one line."
+  },
+  "settingsShowOnBoardsDetail": "Off hides your name and rank. Stars still count.",
+  "@settingsShowOnBoardsDetail": {
+    "description": "Explanation under Show me on leaderboards."
+  },
+  "settingsHowToPlayTitle": "How to play",
+  "@settingsHowToPlayTitle": {
+    "description": "Settings row title that replays the tutorial level; one line."
+  },
+  "settingsHowToPlayDetail": "Replay the guided first level",
+  "@settingsHowToPlayDetail": {
+    "description": "Detail under How to play; one line, ellipsized if long."
+  },
+  "settingsQuestionsTitle": "Questions",
+  "@settingsQuestionsTitle": {
+    "description": "Settings row title and header of the FAQ screen; keep short."
+  },
+  "settingsQuestionsDetail": "Stars, hints, the clock and more",
+  "@settingsQuestionsDetail": {
+    "description": "Detail under Questions (the FAQ); one line, ellipsized if long."
+  },
+  "settingsRateTitle": "Rate Pourfect",
+  "@settingsRateTitle": {
+    "description": "Settings row title that opens the store listing to leave a rating; one line. 'Pourfect' is the game's name."
+  },
+  "settingsRateDetail": "Tell other players what you think",
+  "@settingsRateDetail": {
+    "description": "Detail under Rate Pourfect; one line, ellipsized if long."
+  },
+  "settingsCollectionTitle": "Collection",
+  "@settingsCollectionTitle": {
+    "description": "Settings row title and header of the Collection screen (ball skins and tube themes); keep short."
+  },
+  "settingsCollectionDetail": "Ball skins and tube themes",
+  "@settingsCollectionDetail": {
+    "description": "Detail under Collection; one line, ellipsized if long."
+  },
+  "settingsRestoreTitle": "Restore purchases",
+  "@settingsRestoreTitle": {
+    "description": "Settings row title that restores in-app purchases; one line."
+  },
+  "settingsRestoreDetail": "Remove Ads or the Skin pack",
+  "@settingsRestoreDetail": {
+    "description": "Detail under Restore purchases, naming the two products; one line."
+  },
+  "settingsRestoreDone": "Purchases restored, if there were any.",
+  "@settingsRestoreDone": {
+    "description": "Toast after Restore purchases finishes."
+  },
+  "settingsRemoveAdsTitle": "Remove ads",
+  "@settingsRemoveAdsTitle": {
+    "description": "Settings row title for the Remove Ads purchase, also its accessibility label; one line."
+  },
+  "settingsRemoveAdsDetail": "No ads between levels. Hint videos stay.",
+  "@settingsRemoveAdsDetail": {
+    "description": "Detail under Remove ads: what it does and does not remove. Keep both halves."
+  },
+  "settingsAdsRemoved": "Ads removed — thank you",
+  "@settingsAdsRemoved": {
+    "description": "Settings row shown instead of the purchase once ads are removed; one line."
+  },
+  "settingsPurchaseThanks": "Thank you. Ads between levels are off.",
+  "@settingsPurchaseThanks": {
+    "description": "Toast after buying Remove Ads."
+  },
+  "settingsPurchaseAlreadyOwned": "Already purchased — ads are off.",
+  "@settingsPurchaseAlreadyOwned": {
+    "description": "Toast when Remove Ads was already bought."
+  },
+  "settingsPurchasePending": "Payment pending. Ads will switch off once it clears.",
+  "@settingsPurchasePending": {
+    "description": "Toast when the Remove Ads payment is still pending."
+  },
+  "settingsStoreUnavailable": "The store is not available on this device right now.",
+  "@settingsStoreUnavailable": {
+    "description": "Toast when the app store cannot be reached for a purchase (Settings and Collection)."
+  },
+  "settingsPurchaseFailed": "The purchase did not go through. You have not been charged.",
+  "@settingsPurchaseFailed": {
+    "description": "Toast when a purchase failed (Settings and Collection)."
+  },
+  "settingsStoreOpenFailed": "Could not open the store.",
+  "@settingsStoreOpenFailed": {
+    "description": "Toast when the store listing could not be opened from Rate Pourfect."
+  },
+  "settingsBrowserOpenFailed": "Could not open the browser.",
+  "@settingsBrowserOpenFailed": {
+    "description": "Toast when a legal document link could not open the web browser."
+  },
+  "settingsSignedIn": "Signed in",
+  "@settingsSignedIn": {
+    "description": "Settings row title (and player card line) for a signed-in player; keep short."
+  },
+  "settingsSignedInDetail": "Your progress moves with you",
+  "@settingsSignedInDetail": {
+    "description": "Detail under Signed in when there is no email to show; one line."
+  },
+  "settingsSaveProgressTitle": "Save your progress",
+  "@settingsSaveProgressTitle": {
+    "description": "Settings row title that opens sign-in for a guest player; one line."
+  },
+  "settingsSaveProgressDetail": "Keep your stars if you change phones",
+  "@settingsSaveProgressDetail": {
+    "description": "Detail under Save your progress; one line, ellipsized if long."
+  },
+  "settingsPrivacyPolicy": "Privacy policy",
+  "@settingsPrivacyPolicy": {
+    "description": "Settings row title that opens the privacy policy web page; one line."
+  },
+  "settingsTermsAndLicenses": "Terms & licenses",
+  "@settingsTermsAndLicenses": {
+    "description": "Settings row title and dialog title for terms of use, refund policy and open-source licenses; keep short."
+  },
+  "settingsTermsOfUse": "Terms of use",
+  "@settingsTermsOfUse": {
+    "description": "Button in the Terms & licenses dialog."
+  },
+  "settingsRefundPolicy": "Refund policy",
+  "@settingsRefundPolicy": {
+    "description": "Button in the Terms & licenses dialog."
+  },
+  "settingsOpenSourceLicenses": "Open-source licenses",
+  "@settingsOpenSourceLicenses": {
+    "description": "Button in the Terms & licenses dialog that opens the license page."
+  },
+  "settingsAdPrivacyTitle": "Ad privacy options",
+  "@settingsAdPrivacyTitle": {
+    "description": "Settings row title that reopens the advertising consent form; one line."
+  },
+  "settingsAdPrivacyDetail": "Change what you agreed to for advertising",
+  "@settingsAdPrivacyDetail": {
+    "description": "Detail under Ad privacy options; one line, ellipsized if long."
+  },
+  "settingsResetRowTitle": "Reset progress",
+  "@settingsResetRowTitle": {
+    "description": "Danger zone row title; one line."
+  },
+  "settingsResetRowDetail": "Erase every star and start from level 1",
+  "@settingsResetRowDetail": {
+    "description": "Detail under Reset progress; one line, ellipsized if long."
+  },
+  "settingsResetTitle": "Reset progress?",
+  "@settingsResetTitle": {
+    "description": "Confirmation dialog title for resetting progress."
+  },
+  "settingsResetNothing": "There is nothing to reset yet.",
+  "@settingsResetNothing": {
+    "description": "Reset confirmation body when no level has been solved."
+  },
+  "settingsResetBody": "{count, plural, =1{This erases every star and best score across 1 solved level, and locks everything after level 1 again. It cannot be undone.} other{This erases every star and best score across {count} solved levels, and locks everything after level 1 again. It cannot be undone.}}",
+  "@settingsResetBody": {
+    "description": "Reset confirmation body. {count} is how many levels the player has solved.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsKeepIt": "Keep it",
+  "@settingsKeepIt": {
+    "description": "Cancel button on the reset-progress and delete-account confirmations; short."
+  },
+  "settingsResetConfirm": "Erase everything",
+  "@settingsResetConfirm": {
+    "description": "Destructive confirm button on the reset-progress dialog; short."
+  },
+  "settingsResetDone": "Progress reset.",
+  "@settingsResetDone": {
+    "description": "Toast after progress was reset."
+  },
+  "settingsSignOutTitle": "Sign out?",
+  "@settingsSignOutTitle": {
+    "description": "Sign-out confirmation dialog title."
+  },
+  "settingsSignOutBody": "Your progress stays on this phone. You can sign back in any time to pick it up somewhere else.",
+  "@settingsSignOutBody": {
+    "description": "Sign-out confirmation body."
+  },
+  "settingsSignOutStay": "Stay signed in",
+  "@settingsSignOutStay": {
+    "description": "Cancel button on the sign-out confirmation; short."
+  },
+  "settingsSignOutConfirm": "Sign out",
+  "@settingsSignOutConfirm": {
+    "description": "Confirm button on the sign-out confirmation; short."
+  },
+  "settingsServerUnreachable": "Could not reach the server, so nothing changed.",
+  "@settingsServerUnreachable": {
+    "description": "Toast when a leaderboard or notification setting could not be saved."
+  },
+  "settingsDeleteRowTitle": "Delete account",
+  "@settingsDeleteRowTitle": {
+    "description": "Danger zone row title; one line."
+  },
+  "settingsDeleteRowDetail": "Remove your account and everything with it",
+  "@settingsDeleteRowDetail": {
+    "description": "Detail under Delete account; one line, ellipsized if long."
+  },
+  "settingsDeleteTitle": "Delete your account?",
+  "@settingsDeleteTitle": {
+    "description": "Delete-account confirmation dialog title."
+  },
+  "settingsDeleteBody": "This removes your account, your stars, your streak and your leaderboard entry, on this phone and on our server. It cannot be undone.\n\nRemove Ads is not affected — it belongs to the store account you bought it with, and restores if you play again.",
+  "@settingsDeleteBody": {
+    "description": "Delete-account confirmation body; two paragraphs. 'Remove Ads' is the purchase's name."
+  },
+  "settingsDeleteConfirm": "Delete everything",
+  "@settingsDeleteConfirm": {
+    "description": "Destructive confirm button on the delete-account dialog; short."
+  },
+  "settingsDeleteServerRefused": "Could not reach the server. Nothing was deleted — try again when you are back online.",
+  "@settingsDeleteServerRefused": {
+    "description": "Toast when account deletion failed because the server was unreachable."
+  },
+  "settingsDeleteNotAuthenticated": "Could not confirm it is you. Sign in again, then delete your account — nothing has been deleted yet.",
+  "@settingsDeleteNotAuthenticated": {
+    "description": "Toast when account deletion failed because the login could not be verified."
+  },
+  "settingsFooterVersion": "Pourfect {version}",
+  "@settingsFooterVersion": {
+    "description": "Small footer at the bottom of Settings: the game's name and version, e.g. 'Pourfect 2.8.0 (20)'.",
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "2.8.0 (20)"
+      }
+    }
+  },
+  "settingsFooterVersionBoards": "{count, plural, =1{Pourfect {version} · made with 1 proven-solvable board} other{Pourfect {version} · made with {count} proven-solvable boards}}",
+  "@settingsFooterVersionBoards": {
+    "description": "Small footer at the bottom of Settings: game name, version, and how many levels the game has (each proven solvable).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "version": {
+        "type": "String",
+        "example": "2.8.0 (20)"
+      }
+    }
+  },
+  "settingsNamingYou": "Naming you…",
+  "@settingsNamingYou": {
+    "description": "Shown on the player card while the server has not yet assigned a leaderboard name."
+  },
+  "settingsYourName": "Your name",
+  "@settingsYourName": {
+    "description": "Accessibility label of the player card, which opens the name editor."
+  },
+  "settingsGuest": "Playing as a guest",
+  "@settingsGuest": {
+    "description": "Player card line for a player who has not signed in; one line."
+  },
+  "settingsStatSolved": "SOLVED",
+  "@settingsStatSolved": {
+    "description": "Tiny caps label under the solved-levels count on the player card; very short."
+  },
+  "settingsStatStars": "STARS",
+  "@settingsStatStars": {
+    "description": "Tiny caps label under the stars count on the player card; very short."
+  },
+  "settingsNotifyTurnOnTitle": "Turn on notifications",
+  "@settingsNotifyTurnOnTitle": {
+    "description": "Settings row title shown while the phone blocks notifications; one line."
+  },
+  "settingsNotifyDeniedDetail": "Off in your phone's settings. Tap to open them.",
+  "@settingsNotifyDeniedDetail": {
+    "description": "Detail under Turn on notifications when the system setting is off; one line."
+  },
+  "settingsNotifyNotYetDetail": "Pourfect can't notify you yet",
+  "@settingsNotifyNotYetDetail": {
+    "description": "Detail under Turn on notifications before permission was asked; one line."
+  },
+  "settingsRemindersTitle": "Daily Pour reminders",
+  "@settingsRemindersTitle": {
+    "description": "Notification toggle title. 'Daily Pour' is the daily challenge's name; keep short."
+  },
+  "settingsRemindersDetail": "Morning and evening, never more than two a day",
+  "@settingsRemindersDetail": {
+    "description": "Explanation under Daily Pour reminders."
+  },
+  "settingsNewsTitle": "Game news",
+  "@settingsNewsTitle": {
+    "description": "Notification toggle title for announcements; keep short."
+  },
+  "settingsNewsDetail": "New worlds and announcements",
+  "@settingsNewsDetail": {
+    "description": "Explanation under Game news."
+  },
+  "settingsToggleOn": "{title}, on",
+  "@settingsToggleOn": {
+    "description": "Accessibility label of a settings switch that is on. {title} is the row title.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Music"
+      }
+    }
+  },
+  "settingsToggleOff": "{title}, off",
+  "@settingsToggleOff": {
+    "description": "Accessibility label of a settings switch that is off. {title} is the row title.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Music"
+      }
+    }
+  },
+  "settingsFaqSectionPlaying": "Playing",
+  "@settingsFaqSectionPlaying": {
+    "description": "FAQ section label; shown in capitals; keep short."
+  },
+  "settingsFaqSectionStuck": "Stuck?",
+  "@settingsFaqSectionStuck": {
+    "description": "FAQ section label over undo, hints and power-up questions; shown in capitals; keep short."
+  },
+  "settingsFaqSectionProgress": "Your progress",
+  "@settingsFaqSectionProgress": {
+    "description": "FAQ section label; shown in capitals; keep short."
+  },
+  "settingsFaqSectionAds": "Ads & sound",
+  "@settingsFaqSectionAds": {
+    "description": "FAQ section label; shown in capitals; keep short."
+  },
+  "settingsFaqHowToPlayQ": "How do I play?",
+  "@settingsFaqHowToPlayQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqHowToPlayA": "Tap a tube to pick up its top balls, then tap another tube to pour them in. Balls only land on the same color or in an empty tube. Sort every tube to one color and the level is done. Settings → How to play replays the guided first level.",
+  "@settingsFaqHowToPlayA": {
+    "description": "FAQ answer. 'Settings → How to play' must match the Settings screen and the How to play row titles."
+  },
+  "settingsFaqStarsQ": "What do the stars mean?",
+  "@settingsFaqStarsQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqStarsA": "Stars count moves, nothing else. Finish in par or fewer for three stars, within one and a half times par for two, and any finish earns one. Par is the fewest moves the level can be solved in.",
+  "@settingsFaqStarsA": {
+    "description": "FAQ answer. The thresholds (par, 1.5x par) are game rules; keep them exact."
+  },
+  "settingsFaqClockQ": "Does the clock cost me stars?",
+  "@settingsFaqClockQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqClockA": "Never. Time only changes your points. Beat the time par for bonus points, or take as long as you like and keep every star.",
+  "@settingsFaqClockA": {
+    "description": "FAQ answer."
+  },
+  "settingsFaqSolvableQ": "Is every level solvable?",
+  "@settingsFaqSolvableQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqSolvableA": "Yes. Every board was solved before it shipped, and par comes from that solution, so it is always reachable.",
+  "@settingsFaqSolvableA": {
+    "description": "FAQ answer."
+  },
+  "settingsFaqDailyQ": "What is the Daily Pour?",
+  "@settingsFaqDailyQ": {
+    "description": "FAQ question. 'Daily Pour' is the daily challenge's name."
+  },
+  "settingsFaqDailyA": "A new board every day, with its own leaderboard. It needs an internet connection. The campaign levels do not.",
+  "@settingsFaqDailyA": {
+    "description": "FAQ answer."
+  },
+  "settingsFaqUndoQ": "Is undo limited?",
+  "@settingsFaqUndoQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqUndoA": "No. Undo is free and unlimited, on every level.",
+  "@settingsFaqUndoA": {
+    "description": "FAQ answer."
+  },
+  "settingsFaqHintsQ": "How do hints work?",
+  "@settingsFaqHintsQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqHintsA": "{count, plural, =1{Your first hint is free. After that, a short video earns one. If a hint cannot be found, the video still counts toward your next one.} other{Your first {count} hints are free. After that, a short video earns one. If a hint cannot be found, the video still counts toward your next one.}}",
+  "@settingsFaqHintsA": {
+    "description": "FAQ answer. {count} is the number of free hints the game gives.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsFaqTubeQ": "What is the + Tube button?",
+  "@settingsFaqTubeQ": {
+    "description": "FAQ question. '+ Tube' is the in-game button's label."
+  },
+  "settingsFaqTubeA": "When your moves reach par, or a hint shows there is no way to finish, you can watch a video for an extra empty tube, up to two per attempt. Undo will not take it away. A level finished with an extra tube earns up to two stars.",
+  "@settingsFaqTubeA": {
+    "description": "FAQ answer."
+  },
+  "settingsFaqHardQ": "What are HARD levels?",
+  "@settingsFaqHardQ": {
+    "description": "FAQ question. 'HARD' is the badge's text on the level."
+  },
+  "settingsFaqHardA": "The toughest level in every ten wears a red HARD badge. It plays like any other level, and it is worth one and a half times the points.",
+  "@settingsFaqHardA": {
+    "description": "FAQ answer. 'HARD' must match the badge's text."
+  },
+  "settingsFaqChestsQ": "What are star chests?",
+  "@settingsFaqChestsQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqChestsA": "Every 30 stars opens a chest on your Journey: two hints and an extra tube, saved for when you need them. Every third chest also unlocks a ball skin.",
+  "@settingsFaqChestsA": {
+    "description": "FAQ answer. 'Journey' is the level map screen's name."
+  },
+  "settingsFaqFreezeQ": "What is a streak freeze?",
+  "@settingsFaqFreezeQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqFreezeA": "Miss a day of the Daily Pour and a freeze covers it, so your streak carries on. You get one free every Monday, can earn one a day with a video, and can hold two.",
+  "@settingsFaqFreezeA": {
+    "description": "FAQ answer."
+  },
+  "settingsFaqAccountQ": "Do I need an account?",
+  "@settingsFaqAccountQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqAccountA": "No. You play as a guest and your progress is saved on this phone. Signing in keeps your stars when you move to a new phone.",
+  "@settingsFaqAccountA": {
+    "description": "FAQ answer."
+  },
+  "settingsFaqOfflineQ": "Can I play offline?",
+  "@settingsFaqOfflineQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqOfflineA": "Yes, the whole campaign. The Daily Pour and leaderboards need a connection, and your progress syncs when you are back online.",
+  "@settingsFaqOfflineA": {
+    "description": "FAQ answer."
+  },
+  "settingsFaqNameQ": "How do I change my leaderboard name?",
+  "@settingsFaqNameQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqNameA": "Settings → Change your name. You can also hide yourself from the boards there; your stars still count.",
+  "@settingsFaqNameA": {
+    "description": "FAQ answer. 'Settings → Change your name' must match the screen and row titles."
+  },
+  "settingsFaqRemoveAdsQ": "What does Remove ads do?",
+  "@settingsFaqRemoveAdsQ": {
+    "description": "FAQ question. 'Remove ads' is the purchase's name."
+  },
+  "settingsFaqRemoveAdsA": "It turns off the ads between levels. Hint and tube videos stay, because you only ever see one when you ask for it.",
+  "@settingsFaqRemoveAdsA": {
+    "description": "FAQ answer."
+  },
+  "settingsFaqReinstallQ": "I reinstalled. Where did Remove ads go?",
+  "@settingsFaqReinstallQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqReinstallA": "It belongs to the store account you bought it with and usually comes back on its own. If not, tap Settings → Restore purchases.",
+  "@settingsFaqReinstallA": {
+    "description": "FAQ answer. 'Settings → Restore purchases' must match the screen and row titles."
+  },
+  "settingsFaqMusicQ": "Will the game stop my music?",
+  "@settingsFaqMusicQ": {
+    "description": "FAQ question."
+  },
+  "settingsFaqMusicA": "No. Pourfect plays its sounds alongside your music or podcast. Sound and haptics can be turned off in Settings.",
+  "@settingsFaqMusicA": {
+    "description": "FAQ answer."
+  },
+  "settingsLegalTitle": "Before we pour",
+  "@settingsLegalTitle": {
+    "description": "Title of the legal acceptance card shown before play; large display type, keep short."
+  },
+  "settingsLegalIntro": "Pourfect is free, works offline and doesn't need an account. Please read and accept these first.",
+  "@settingsLegalIntro": {
+    "description": "Intro text on the legal acceptance card."
+  },
+  "settingsLegalAcceptTerms": "I accept the {document}",
+  "@settingsLegalAcceptTerms": {
+    "description": "Checkbox text on the legal card. {document} is the Terms of Service name, shown as a tappable link.",
+    "placeholders": {
+      "document": {
+        "type": "String",
+        "example": "Terms of Service"
+      }
+    }
+  },
+  "settingsLegalReadPrivacy": "I've read the {document}",
+  "@settingsLegalReadPrivacy": {
+    "description": "Checkbox text on the legal card. {document} is the Privacy Policy name, shown as a tappable link.",
+    "placeholders": {
+      "document": {
+        "type": "String",
+        "example": "Privacy Policy"
+      }
+    }
+  },
+  "settingsLegalAlsoCovers": "Accepting also covers our {document} (version {version}).",
+  "@settingsLegalAlsoCovers": {
+    "description": "Small print under the checkboxes. {document} is the Refund Policy name, shown as a tappable link; {version} is the legal documents' version.",
+    "placeholders": {
+      "document": {
+        "type": "String",
+        "example": "Refund Policy"
+      },
+      "version": {
+        "type": "String",
+        "example": "1.1"
+      }
+    }
+  },
+  "settingsLegalPrivacyPolicy": "Privacy Policy",
+  "@settingsLegalPrivacyPolicy": {
+    "description": "The privacy policy document's name: a link on the legal card and the reader dialog's title."
+  },
+  "settingsLegalTermsOfService": "Terms of Service",
+  "@settingsLegalTermsOfService": {
+    "description": "The terms document's name: a link on the legal card and the reader dialog's title."
+  },
+  "settingsLegalRefundPolicy": "Refund Policy",
+  "@settingsLegalRefundPolicy": {
+    "description": "The refund policy document's name: a link on the legal card and the reader dialog's title."
+  },
+  "settingsLegalReadDocument": "Read the {document}",
+  "@settingsLegalReadDocument": {
+    "description": "Accessibility label of a document link on the legal card.",
+    "placeholders": {
+      "document": {
+        "type": "String",
+        "example": "Privacy Policy"
+      }
+    }
+  },
+  "settingsLegalAccept": "LET'S POUR!",
+  "@settingsLegalAccept": {
+    "description": "Big button that accepts the legal documents and starts the game; all caps, short."
+  },
+  "settingsLegalReadAgain": "You can read these again any time in Settings.",
+  "@settingsLegalReadAgain": {
+    "description": "Small note under the accept button."
+  },
+  "settingsLegalLoadFailed": "This document could not be loaded on this device.\n\nYou can read it at legal.pranta.dev before accepting.",
+  "@settingsLegalLoadFailed": {
+    "description": "Shown in the document reader when a bundled legal document is missing. Keep the address legal.pranta.dev unchanged."
+  },
+  "settingsUpdateTitle": "A new Pourfect is ready",
+  "@settingsUpdateTitle": {
+    "description": "Title of the in-app update prompt; display type, keep short."
+  },
+  "settingsUpdateBody": "Google Play will download it and open the game again when it is done. Your stars are safe.",
+  "@settingsUpdateBody": {
+    "description": "Body of the in-app update prompt."
+  },
+  "settingsUpdateMandatoryTitle": "Time to update",
+  "@settingsUpdateMandatoryTitle": {
+    "description": "Title of the update prompt when this version is no longer supported; keep short."
+  },
+  "settingsUpdateMandatoryBody": "This version of Pourfect is no longer supported. Google Play will download the update and open the game again. Your stars are safe.",
+  "@settingsUpdateMandatoryBody": {
+    "description": "Body of the mandatory update prompt."
+  },
+  "settingsUpdateNow": "Update now",
+  "@settingsUpdateNow": {
+    "description": "Primary button on the update prompt; short."
+  },
+  "settingsRenameHello": "HELLO",
+  "@settingsRenameHello": {
+    "description": "Big header of the name editor, styled as a 'HELLO my name is' sticker; one short word, caps."
+  },
+  "settingsRenameMyNameIs": "MY NAME IS",
+  "@settingsRenameMyNameIs": {
+    "description": "Small line under HELLO on the name sticker; caps, short."
+  },
+  "settingsRenameHint": "Other players see this on the boards",
+  "@settingsRenameHint": {
+    "description": "Helper text under the name field in the name editor."
+  },
+  "settingsRenameSave": "SAVE",
+  "@settingsRenameSave": {
+    "description": "Save button of the name editor; caps, short."
+  },
+  "settingsCollectionUnlockWith": "Unlock it with: {how}.",
+  "@settingsCollectionUnlockWith": {
+    "description": "Toast when tapping a locked skin. {how} is a short unlock condition like 'Star chest 3' or '7-day streak'.",
+    "placeholders": {
+      "how": {
+        "type": "String",
+        "example": "Star chest 3"
+      }
+    }
+  },
+  "settingsCollectionChangeFailed": "Could not change it right now. Try again later.",
+  "@settingsCollectionChangeFailed": {
+    "description": "Toast when wearing a skin failed."
+  },
+  "settingsPackThanks": "Thank you! The pack unlocks in a moment.",
+  "@settingsPackThanks": {
+    "description": "Toast after buying the Skin pack."
+  },
+  "settingsPackAlreadyOwned": "Already yours. Restoring it now.",
+  "@settingsPackAlreadyOwned": {
+    "description": "Toast when the Skin pack was already bought."
+  },
+  "settingsPackPending": "Payment pending. The pack unlocks once it clears.",
+  "@settingsPackPending": {
+    "description": "Toast when the Skin pack payment is still pending."
+  },
+  "settingsCollectionOffline": "Connect to the internet to see your collection.",
+  "@settingsCollectionOffline": {
+    "description": "Shown on the Collection screen when the catalogue could not be loaded."
+  },
+  "settingsCollectionBallSkins": "Ball skins",
+  "@settingsCollectionBallSkins": {
+    "description": "Collection section label; shown in capitals; keep short."
+  },
+  "settingsCollectionTubeThemes": "Tube themes",
+  "@settingsCollectionTubeThemes": {
+    "description": "Collection section label; shown in capitals; keep short."
+  },
+  "settingsCollectionPreview": "{skin} balls · {theme} tubes",
+  "@settingsCollectionPreview": {
+    "description": "Caption under the preview of what is worn. {skin} is a ball skin name, {theme} a tube theme name.",
+    "placeholders": {
+      "skin": {
+        "type": "String",
+        "example": "Glossy"
+      },
+      "theme": {
+        "type": "String",
+        "example": "Toy"
+      }
+    }
+  },
+  "settingsCollectionItemWorn": "{name}, worn",
+  "@settingsCollectionItemWorn": {
+    "description": "Accessibility label of a skin card that is being worn.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Glossy"
+      }
+    }
+  },
+  "settingsCollectionItemTapToWear": "{name}, tap to wear",
+  "@settingsCollectionItemTapToWear": {
+    "description": "Accessibility label of an owned skin card.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Glossy"
+      }
+    }
+  },
+  "settingsCollectionItemLocked": "{name}, locked: {how}",
+  "@settingsCollectionItemLocked": {
+    "description": "Accessibility label of a locked skin card. {how} is a short unlock condition.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Marble"
+      },
+      "how": {
+        "type": "String",
+        "example": "Skin pack"
+      }
+    }
+  },
+  "settingsCollectionWearing": "Wearing",
+  "@settingsCollectionWearing": {
+    "description": "Status under a skin card that is being worn; one line, very short."
+  },
+  "settingsCollectionTapToWear": "Tap to wear",
+  "@settingsCollectionTapToWear": {
+    "description": "Status under an owned skin card; one line, very short."
+  },
+  "settingsUnlockChest": "Star chest {number}",
+  "@settingsUnlockChest": {
+    "description": "Unlock condition on a locked skin card: the numbered star chest that gives it. One line, very short.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsUnlockStreak": "{days, plural, other{{days}-day streak}}",
+  "@settingsUnlockStreak": {
+    "description": "Unlock condition on a locked skin card: a Daily Pour streak of this many days. One line, very short.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsUnlockFree": "Free",
+  "@settingsUnlockFree": {
+    "description": "Unlock condition on a skin card that is free; very short."
+  },
+  "settingsSkinPack": "Skin pack",
+  "@settingsSkinPack": {
+    "description": "Name of the paid cosmetics pack: title of its card, and the unlock condition on skins it contains. Short."
+  },
+  "settingsSkinPackDetail": "Marble, Pearl and Checker balls, Wood and Lilac tubes.",
+  "@settingsSkinPackDetail": {
+    "description": "What the Skin pack contains. Use the same skin and theme names as elsewhere."
+  },
+  "settingsOwned": "OWNED",
+  "@settingsOwned": {
+    "description": "Chip on the Skin pack card once bought; caps, very short."
+  },
+  "settingsSoon": "Soon",
+  "@settingsSoon": {
+    "description": "Shown on the Skin pack buy button when no price is available yet; very short."
+  },
+  "settingsSkinClassic": "Classic",
+  "@settingsSkinClassic": {
+    "description": "Ball skin name: the plain default look. Very short."
+  },
+  "settingsSkinGlossy": "Glossy",
+  "@settingsSkinGlossy": {
+    "description": "Ball skin name: shiny highlight. Very short."
+  },
+  "settingsSkinStriped": "Candy stripe",
+  "@settingsSkinStriped": {
+    "description": "Ball skin name: candy-like stripes. Very short."
+  },
+  "settingsSkinGlow": "Glow",
+  "@settingsSkinGlow": {
+    "description": "Ball skin name: glowing. Very short."
+  },
+  "settingsSkinSpeckled": "Sprinkles",
+  "@settingsSkinSpeckled": {
+    "description": "Ball skin name: candy sprinkles. Very short."
+  },
+  "settingsSkinMarble": "Marble",
+  "@settingsSkinMarble": {
+    "description": "Ball skin name: marbled stone. Very short."
+  },
+  "settingsSkinPearl": "Pearl",
+  "@settingsSkinPearl": {
+    "description": "Ball skin name: pearly sheen. Very short."
+  },
+  "settingsSkinChecker": "Checker",
+  "@settingsSkinChecker": {
+    "description": "Ball skin name: checkerboard pattern. Very short."
+  },
+  "settingsTubeToy": "Toy",
+  "@settingsTubeToy": {
+    "description": "Tube theme name: the plain default white tubes. Very short."
+  },
+  "settingsTubeFrost": "Frost",
+  "@settingsTubeFrost": {
+    "description": "Tube theme name: frosted icy glass. Very short."
+  },
+  "settingsTubeWood": "Wood",
+  "@settingsTubeWood": {
+    "description": "Tube theme name: wooden. Very short."
+  },
+  "settingsTubeLilac": "Lilac",
+  "@settingsTubeLilac": {
+    "description": "Tube theme name: pale purple (lilac) tubes. Very short."
   }
 }
