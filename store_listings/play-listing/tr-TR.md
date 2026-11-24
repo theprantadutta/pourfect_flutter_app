@@ -76,7 +76,7 @@ Character count: 3159 / 4000
 
 ## What's new
 
-2.7 sürümü dolu dolu geliyor:
+2.8 sürümü dolu dolu geliyor:
 - Sakin bir bölüm saati: hedef süreyi geç, ekstra puan kazan. Yıldızlar yine yalnızca hamlelere bağlı.
 - Zen modu: Calm, Steady ya da Deep seviyesinde sonsuz bölümler; saat yok, yıldız yok.
 - Daily Pour: her gün yeni bir bölüm, serilerle.

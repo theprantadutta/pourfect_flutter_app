@@ -76,7 +76,7 @@ Character count: 3308 / 4000
 
 ## What's new
 
-A versão 2.7 chegou com muita novidade:
+A versão 2.8 chegou com muita novidade:
 - Relógio tranquilo: bata o tempo-alvo e ganhe pontos extras. As estrelas continuam vindo só dos movimentos.
 - Modo Zen: fases infinitas em Calm, Steady ou Deep, sem relógio e sem estrelas.
 - Daily Pour: uma fase nova todo dia, com sequências.

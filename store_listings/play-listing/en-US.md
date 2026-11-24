@@ -74,7 +74,7 @@ Character count: 3025 / 4000
 
 ## What's new
 
-Version 2.7 is a big one:
+Version 2.8 is a big one:
 - A relaxed level clock: beat the par time for extra points. Stars still come from moves alone.
 - Zen mode: endless boards in Calm, Steady or Deep, with no clock and no stars.
 - The Daily Pour: a new board every day, with streaks.
