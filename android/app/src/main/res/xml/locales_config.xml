@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 13+ per-app language: Settings > Apps > Pourfect > Language lists
+     these. Keep in step with lib/l10n/src and ios/Runner/Info.plist. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="pt" />
+    <locale android:name="es" />
+    <locale android:name="ru" />
+    <locale android:name="tr" />
+    <locale android:name="id" />
+    <locale android:name="de" />
+    <locale android:name="ja" />
+    <locale android:name="ko" />
+    <locale android:name="zh-Hans" />
+    <locale android:name="zh-Hant" />
+</locale-config>

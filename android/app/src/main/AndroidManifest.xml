@@ -13,6 +13,7 @@
          vertical tubes: the tablet ran it sideways. -->
     <application
         android:appCategory="game"
+        android:localeConfig="@xml/locales_config"
         android:label="Pourfect"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"

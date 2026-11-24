@@ -6,6 +6,23 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- The languages the app's strings come in (lib/l10n). Without this list
+	     iOS treats the app as English-only: it won't switch Flutter's locale,
+	     and the App Store lists only English. Keep in step with lib/l10n/src. -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>pt</string>
+		<string>es</string>
+		<string>ru</string>
+		<string>tr</string>
+		<string>id</string>
+		<string>de</string>
+		<string>ja</string>
+		<string>ko</string>
+		<string>zh-Hans</string>
+		<string>zh-Hant</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Pourfect</string>
 	<key>CFBundleExecutable</key>
