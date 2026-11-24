@@ -25,6 +25,7 @@ import '../../state/providers.dart';
 import '../../state/review_prompter.dart';
 import '../../state/sync_controller.dart';
 import '../../l10n/l10n.dart';
+import '../format.dart';
 import '../theme/toy.dart';
 import '../widgets/board_view.dart';
 import '../widgets/hud.dart';
@@ -1205,7 +1206,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   opacity: _winActive ? 0.5 : 1,
                   child: BoardHud(
                     levelId: state.level.id,
-                    bandName: band.name,
+                    bandName: worldDisplayName(context.l10n, band.name),
                     movesUsed: state.movesUsed,
                     minMoves: state.level.minMoves,
                     showParMeter: !_winActive,
@@ -1342,7 +1343,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                     parSeconds: result.parSeconds,
                     points: result.points,
                     previousFastest: result.previousFastest,
-                    bandName: band.name,
+                    bandName: worldDisplayName(context.l10n, band.name),
                     worldNumber: bands.indexOf(band) + 1,
                     // A replay of a level already cleared fills nothing: the
                     // bar used to tick up by one on every replay.

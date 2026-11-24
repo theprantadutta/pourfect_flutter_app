@@ -1,0 +1,10 @@
+{
+  "commonCancel": "Отмена",
+  "commonClose": "Закрыть",
+  "commonBack": "Назад",
+  "commonOk": "ОК",
+  "commonSave": "Сохранить",
+  "commonRetry": "Ещё раз",
+  "commonNotNow": "Не сейчас",
+  "commonLevelN": "Уровень {level}"
+}

@@ -1,0 +1,10 @@
+{
+  "commonCancel": "キャンセル",
+  "commonClose": "閉じる",
+  "commonBack": "戻る",
+  "commonOk": "OK",
+  "commonSave": "保存",
+  "commonRetry": "再試行",
+  "commonNotNow": "今はしない",
+  "commonLevelN": "レベル{level}"
+}

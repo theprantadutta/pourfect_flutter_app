@@ -1,0 +1,10 @@
+{
+  "commonCancel": "취소",
+  "commonClose": "닫기",
+  "commonBack": "뒤로",
+  "commonOk": "확인",
+  "commonSave": "저장",
+  "commonRetry": "다시 시도",
+  "commonNotNow": "나중에",
+  "commonLevelN": "레벨 {level}"
+}

@@ -5,7 +5,16 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
+import 'app_localizations_id.dart';
+import 'app_localizations_ja.dart';
+import 'app_localizations_ko.dart';
+import 'app_localizations_pt.dart';
+import 'app_localizations_ru.dart';
+import 'app_localizations_tr.dart';
+import 'app_localizations_zh.dart';
 
 // ignore_for_file: type=lint
 
@@ -92,7 +101,19 @@ abstract class AppLocalizations {
       ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('en')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('de'),
+    Locale('en'),
+    Locale('es'),
+    Locale('id'),
+    Locale('ja'),
+    Locale('ko'),
+    Locale('pt'),
+    Locale('ru'),
+    Locale('tr'),
+    Locale('zh'),
+    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+  ];
 
   /// Account screen: Google refused the sign-in (shown under the form and as a toast). 'Google' is a brand name.
   ///
@@ -1311,6 +1332,1007 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Level {level}'**
   String commonLevelN(int level);
+
+  /// Hub, accessibility label of the player chip (top left) when signed in.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account'**
+  String get hubAccountYours;
+
+  /// Hub, accessibility label of the player chip (top left) for a guest; opens sign-in.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your progress'**
+  String get hubAccountSave;
+
+  /// Hub player chip, shown for a moment before the player's leaderboard name loads. Short.
+  ///
+  /// In en, this message translates to:
+  /// **'Player'**
+  String get hubPlayerFallback;
+
+  /// Hub, accessibility label of the menu button that opens Settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get hubSettings;
+
+  /// Tagline under the game's logo on the hub and the splash screen. All caps, three short verbs separated by middle dots. Keep very short (about 20 characters).
+  ///
+  /// In en, this message translates to:
+  /// **'POUR · SORT · RELAX'**
+  String get hubTagline;
+
+  /// Hub, accessibility label of a stat chip that opens Statistics, e.g. '12 solved. Statistics'. {label} is one of hubStatSolved, hubStatStars, hubStatStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} {label}. Statistics'**
+  String hubStatChipSemantic(String value, String label);
+
+  /// Hub stat chip caption under the number of levels solved. Lowercase, one short word.
+  ///
+  /// In en, this message translates to:
+  /// **'solved'**
+  String get hubStatSolved;
+
+  /// Hub stat chip caption under the star total. Lowercase, one short word.
+  ///
+  /// In en, this message translates to:
+  /// **'stars'**
+  String get hubStatStars;
+
+  /// Hub stat chip caption under the daily streak. Lowercase, one short word.
+  ///
+  /// In en, this message translates to:
+  /// **'streak'**
+  String get hubStatStreak;
+
+  /// A streak length in days, e.g. '4 days'. On the hub stat chip and the Daily Pour result. Short.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day} other{{count} days}}'**
+  String hubStreakDays(int count);
+
+  /// A leaderboard position, e.g. '#12'. On the rank sticker, the weekly event and the Daily Pour result.
+  ///
+  /// In en, this message translates to:
+  /// **'#{rank}'**
+  String hubRankNumber(int rank);
+
+  /// Hub, accessibility label of the weekly event card.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly event, {cleared} of {total} boards'**
+  String hubEventSemantic(int cleared, int total);
+
+  /// Hub weekly event card, compact line: boards cleared, then time left (eventTimeLeft*, or eventEnded). E.g. '3/7 · 2d 4h'. One line in a half-width card.
+  ///
+  /// In en, this message translates to:
+  /// **'{cleared}/{total} · {timeLeft}'**
+  String hubEventProgress(int cleared, int total, String timeLeft);
+
+  /// Hub weekly event card, compact line with the player's rank. E.g. '3/7 · #12 · 2d 4h'. One line in a half-width card.
+  ///
+  /// In en, this message translates to:
+  /// **'{cleared}/{total} · #{rank} · {timeLeft}'**
+  String hubEventProgressRanked(
+    int cleared,
+    int total,
+    int rank,
+    String timeLeft,
+  );
+
+  /// Hub card title for Zen mode (endless relaxed play). One short word.
+  ///
+  /// In en, this message translates to:
+  /// **'Zen'**
+  String get hubZen;
+
+  /// Hub, accessibility label of the Zen card when it is open.
+  ///
+  /// In en, this message translates to:
+  /// **'Zen mode'**
+  String get hubZenSemantic;
+
+  /// Hub, accessibility label of the locked Zen card.
+  ///
+  /// In en, this message translates to:
+  /// **'Zen mode unlocks at level {level}'**
+  String hubZenLockedSemantic(int level);
+
+  /// Hub Zen card subtitle once unlocked. One line in a half-width card.
+  ///
+  /// In en, this message translates to:
+  /// **'Endless, no clock'**
+  String get hubZenOpen;
+
+  /// Hub Zen card subtitle while locked: the unlock level and how many levels are left. One line in a half-width card.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level} · {remaining} to go'**
+  String hubZenLocked(int level, int remaining);
+
+  /// Hub dock button opening the level map. One short word (button is a third of the width).
+  ///
+  /// In en, this message translates to:
+  /// **'Journey'**
+  String get hubDockJourney;
+
+  /// Hub dock button opening the leaderboards. One short word (button is a third of the width).
+  ///
+  /// In en, this message translates to:
+  /// **'Rankings'**
+  String get hubDockRankings;
+
+  /// Hub dock button opening Statistics. One short word (button is a third of the width).
+  ///
+  /// In en, this message translates to:
+  /// **'Stats'**
+  String get hubDockStats;
+
+  /// One-time tip bubble on the hub after the first win. 'Journey' and 'Daily Pour' are the names of the dock button and the daily challenge.
+  ///
+  /// In en, this message translates to:
+  /// **'Nice! Journey maps every level, and there\'s a new Daily Pour to play each day.'**
+  String get hubTip;
+
+  /// Hub next-level card, under the level number: which world it is in.
+  ///
+  /// In en, this message translates to:
+  /// **'World {world}'**
+  String hubHeroWorld(int world);
+
+  /// Hub next-level card, under the level number: world number and world name, e.g. 'World 2 · Finding Rhythm'. One line.
+  ///
+  /// In en, this message translates to:
+  /// **'World {world} · {band}'**
+  String hubHeroWorldBand(int world, String band);
+
+  /// Small chip: the fewest moves the level can be solved in (golf 'par'). Lowercase, very short.
+  ///
+  /// In en, this message translates to:
+  /// **'par {par}'**
+  String hubHeroPar(int par);
+
+  /// The big button on the hub that starts the next level. All caps, one short word.
+  ///
+  /// In en, this message translates to:
+  /// **'PLAY'**
+  String get hubPlay;
+
+  /// Accessibility label of the hub PLAY button.
+  ///
+  /// In en, this message translates to:
+  /// **'Play level {level}'**
+  String hubPlaySemantic(int level);
+
+  /// Hub card title after the last level on the phone, when new levels need a newer app version.
+  ///
+  /// In en, this message translates to:
+  /// **'Update for more levels'**
+  String get hubMoreUpdateTitle;
+
+  /// Hub card body under hubMoreUpdateTitle. 'Pourfect' is the game's name.
+  ///
+  /// In en, this message translates to:
+  /// **'A new world is out, and it needs the latest Pourfect. Update the game to keep pouring.'**
+  String get hubMoreUpdateBody;
+
+  /// Hub card title while the next world of levels downloads.
+  ///
+  /// In en, this message translates to:
+  /// **'New levels on the way'**
+  String get hubMoreDownloadingTitle;
+
+  /// Hub card body under hubMoreDownloadingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The next world is downloading. It only takes a moment.'**
+  String get hubMoreDownloadingBody;
+
+  /// Hub card title once every level on the phone is solved. Celebratory; 'poured' is the game's verb for playing.
+  ///
+  /// In en, this message translates to:
+  /// **'You poured them all!'**
+  String get hubMoreAllDoneTitle;
+
+  /// Hub card body when the download of more levels failed (offline).
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to the internet and more levels download in the background. Today\'s Daily Pour is waiting in the meantime.'**
+  String get hubMoreOfflineBody;
+
+  /// Hub card body once every level is solved and nothing is downloading.
+  ///
+  /// In en, this message translates to:
+  /// **'More levels download in the background whenever you\'re online. Today\'s Daily Pour is waiting in the meantime.'**
+  String get hubMoreOnlineBody;
+
+  /// Button retrying the download of more levels.
+  ///
+  /// In en, this message translates to:
+  /// **'Check again'**
+  String get hubMoreCheckAgain;
+
+  /// Toast when one achievement unlocks. {title} is the achievement's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievement unlocked: {title}'**
+  String hubAchievementOne(String title);
+
+  /// Toast when several achievements unlock at once (count is always 2 or more).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, other{{count} achievements unlocked!}}'**
+  String hubAchievementMany(int count);
+
+  /// Toast when a downloaded app update can be installed.
+  ///
+  /// In en, this message translates to:
+  /// **'An update is ready to install.'**
+  String get hubUpdateReady;
+
+  /// Action on the update toast: restarts the app to install the update. Short.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get hubUpdateRestart;
+
+  /// Compact duration, seconds only, e.g. '44s'. Statistics and the level clock.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s'**
+  String hubSpanSeconds(int seconds);
+
+  /// Compact duration, whole minutes, e.g. '12m'.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m'**
+  String hubSpanMinutes(int minutes);
+
+  /// Compact duration, e.g. '12m 30s'.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m {seconds}s'**
+  String hubSpanMinutesSeconds(int minutes, int seconds);
+
+  /// Compact duration, whole hours, e.g. '4h'.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h'**
+  String hubSpanHours(int hours);
+
+  /// Compact duration, e.g. '4h 12m'.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}m'**
+  String hubSpanHoursMinutes(int hours, int minutes);
+
+  /// A solve time exactly at the target ('par') time.
+  ///
+  /// In en, this message translates to:
+  /// **'on par'**
+  String get hubParOn;
+
+  /// A solve time faster than the target ('par') time, e.g. '18% under par'.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% under par'**
+  String hubParUnder(int percent);
+
+  /// A solve time slower than the target ('par') time, e.g. '40% over par'.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% over par'**
+  String hubParOver(int percent);
+
+  /// Name of the daily challenge, the title of its card on the hub. A product name: keep it short.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Pour'**
+  String get dailyTitle;
+
+  /// Hub, accessibility label of the Daily Pour card.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s challenge'**
+  String get dailyCardSemantic;
+
+  /// Hub daily card subtitle when today's board could not be fetched. Lowercase, one line.
+  ///
+  /// In en, this message translates to:
+  /// **'can\'t reach today\'s board'**
+  String get dailyCardUnavailable;
+
+  /// Hub daily card subtitle once today's board is solved, followed by stars and a countdown. Lowercase, one word.
+  ///
+  /// In en, this message translates to:
+  /// **'solved'**
+  String get dailyCardSolved;
+
+  /// Hub daily card: countdown to tomorrow's board. {time} is a ticking clock like '19:23:02'. Lowercase, short.
+  ///
+  /// In en, this message translates to:
+  /// **'next in {time}'**
+  String dailyCardNextIn(String time);
+
+  /// Hub daily card: countdown until today's board ends. {time} is a ticking clock like '19:23:02'. Lowercase, short.
+  ///
+  /// In en, this message translates to:
+  /// **'ends in {time}'**
+  String dailyCardEndsIn(String time);
+
+  /// A daily streak, e.g. '12-day streak'. Streak dialog title and the accessibility label of the flame chip.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, other{{count}-day streak}}'**
+  String dailyStreakDays(int count);
+
+  /// Celebration on the Daily Pour result when the streak reaches a milestone, e.g. '7-day streak!'. Large text, one line.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, other{{count}-day streak!}}'**
+  String dailyStreakMilestone(int count);
+
+  /// Hub, accessibility label of the rank sticker on the daily card, when the player has no rank.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaderboard'**
+  String get dailyRankSemantic;
+
+  /// Hub, accessibility label of the rank sticker on the daily card.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaderboard, rank {rank}'**
+  String dailyRankSemanticRanked(int rank);
+
+  /// Small caption on the tilted rank sticker on the hub's daily card. All caps, very short (about 5 characters).
+  ///
+  /// In en, this message translates to:
+  /// **'RANK'**
+  String get dailyRankSticker;
+
+  /// Leave-the-board confirmation on the Daily Pour: what is lost by leaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Your moves on today\'s Daily Pour won\'t be saved. You can start it again any time today.'**
+  String get dailyLeaveLost;
+
+  /// Daily Pour result card when the server refused the submitted result.
+  ///
+  /// In en, this message translates to:
+  /// **'The server would not accept that result.'**
+  String get dailySubmitRefused;
+
+  /// Daily Pour result card when the result could not be sent (network).
+  ///
+  /// In en, this message translates to:
+  /// **'Solved — but the result could not be sent. Try again later.'**
+  String get dailySubmitFailed;
+
+  /// Daily Pour board header, first word of the title (shown before dailyHudValue, together reading 'Daily Pour'). The header capitalizes it.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get dailyHudLabel;
+
+  /// Daily Pour board header, second word of the title (after dailyHudLabel), shown in the large style. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Pour'**
+  String get dailyHudValue;
+
+  /// Toast after asking for a hint in a position that cannot be solved, when undoing would not help.
+  ///
+  /// In en, this message translates to:
+  /// **'No way to finish from here. Restart to try another line.'**
+  String get dailyDeadEndRestart;
+
+  /// Daily Pour toast after asking for a hint in a position that cannot be solved: how many moves to undo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{No way to finish from here. Undo 1 move to get back on track.} other{No way to finish from here. Undo {count} moves to get back on track.}}'**
+  String dailyDeadEndUndo(int count);
+
+  /// Toast action that restarts the board. Short.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get dailyActionRestart;
+
+  /// Toast action that undoes that many moves. Short.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo {count}'**
+  String dailyActionUndo(int count);
+
+  /// Daily Pour toast when no hint can be found.
+  ///
+  /// In en, this message translates to:
+  /// **'No hint for this position.'**
+  String get dailyNoHint;
+
+  /// Daily Pour screen title while today's board loads.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading today’s board'**
+  String get dailyLoadingTitle;
+
+  /// Daily Pour screen title in a build with no server.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily challenges are off in this build'**
+  String get dailyOffTitle;
+
+  /// Daily Pour screen text under dailyOffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The campaign is unaffected — every level is on this device.'**
+  String get dailyOffDetail;
+
+  /// Daily Pour screen title when today's board could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'No board today'**
+  String get dailyNoBoardTitle;
+
+  /// Daily Pour screen text under dailyNoBoardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Today’s challenge comes from the server and it could not be reached. The campaign does not need it.'**
+  String get dailyNoBoardDetail;
+
+  /// Caption under the loading animation while today's board is fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'Pouring today’s board…'**
+  String get dailyLoaderCaption;
+
+  /// Button leaving the Daily Pour screen when there is no board.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to levels'**
+  String get dailyBackToLevels;
+
+  /// Accessibility label of the week strip on the Daily Pour screen; tapping opens the streak.
+  ///
+  /// In en, this message translates to:
+  /// **'Your streak: {count, plural, =1{1 day} other{{count} days}}. Open'**
+  String dailyWeekSemantic(int count);
+
+  /// Accessibility label of one day in the Daily Pour week strip, e.g. 'Monday, played'. {state} is one of the dailyDay* texts.
+  ///
+  /// In en, this message translates to:
+  /// **'{weekday}, {state}'**
+  String dailyDaySemantic(String weekday, String state);
+
+  /// Accessibility: a missed day that a streak freeze covered. Lowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'missed, covered by a freeze'**
+  String get dailyDayFrozen;
+
+  /// Accessibility: today's Daily Pour is solved. Lowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'played today'**
+  String get dailyDayPlayedToday;
+
+  /// Accessibility: that day's Daily Pour was solved. Lowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'played'**
+  String get dailyDayPlayed;
+
+  /// Accessibility: today, not yet solved. Lowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'today, not played yet'**
+  String get dailyDayToday;
+
+  /// Accessibility: a past day that was not played. Lowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'not played'**
+  String get dailyDayMissed;
+
+  /// Accessibility: a day later this week. Lowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'still to come'**
+  String get dailyDayFuture;
+
+  /// Daily Pour result title when the player beat their own best. Large, one line.
+  ///
+  /// In en, this message translates to:
+  /// **'A new best'**
+  String get dailyOutcomeBest;
+
+  /// Daily Pour result title. Large, one line.
+  ///
+  /// In en, this message translates to:
+  /// **'Solved'**
+  String get dailyOutcomeSolved;
+
+  /// Caption under the move count on the Daily Pour result. Lowercase, one word.
+  ///
+  /// In en, this message translates to:
+  /// **'moves'**
+  String get dailyFigureMoves;
+
+  /// Caption under the streak on the Daily Pour result. Lowercase, one word.
+  ///
+  /// In en, this message translates to:
+  /// **'streak'**
+  String get dailyFigureStreak;
+
+  /// Caption on the Daily Pour result when the player has no leaderboard rank. Lowercase, one word.
+  ///
+  /// In en, this message translates to:
+  /// **'unranked'**
+  String get dailyUnranked;
+
+  /// Caption under a rank: out of how many players, e.g. 'of 1204'. Lowercase, short.
+  ///
+  /// In en, this message translates to:
+  /// **'of {count}'**
+  String dailyOfPlayers(int count);
+
+  /// Daily Pour result, once the player asked to be reminded tomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'You will get one reminder tomorrow evening.'**
+  String get dailyReminderOn;
+
+  /// Button on the Daily Pour result that turns on a reminder for tomorrow's board.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind me tomorrow'**
+  String get dailyRemindMe;
+
+  /// Big button closing a finished daily or weekly-event board. All caps, one short word.
+  ///
+  /// In en, this message translates to:
+  /// **'DONE'**
+  String get dailyDone;
+
+  /// Toast: a rewarded video for a streak freeze was closed early.
+  ///
+  /// In en, this message translates to:
+  /// **'No freeze — the video was not finished.'**
+  String get dailyFreezeVideoUnfinished;
+
+  /// Toast: no rewarded video could be loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'No video available right now.'**
+  String get dailyFreezeNoVideo;
+
+  /// Toast: the rewarded video failed for another reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Try again later.'**
+  String get dailyFreezeError;
+
+  /// Toast: a streak freeze was earned. A freeze protects the streak for one missed day.
+  ///
+  /// In en, this message translates to:
+  /// **'Freeze added. A missed day is covered.'**
+  String get dailyFreezeAdded;
+
+  /// Toast: the server would not add another streak freeze today.
+  ///
+  /// In en, this message translates to:
+  /// **'No room for another freeze today.'**
+  String get dailyFreezeNoRoom;
+
+  /// Streak dialog button label while the rewarded video loads.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading video…'**
+  String get dailyFreezeLoadingVideo;
+
+  /// Streak dialog button: watch a rewarded video ad to earn a streak freeze. One line in a dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch a video for a freeze'**
+  String get dailyFreezeWatch;
+
+  /// Streak dialog, when the player holds the most freezes allowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Freezes full. Each one covers a day you miss.'**
+  String get dailyFreezesFull;
+
+  /// Streak dialog, when today's video freeze was already earned.
+  ///
+  /// In en, this message translates to:
+  /// **'One freeze from a video a day. Back tomorrow.'**
+  String get dailyFreezeTomorrow;
+
+  /// Streak dialog title while the streak loads.
+  ///
+  /// In en, this message translates to:
+  /// **'Your streak'**
+  String get dailyStreakTitle;
+
+  /// Streak dialog title when the streak is zero.
+  ///
+  /// In en, this message translates to:
+  /// **'No streak yet'**
+  String get dailyStreakNone;
+
+  /// Streak dialog subtitle when the streak is zero.
+  ///
+  /// In en, this message translates to:
+  /// **'Play today\'s Daily Pour to start one.'**
+  String get dailyStreakStart;
+
+  /// Streak dialog subtitle: the longest streak ever.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Best: 1 day} other{Best: {count} days}}'**
+  String dailyStreakBest(int count);
+
+  /// Accessibility label of the streak freezes row: how many are held out of the most allowed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {max} streak freezes'**
+  String dailyFreezesSemantic(int count, int max);
+
+  /// Streak dialog, heading beside the freeze icons.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak freezes'**
+  String get dailyFreezesTitle;
+
+  /// Streak dialog, under 'Streak freezes' when the freezes are full.
+  ///
+  /// In en, this message translates to:
+  /// **'Each covers a missed day.'**
+  String get dailyFreezesEach;
+
+  /// Streak dialog, under 'Streak freezes': a free freeze arrives every Monday, and when the next one comes.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{A free one every Monday, tomorrow.} other{A free one every Monday, in {days} days.}}'**
+  String dailyFreezeWeekly(int days);
+
+  /// Accessibility label of the streak calendar's back arrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous month'**
+  String get dailyCalendarPrevious;
+
+  /// Accessibility label of the streak calendar's forward arrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Next month'**
+  String get dailyCalendarNext;
+
+  /// Accessibility label of one streak calendar day, e.g. 'October 6, frozen'. {date} is a localized month and day.
+  ///
+  /// In en, this message translates to:
+  /// **'{date}, {state}'**
+  String dailyCalendarCellSemantic(String date, String state);
+
+  /// Accessibility: a calendar day whose Daily Pour was solved. Lowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'played'**
+  String get dailyCalendarPlayed;
+
+  /// Accessibility: a calendar day covered by a streak freeze. Lowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'frozen'**
+  String get dailyCalendarFrozen;
+
+  /// Accessibility: a calendar day still in the future. Lowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'to come'**
+  String get dailyCalendarFuture;
+
+  /// Streak calendar legend: a solved day. One short word.
+  ///
+  /// In en, this message translates to:
+  /// **'Played'**
+  String get dailyLegendPlayed;
+
+  /// Streak calendar legend: a day covered by a freeze. One short word.
+  ///
+  /// In en, this message translates to:
+  /// **'Frozen'**
+  String get dailyLegendFrozen;
+
+  /// Streak calendar legend: today. One short word.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get dailyLegendToday;
+
+  /// Header of the weekly event screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly event'**
+  String get eventTitle;
+
+  /// Weekly event screen when the event could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach this week\'s event right now.'**
+  String get eventUnreachable;
+
+  /// The weekly event is over. Lowercase, shown where the time left would be.
+  ///
+  /// In en, this message translates to:
+  /// **'ended'**
+  String get eventEnded;
+
+  /// Time left in the weekly event, e.g. 'ends in 2d 4h'. {timeLeft} is one of eventTimeLeft*. Lowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'ends in {timeLeft}'**
+  String eventEndsIn(String timeLeft);
+
+  /// Compact time left, days and hours, e.g. '2d 4h'.
+  ///
+  /// In en, this message translates to:
+  /// **'{days}d {hours}h'**
+  String eventTimeLeftDaysHours(int days, int hours);
+
+  /// Compact time left, hours, e.g. '3h'.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h'**
+  String eventTimeLeftHours(int hours);
+
+  /// Compact time left, minutes, e.g. '12m'.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m'**
+  String eventTimeLeftMinutes(int minutes);
+
+  /// Weekly event screen, under the event's name, e.g. '3 of 7 boards · ends in 2d 4h'. {endsIn} is eventEndsIn or eventEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'{cleared} of {total} boards · {endsIn}'**
+  String eventSummary(int cleared, int total, String endsIn);
+
+  /// Caption under the weekly event point total. Lowercase, one word.
+  ///
+  /// In en, this message translates to:
+  /// **'points'**
+  String get eventFigurePoints;
+
+  /// Caption under the weekly event rank: out of how many players. Lowercase, short.
+  ///
+  /// In en, this message translates to:
+  /// **'of {count}'**
+  String eventRankOf(int count);
+
+  /// Caption where the weekly event rank would be, before any board is played. Lowercase, short.
+  ///
+  /// In en, this message translates to:
+  /// **'play a board to rank'**
+  String get eventRankPlay;
+
+  /// Caption where the weekly event rank would be, when the player has no leaderboard name. Lowercase, short.
+  ///
+  /// In en, this message translates to:
+  /// **'set a name to rank'**
+  String get eventRankSetName;
+
+  /// Accessibility label of a played weekly event board tile.
+  ///
+  /// In en, this message translates to:
+  /// **'Board {slot}, {stars, plural, =1{1 star} other{{stars} stars}}, {points} points'**
+  String eventTileSemanticDone(int slot, int stars, int points);
+
+  /// Accessibility label of an unplayed weekly event board tile.
+  ///
+  /// In en, this message translates to:
+  /// **'Board {slot}, not played'**
+  String eventTileSemanticNew(int slot);
+
+  /// Weekly event board tile: points scored. Abbreviated, very short (tile is a seventh of the width).
+  ///
+  /// In en, this message translates to:
+  /// **'{points} pts'**
+  String eventTilePoints(int points);
+
+  /// Heading of the weekly event leaderboard ('board' meaning leaderboard here).
+  ///
+  /// In en, this message translates to:
+  /// **'This week\'s board'**
+  String get eventStandingsTitle;
+
+  /// Weekly event leaderboard with nobody on it.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody on the board yet. Be the first.'**
+  String get eventStandingsEmpty;
+
+  /// Weekly event leaderboard row, after the points: boards cleared out of seven. Keep the leading space and dot.
+  ///
+  /// In en, this message translates to:
+  /// **' · {cleared}/7'**
+  String eventStandingsCleared(int cleared);
+
+  /// Weekly event board when the server refused the result.
+  ///
+  /// In en, this message translates to:
+  /// **'The server would not take that result — the event may have ended.'**
+  String get eventSubmitRefused;
+
+  /// Weekly event board when the result could not be sent (network).
+  ///
+  /// In en, this message translates to:
+  /// **'Solved — but the result could not be sent. Try again.'**
+  String get eventSubmitFailed;
+
+  /// Weekly event toast after asking for a hint in a position that cannot be solved: how many moves to undo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{No way to finish from here. Undo 1 move.} other{No way to finish from here. Undo {count} moves.}}'**
+  String eventDeadEndUndo(int count);
+
+  /// Weekly event toast when no hint can be found.
+  ///
+  /// In en, this message translates to:
+  /// **'No hint for this position right now.'**
+  String get eventNoHint;
+
+  /// Weekly event board header, the word before the board number (e.g. 'Board 3'). The header capitalizes it.
+  ///
+  /// In en, this message translates to:
+  /// **'Board'**
+  String get eventHudLabel;
+
+  /// Weekly event board header subtitle: the event's name (from the server) and the time left. One line.
+  ///
+  /// In en, this message translates to:
+  /// **'{event} · {endsIn}'**
+  String eventHudBand(String event, String endsIn);
+
+  /// Weekly event board while the result is being sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get eventSending;
+
+  /// Weekly event board result: points for this board, and the week's total.
+  ///
+  /// In en, this message translates to:
+  /// **'{points} points · {total} this week'**
+  String eventResult(int points, int total);
+
+  /// Weekly event board result with the player's rank.
+  ///
+  /// In en, this message translates to:
+  /// **'{points} points · {total} this week · #{rank}'**
+  String eventResultRanked(int points, int total, int rank);
+
+  /// Header of the level map screen. Same word as the hub dock button.
+  ///
+  /// In en, this message translates to:
+  /// **'Journey'**
+  String get journeyTitle;
+
+  /// Accessibility label of the star total on the level map header.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 star} other{{count} stars}}'**
+  String journeyStarsSemantic(int count);
+
+  /// Accessibility label of the world card on the level map.
+  ///
+  /// In en, this message translates to:
+  /// **'World {world} of {worlds}, {name}, {solved} of {total} solved'**
+  String journeyWorldCardSemantic(
+    int world,
+    int worlds,
+    String name,
+    int solved,
+    int total,
+  );
+
+  /// Level map world card caption, e.g. 'WORLD 2 OF 4'. All caps, small.
+  ///
+  /// In en, this message translates to:
+  /// **'WORLD {world} OF {worlds}'**
+  String journeyWorldOf(int world, int worlds);
+
+  /// Accessibility label of the ribbon at the bottom of the level map; tapping scrolls to that world.
+  ///
+  /// In en, this message translates to:
+  /// **'World {world}, {name}, {solved} of {total} solved. Scroll to it'**
+  String journeyRibbonSemantic(int world, String name, int solved, int total);
+
+  /// Ribbon at the bottom of the level map: world number and its name (already uppercased). All caps, one line.
+  ///
+  /// In en, this message translates to:
+  /// **'WORLD {world} · {name}'**
+  String journeyRibbonLabel(int world, String name);
+
+  /// Small pin over the player's current level on the level map. All caps, very short (about 4 characters).
+  ///
+  /// In en, this message translates to:
+  /// **'YOU'**
+  String get journeyYouPin;
+
+  /// Small all-caps caption over a world's name on the level map: the world number and how many levels it has, e.g. 'WORLD 2 · 45'. Very short.
+  ///
+  /// In en, this message translates to:
+  /// **'WORLD {world} · {count}'**
+  String journeyBandCaps(int world, int count);
+
+  /// Name of world 1 (levels 1-15), the gentle opening. Short, title case; also shown in all caps.
+  ///
+  /// In en, this message translates to:
+  /// **'First Pours'**
+  String get journeyBandFirstPours;
+
+  /// Name of world 2 (levels 16-60). Short, title case; also shown in all caps.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding Rhythm'**
+  String get journeyBandFindingRhythm;
+
+  /// Name of world 3 (levels 61-120), where it gets hard. Short, title case; also shown in all caps.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep Water'**
+  String get journeyBandDeepWater;
+
+  /// Name of world 4 (levels 121-150), the hardest bundled levels. Short, title case; also shown in all caps.
+  ///
+  /// In en, this message translates to:
+  /// **'Mastery'**
+  String get journeyBandMastery;
+
+  /// Title of the dialog offering notifications after a win.
+  ///
+  /// In en, this message translates to:
+  /// **'Want a nudge?'**
+  String get notifSoftAskTitle;
+
+  /// Body of the notification offer dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'A heads-up when today\'s Daily Pour is out, or your next level is waiting. Never more than two a day, and you can switch them off any time in Settings.'**
+  String get notifSoftAskBody;
+
+  /// Body of the notification offer dialog when the system has already blocked notifications. 'Pourfect' is the game's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are off for Pourfect. Turn them on in your phone\'s settings for a heads-up when the Daily Pour is out or a new world arrives. Never more than two a day.'**
+  String get notifSoftAskBodyDenied;
+
+  /// Dialog button opening the phone's notification settings. Short.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get notifSoftAskOpenSettings;
+
+  /// Dialog button accepting notifications. Short.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes please'**
+  String get notifSoftAskYes;
+
+  /// Android notification channel name, shown in the phone's notification settings for the app. One or two words.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get notifChannelName;
+
+  /// Android notification channel description, shown in the phone's notification settings.
+  ///
+  /// In en, this message translates to:
+  /// **'The Daily Pour, your next level and new worlds. Never more than two a day.'**
+  String get notifChannelDescription;
 
   /// Game screen header title word when no level number follows. Short: it sits in the HUD.
   ///
@@ -3284,18 +4306,58 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>[
+    'de',
+    'en',
+    'es',
+    'id',
+    'ja',
+    'ko',
+    'pt',
+    'ru',
+    'tr',
+    'zh',
+  ].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when language+script codes are specified.
+  switch (locale.languageCode) {
+    case 'zh':
+      {
+        switch (locale.scriptCode) {
+          case 'Hant':
+            return AppLocalizationsZhHant();
+        }
+        break;
+      }
+  }
+
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'de':
+      return AppLocalizationsDe();
     case 'en':
       return AppLocalizationsEn();
+    case 'es':
+      return AppLocalizationsEs();
+    case 'id':
+      return AppLocalizationsId();
+    case 'ja':
+      return AppLocalizationsJa();
+    case 'ko':
+      return AppLocalizationsKo();
+    case 'pt':
+      return AppLocalizationsPt();
+    case 'ru':
+      return AppLocalizationsRu();
+    case 'tr':
+      return AppLocalizationsTr();
+    case 'zh':
+      return AppLocalizationsZh();
   }
 
   throw FlutterError(

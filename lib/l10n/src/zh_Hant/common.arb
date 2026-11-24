@@ -1,0 +1,10 @@
+{
+  "commonCancel": "取消",
+  "commonClose": "關閉",
+  "commonBack": "返回",
+  "commonOk": "好",
+  "commonSave": "儲存",
+  "commonRetry": "再試一次",
+  "commonNotNow": "以後再說",
+  "commonLevelN": "第 {level} 關"
+}

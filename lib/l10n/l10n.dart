@@ -34,6 +34,18 @@ extension L10nContext on BuildContext {
 Locale resolveSupportedLocale(Locale? wanted) {
   const supported = AppLocalizations.supportedLocales;
   if (wanted == null) return const Locale('en');
+  // Chinese: phones often say only "zh-TW" or "zh-HK", with no script. Taiwan,
+  // Hong Kong and Macau read Traditional; everywhere else Simplified.
+  if (wanted.languageCode == 'zh') {
+    final traditional =
+        wanted.scriptCode == 'Hant' ||
+        (wanted.scriptCode == null &&
+            const {'TW', 'HK', 'MO'}.contains(wanted.countryCode));
+    final pick = traditional
+        ? const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant')
+        : const Locale('zh');
+    if (supported.contains(pick)) return pick;
+  }
   for (final l in supported) {
     if (l.languageCode == wanted.languageCode &&
         l.countryCode == wanted.countryCode) {

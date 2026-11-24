@@ -1,0 +1,10 @@
+{
+  "commonCancel": "İptal",
+  "commonClose": "Kapat",
+  "commonBack": "Geri",
+  "commonOk": "Tamam",
+  "commonSave": "Kaydet",
+  "commonRetry": "Tekrar dene",
+  "commonNotNow": "Şimdi değil",
+  "commonLevelN": "Seviye {level}"
+}

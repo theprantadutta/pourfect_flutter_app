@@ -830,6 +830,704 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get hubAccountYours => 'Your account';
+
+  @override
+  String get hubAccountSave => 'Save your progress';
+
+  @override
+  String get hubPlayerFallback => 'Player';
+
+  @override
+  String get hubSettings => 'Settings';
+
+  @override
+  String get hubTagline => 'POUR · SORT · RELAX';
+
+  @override
+  String hubStatChipSemantic(String value, String label) {
+    return '$value $label. Statistics';
+  }
+
+  @override
+  String get hubStatSolved => 'solved';
+
+  @override
+  String get hubStatStars => 'stars';
+
+  @override
+  String get hubStatStreak => 'streak';
+
+  @override
+  String hubStreakDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String hubRankNumber(int rank) {
+    return '#$rank';
+  }
+
+  @override
+  String hubEventSemantic(int cleared, int total) {
+    return 'Weekly event, $cleared of $total boards';
+  }
+
+  @override
+  String hubEventProgress(int cleared, int total, String timeLeft) {
+    return '$cleared/$total · $timeLeft';
+  }
+
+  @override
+  String hubEventProgressRanked(
+    int cleared,
+    int total,
+    int rank,
+    String timeLeft,
+  ) {
+    return '$cleared/$total · #$rank · $timeLeft';
+  }
+
+  @override
+  String get hubZen => 'Zen';
+
+  @override
+  String get hubZenSemantic => 'Zen mode';
+
+  @override
+  String hubZenLockedSemantic(int level) {
+    return 'Zen mode unlocks at level $level';
+  }
+
+  @override
+  String get hubZenOpen => 'Endless, no clock';
+
+  @override
+  String hubZenLocked(int level, int remaining) {
+    return 'Level $level · $remaining to go';
+  }
+
+  @override
+  String get hubDockJourney => 'Journey';
+
+  @override
+  String get hubDockRankings => 'Rankings';
+
+  @override
+  String get hubDockStats => 'Stats';
+
+  @override
+  String get hubTip =>
+      'Nice! Journey maps every level, and there\'s a new Daily Pour to play each day.';
+
+  @override
+  String hubHeroWorld(int world) {
+    return 'World $world';
+  }
+
+  @override
+  String hubHeroWorldBand(int world, String band) {
+    return 'World $world · $band';
+  }
+
+  @override
+  String hubHeroPar(int par) {
+    return 'par $par';
+  }
+
+  @override
+  String get hubPlay => 'PLAY';
+
+  @override
+  String hubPlaySemantic(int level) {
+    return 'Play level $level';
+  }
+
+  @override
+  String get hubMoreUpdateTitle => 'Update for more levels';
+
+  @override
+  String get hubMoreUpdateBody =>
+      'A new world is out, and it needs the latest Pourfect. Update the game to keep pouring.';
+
+  @override
+  String get hubMoreDownloadingTitle => 'New levels on the way';
+
+  @override
+  String get hubMoreDownloadingBody =>
+      'The next world is downloading. It only takes a moment.';
+
+  @override
+  String get hubMoreAllDoneTitle => 'You poured them all!';
+
+  @override
+  String get hubMoreOfflineBody =>
+      'Connect to the internet and more levels download in the background. Today\'s Daily Pour is waiting in the meantime.';
+
+  @override
+  String get hubMoreOnlineBody =>
+      'More levels download in the background whenever you\'re online. Today\'s Daily Pour is waiting in the meantime.';
+
+  @override
+  String get hubMoreCheckAgain => 'Check again';
+
+  @override
+  String hubAchievementOne(String title) {
+    return 'Achievement unlocked: $title';
+  }
+
+  @override
+  String hubAchievementMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count achievements unlocked!',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get hubUpdateReady => 'An update is ready to install.';
+
+  @override
+  String get hubUpdateRestart => 'Restart';
+
+  @override
+  String hubSpanSeconds(int seconds) {
+    return '${seconds}s';
+  }
+
+  @override
+  String hubSpanMinutes(int minutes) {
+    return '${minutes}m';
+  }
+
+  @override
+  String hubSpanMinutesSeconds(int minutes, int seconds) {
+    return '${minutes}m ${seconds}s';
+  }
+
+  @override
+  String hubSpanHours(int hours) {
+    return '${hours}h';
+  }
+
+  @override
+  String hubSpanHoursMinutes(int hours, int minutes) {
+    return '${hours}h ${minutes}m';
+  }
+
+  @override
+  String get hubParOn => 'on par';
+
+  @override
+  String hubParUnder(int percent) {
+    return '$percent% under par';
+  }
+
+  @override
+  String hubParOver(int percent) {
+    return '$percent% over par';
+  }
+
+  @override
+  String get dailyTitle => 'Daily Pour';
+
+  @override
+  String get dailyCardSemantic => 'Today\'s challenge';
+
+  @override
+  String get dailyCardUnavailable => 'can\'t reach today\'s board';
+
+  @override
+  String get dailyCardSolved => 'solved';
+
+  @override
+  String dailyCardNextIn(String time) {
+    return 'next in $time';
+  }
+
+  @override
+  String dailyCardEndsIn(String time) {
+    return 'ends in $time';
+  }
+
+  @override
+  String dailyStreakDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count-day streak',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dailyStreakMilestone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count-day streak!',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dailyRankSemantic => 'Leaderboard';
+
+  @override
+  String dailyRankSemanticRanked(int rank) {
+    return 'Leaderboard, rank $rank';
+  }
+
+  @override
+  String get dailyRankSticker => 'RANK';
+
+  @override
+  String get dailyLeaveLost =>
+      'Your moves on today\'s Daily Pour won\'t be saved. You can start it again any time today.';
+
+  @override
+  String get dailySubmitRefused => 'The server would not accept that result.';
+
+  @override
+  String get dailySubmitFailed =>
+      'Solved — but the result could not be sent. Try again later.';
+
+  @override
+  String get dailyHudLabel => 'Daily';
+
+  @override
+  String get dailyHudValue => 'Pour';
+
+  @override
+  String get dailyDeadEndRestart =>
+      'No way to finish from here. Restart to try another line.';
+
+  @override
+  String dailyDeadEndUndo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'No way to finish from here. Undo $count moves to get back on track.',
+      one: 'No way to finish from here. Undo 1 move to get back on track.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dailyActionRestart => 'Restart';
+
+  @override
+  String dailyActionUndo(int count) {
+    return 'Undo $count';
+  }
+
+  @override
+  String get dailyNoHint => 'No hint for this position.';
+
+  @override
+  String get dailyLoadingTitle => 'Loading today’s board';
+
+  @override
+  String get dailyOffTitle => 'Daily challenges are off in this build';
+
+  @override
+  String get dailyOffDetail =>
+      'The campaign is unaffected — every level is on this device.';
+
+  @override
+  String get dailyNoBoardTitle => 'No board today';
+
+  @override
+  String get dailyNoBoardDetail =>
+      'Today’s challenge comes from the server and it could not be reached. The campaign does not need it.';
+
+  @override
+  String get dailyLoaderCaption => 'Pouring today’s board…';
+
+  @override
+  String get dailyBackToLevels => 'Back to levels';
+
+  @override
+  String dailyWeekSemantic(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
+    return 'Your streak: $_temp0. Open';
+  }
+
+  @override
+  String dailyDaySemantic(String weekday, String state) {
+    return '$weekday, $state';
+  }
+
+  @override
+  String get dailyDayFrozen => 'missed, covered by a freeze';
+
+  @override
+  String get dailyDayPlayedToday => 'played today';
+
+  @override
+  String get dailyDayPlayed => 'played';
+
+  @override
+  String get dailyDayToday => 'today, not played yet';
+
+  @override
+  String get dailyDayMissed => 'not played';
+
+  @override
+  String get dailyDayFuture => 'still to come';
+
+  @override
+  String get dailyOutcomeBest => 'A new best';
+
+  @override
+  String get dailyOutcomeSolved => 'Solved';
+
+  @override
+  String get dailyFigureMoves => 'moves';
+
+  @override
+  String get dailyFigureStreak => 'streak';
+
+  @override
+  String get dailyUnranked => 'unranked';
+
+  @override
+  String dailyOfPlayers(int count) {
+    return 'of $count';
+  }
+
+  @override
+  String get dailyReminderOn => 'You will get one reminder tomorrow evening.';
+
+  @override
+  String get dailyRemindMe => 'Remind me tomorrow';
+
+  @override
+  String get dailyDone => 'DONE';
+
+  @override
+  String get dailyFreezeVideoUnfinished =>
+      'No freeze — the video was not finished.';
+
+  @override
+  String get dailyFreezeNoVideo => 'No video available right now.';
+
+  @override
+  String get dailyFreezeError => 'Something went wrong. Try again later.';
+
+  @override
+  String get dailyFreezeAdded => 'Freeze added. A missed day is covered.';
+
+  @override
+  String get dailyFreezeNoRoom => 'No room for another freeze today.';
+
+  @override
+  String get dailyFreezeLoadingVideo => 'Loading video…';
+
+  @override
+  String get dailyFreezeWatch => 'Watch a video for a freeze';
+
+  @override
+  String get dailyFreezesFull =>
+      'Freezes full. Each one covers a day you miss.';
+
+  @override
+  String get dailyFreezeTomorrow =>
+      'One freeze from a video a day. Back tomorrow.';
+
+  @override
+  String get dailyStreakTitle => 'Your streak';
+
+  @override
+  String get dailyStreakNone => 'No streak yet';
+
+  @override
+  String get dailyStreakStart => 'Play today\'s Daily Pour to start one.';
+
+  @override
+  String dailyStreakBest(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Best: $count days',
+      one: 'Best: 1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dailyFreezesSemantic(int count, int max) {
+    return '$count of $max streak freezes';
+  }
+
+  @override
+  String get dailyFreezesTitle => 'Streak freezes';
+
+  @override
+  String get dailyFreezesEach => 'Each covers a missed day.';
+
+  @override
+  String dailyFreezeWeekly(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'A free one every Monday, in $days days.',
+      one: 'A free one every Monday, tomorrow.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dailyCalendarPrevious => 'Previous month';
+
+  @override
+  String get dailyCalendarNext => 'Next month';
+
+  @override
+  String dailyCalendarCellSemantic(String date, String state) {
+    return '$date, $state';
+  }
+
+  @override
+  String get dailyCalendarPlayed => 'played';
+
+  @override
+  String get dailyCalendarFrozen => 'frozen';
+
+  @override
+  String get dailyCalendarFuture => 'to come';
+
+  @override
+  String get dailyLegendPlayed => 'Played';
+
+  @override
+  String get dailyLegendFrozen => 'Frozen';
+
+  @override
+  String get dailyLegendToday => 'Today';
+
+  @override
+  String get eventTitle => 'Weekly event';
+
+  @override
+  String get eventUnreachable => 'Can\'t reach this week\'s event right now.';
+
+  @override
+  String get eventEnded => 'ended';
+
+  @override
+  String eventEndsIn(String timeLeft) {
+    return 'ends in $timeLeft';
+  }
+
+  @override
+  String eventTimeLeftDaysHours(int days, int hours) {
+    return '${days}d ${hours}h';
+  }
+
+  @override
+  String eventTimeLeftHours(int hours) {
+    return '${hours}h';
+  }
+
+  @override
+  String eventTimeLeftMinutes(int minutes) {
+    return '${minutes}m';
+  }
+
+  @override
+  String eventSummary(int cleared, int total, String endsIn) {
+    return '$cleared of $total boards · $endsIn';
+  }
+
+  @override
+  String get eventFigurePoints => 'points';
+
+  @override
+  String eventRankOf(int count) {
+    return 'of $count';
+  }
+
+  @override
+  String get eventRankPlay => 'play a board to rank';
+
+  @override
+  String get eventRankSetName => 'set a name to rank';
+
+  @override
+  String eventTileSemanticDone(int slot, int stars, int points) {
+    String _temp0 = intl.Intl.pluralLogic(
+      stars,
+      locale: localeName,
+      other: '$stars stars',
+      one: '1 star',
+    );
+    return 'Board $slot, $_temp0, $points points';
+  }
+
+  @override
+  String eventTileSemanticNew(int slot) {
+    return 'Board $slot, not played';
+  }
+
+  @override
+  String eventTilePoints(int points) {
+    return '$points pts';
+  }
+
+  @override
+  String get eventStandingsTitle => 'This week\'s board';
+
+  @override
+  String get eventStandingsEmpty => 'Nobody on the board yet. Be the first.';
+
+  @override
+  String eventStandingsCleared(int cleared) {
+    return ' · $cleared/7';
+  }
+
+  @override
+  String get eventSubmitRefused =>
+      'The server would not take that result — the event may have ended.';
+
+  @override
+  String get eventSubmitFailed =>
+      'Solved — but the result could not be sent. Try again.';
+
+  @override
+  String eventDeadEndUndo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'No way to finish from here. Undo $count moves.',
+      one: 'No way to finish from here. Undo 1 move.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventNoHint => 'No hint for this position right now.';
+
+  @override
+  String get eventHudLabel => 'Board';
+
+  @override
+  String eventHudBand(String event, String endsIn) {
+    return '$event · $endsIn';
+  }
+
+  @override
+  String get eventSending => 'Sending…';
+
+  @override
+  String eventResult(int points, int total) {
+    return '$points points · $total this week';
+  }
+
+  @override
+  String eventResultRanked(int points, int total, int rank) {
+    return '$points points · $total this week · #$rank';
+  }
+
+  @override
+  String get journeyTitle => 'Journey';
+
+  @override
+  String journeyStarsSemantic(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stars',
+      one: '1 star',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String journeyWorldCardSemantic(
+    int world,
+    int worlds,
+    String name,
+    int solved,
+    int total,
+  ) {
+    return 'World $world of $worlds, $name, $solved of $total solved';
+  }
+
+  @override
+  String journeyWorldOf(int world, int worlds) {
+    return 'WORLD $world OF $worlds';
+  }
+
+  @override
+  String journeyRibbonSemantic(int world, String name, int solved, int total) {
+    return 'World $world, $name, $solved of $total solved. Scroll to it';
+  }
+
+  @override
+  String journeyRibbonLabel(int world, String name) {
+    return 'WORLD $world · $name';
+  }
+
+  @override
+  String get journeyYouPin => 'YOU';
+
+  @override
+  String journeyBandCaps(int world, int count) {
+    return 'WORLD $world · $count';
+  }
+
+  @override
+  String get journeyBandFirstPours => 'First Pours';
+
+  @override
+  String get journeyBandFindingRhythm => 'Finding Rhythm';
+
+  @override
+  String get journeyBandDeepWater => 'Deep Water';
+
+  @override
+  String get journeyBandMastery => 'Mastery';
+
+  @override
+  String get notifSoftAskTitle => 'Want a nudge?';
+
+  @override
+  String get notifSoftAskBody =>
+      'A heads-up when today\'s Daily Pour is out, or your next level is waiting. Never more than two a day, and you can switch them off any time in Settings.';
+
+  @override
+  String get notifSoftAskBodyDenied =>
+      'Notifications are off for Pourfect. Turn them on in your phone\'s settings for a heads-up when the Daily Pour is out or a new world arrives. Never more than two a day.';
+
+  @override
+  String get notifSoftAskOpenSettings => 'Open settings';
+
+  @override
+  String get notifSoftAskYes => 'Yes please';
+
+  @override
+  String get notifChannelName => 'Reminders';
+
+  @override
+  String get notifChannelDescription =>
+      'The Daily Pour, your next level and new worlds. Never more than two a day.';
+
+  @override
   String get playHudLevel => 'Level';
 
   @override

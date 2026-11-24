@@ -21,6 +21,8 @@ import 'dart:ui' show PointMode;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../l10n/l10n.dart';
+import '../format.dart';
 import '../theme/toy.dart';
 import '../theme/tokens.dart';
 import 'toy_kit.dart' show starPath;
@@ -402,7 +404,7 @@ class JourneyPainter extends CustomPainter {
     );
     final name = _text(
       'bandn$world${band.reached}${band.name}',
-      band.name.toUpperCase(),
+      worldDisplayName(appL10n(), band.name).toUpperCase(),
       Toy.ui(
         12.5,
         weight: FontWeight.w800,

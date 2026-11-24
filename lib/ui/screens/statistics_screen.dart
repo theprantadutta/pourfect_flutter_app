@@ -1008,7 +1008,7 @@ class _WorldRow extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        band.name,
+                        worldDisplayName(context.l10n, band.name),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Toy.ui(14, weight: FontWeight.w800),
@@ -1077,7 +1077,11 @@ class _WorldRow extends StatelessWidget {
 
     return Semantics(
       label: [
-        l.statsWorldSolvedSemantic(band.name, cleared, band.length),
+        l.statsWorldSolvedSemantic(
+          worldDisplayName(l, band.name),
+          cleared,
+          band.length,
+        ),
         if (pace != null) l.statsWorldPaceSemantic(_paceLabel(l, pace)),
         if (points > 0) l.statsWorldPointsSemantic(points),
       ].join(', '),

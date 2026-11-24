@@ -1120,6 +1120,1040 @@
       }
     }
   },
+  "hubAccountYours": "Your account",
+  "@hubAccountYours": {
+    "description": "Hub, accessibility label of the player chip (top left) when signed in."
+  },
+  "hubAccountSave": "Save your progress",
+  "@hubAccountSave": {
+    "description": "Hub, accessibility label of the player chip (top left) for a guest; opens sign-in."
+  },
+  "hubPlayerFallback": "Player",
+  "@hubPlayerFallback": {
+    "description": "Hub player chip, shown for a moment before the player's leaderboard name loads. Short."
+  },
+  "hubSettings": "Settings",
+  "@hubSettings": {
+    "description": "Hub, accessibility label of the menu button that opens Settings."
+  },
+  "hubTagline": "POUR · SORT · RELAX",
+  "@hubTagline": {
+    "description": "Tagline under the game's logo on the hub and the splash screen. All caps, three short verbs separated by middle dots. Keep very short (about 20 characters)."
+  },
+  "hubStatChipSemantic": "{value} {label}. Statistics",
+  "@hubStatChipSemantic": {
+    "description": "Hub, accessibility label of a stat chip that opens Statistics, e.g. '12 solved. Statistics'. {label} is one of hubStatSolved, hubStatStars, hubStatStreak.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "hubStatSolved": "solved",
+  "@hubStatSolved": {
+    "description": "Hub stat chip caption under the number of levels solved. Lowercase, one short word."
+  },
+  "hubStatStars": "stars",
+  "@hubStatStars": {
+    "description": "Hub stat chip caption under the star total. Lowercase, one short word."
+  },
+  "hubStatStreak": "streak",
+  "@hubStatStreak": {
+    "description": "Hub stat chip caption under the daily streak. Lowercase, one short word."
+  },
+  "hubStreakDays": "{count, plural, =1{1 day} other{{count} days}}",
+  "@hubStreakDays": {
+    "description": "A streak length in days, e.g. '4 days'. On the hub stat chip and the Daily Pour result. Short.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubRankNumber": "#{rank}",
+  "@hubRankNumber": {
+    "description": "A leaderboard position, e.g. '#12'. On the rank sticker, the weekly event and the Daily Pour result.",
+    "placeholders": {
+      "rank": {
+        "type": "int"
+      }
+    }
+  },
+  "hubEventSemantic": "Weekly event, {cleared} of {total} boards",
+  "@hubEventSemantic": {
+    "description": "Hub, accessibility label of the weekly event card.",
+    "placeholders": {
+      "cleared": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "hubEventProgress": "{cleared}/{total} · {timeLeft}",
+  "@hubEventProgress": {
+    "description": "Hub weekly event card, compact line: boards cleared, then time left (eventTimeLeft*, or eventEnded). E.g. '3/7 · 2d 4h'. One line in a half-width card.",
+    "placeholders": {
+      "cleared": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "timeLeft": {
+        "type": "String"
+      }
+    }
+  },
+  "hubEventProgressRanked": "{cleared}/{total} · #{rank} · {timeLeft}",
+  "@hubEventProgressRanked": {
+    "description": "Hub weekly event card, compact line with the player's rank. E.g. '3/7 · #12 · 2d 4h'. One line in a half-width card.",
+    "placeholders": {
+      "cleared": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "rank": {
+        "type": "int"
+      },
+      "timeLeft": {
+        "type": "String"
+      }
+    }
+  },
+  "hubZen": "Zen",
+  "@hubZen": {
+    "description": "Hub card title for Zen mode (endless relaxed play). One short word."
+  },
+  "hubZenSemantic": "Zen mode",
+  "@hubZenSemantic": {
+    "description": "Hub, accessibility label of the Zen card when it is open."
+  },
+  "hubZenLockedSemantic": "Zen mode unlocks at level {level}",
+  "@hubZenLockedSemantic": {
+    "description": "Hub, accessibility label of the locked Zen card.",
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "hubZenOpen": "Endless, no clock",
+  "@hubZenOpen": {
+    "description": "Hub Zen card subtitle once unlocked. One line in a half-width card."
+  },
+  "hubZenLocked": "Level {level} · {remaining} to go",
+  "@hubZenLocked": {
+    "description": "Hub Zen card subtitle while locked: the unlock level and how many levels are left. One line in a half-width card.",
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "hubDockJourney": "Journey",
+  "@hubDockJourney": {
+    "description": "Hub dock button opening the level map. One short word (button is a third of the width)."
+  },
+  "hubDockRankings": "Rankings",
+  "@hubDockRankings": {
+    "description": "Hub dock button opening the leaderboards. One short word (button is a third of the width)."
+  },
+  "hubDockStats": "Stats",
+  "@hubDockStats": {
+    "description": "Hub dock button opening Statistics. One short word (button is a third of the width)."
+  },
+  "hubTip": "Nice! Journey maps every level, and there's a new Daily Pour to play each day.",
+  "@hubTip": {
+    "description": "One-time tip bubble on the hub after the first win. 'Journey' and 'Daily Pour' are the names of the dock button and the daily challenge."
+  },
+  "hubHeroWorld": "World {world}",
+  "@hubHeroWorld": {
+    "description": "Hub next-level card, under the level number: which world it is in.",
+    "placeholders": {
+      "world": {
+        "type": "int"
+      }
+    }
+  },
+  "hubHeroWorldBand": "World {world} · {band}",
+  "@hubHeroWorldBand": {
+    "description": "Hub next-level card, under the level number: world number and world name, e.g. 'World 2 · Finding Rhythm'. One line.",
+    "placeholders": {
+      "world": {
+        "type": "int"
+      },
+      "band": {
+        "type": "String"
+      }
+    }
+  },
+  "hubHeroPar": "par {par}",
+  "@hubHeroPar": {
+    "description": "Small chip: the fewest moves the level can be solved in (golf 'par'). Lowercase, very short.",
+    "placeholders": {
+      "par": {
+        "type": "int"
+      }
+    }
+  },
+  "hubPlay": "PLAY",
+  "@hubPlay": {
+    "description": "The big button on the hub that starts the next level. All caps, one short word."
+  },
+  "hubPlaySemantic": "Play level {level}",
+  "@hubPlaySemantic": {
+    "description": "Accessibility label of the hub PLAY button.",
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "hubMoreUpdateTitle": "Update for more levels",
+  "@hubMoreUpdateTitle": {
+    "description": "Hub card title after the last level on the phone, when new levels need a newer app version."
+  },
+  "hubMoreUpdateBody": "A new world is out, and it needs the latest Pourfect. Update the game to keep pouring.",
+  "@hubMoreUpdateBody": {
+    "description": "Hub card body under hubMoreUpdateTitle. 'Pourfect' is the game's name."
+  },
+  "hubMoreDownloadingTitle": "New levels on the way",
+  "@hubMoreDownloadingTitle": {
+    "description": "Hub card title while the next world of levels downloads."
+  },
+  "hubMoreDownloadingBody": "The next world is downloading. It only takes a moment.",
+  "@hubMoreDownloadingBody": {
+    "description": "Hub card body under hubMoreDownloadingTitle."
+  },
+  "hubMoreAllDoneTitle": "You poured them all!",
+  "@hubMoreAllDoneTitle": {
+    "description": "Hub card title once every level on the phone is solved. Celebratory; 'poured' is the game's verb for playing."
+  },
+  "hubMoreOfflineBody": "Connect to the internet and more levels download in the background. Today's Daily Pour is waiting in the meantime.",
+  "@hubMoreOfflineBody": {
+    "description": "Hub card body when the download of more levels failed (offline)."
+  },
+  "hubMoreOnlineBody": "More levels download in the background whenever you're online. Today's Daily Pour is waiting in the meantime.",
+  "@hubMoreOnlineBody": {
+    "description": "Hub card body once every level is solved and nothing is downloading."
+  },
+  "hubMoreCheckAgain": "Check again",
+  "@hubMoreCheckAgain": {
+    "description": "Button retrying the download of more levels."
+  },
+  "hubAchievementOne": "Achievement unlocked: {title}",
+  "@hubAchievementOne": {
+    "description": "Toast when one achievement unlocks. {title} is the achievement's name.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "hubAchievementMany": "{count, plural, other{{count} achievements unlocked!}}",
+  "@hubAchievementMany": {
+    "description": "Toast when several achievements unlock at once (count is always 2 or more).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubUpdateReady": "An update is ready to install.",
+  "@hubUpdateReady": {
+    "description": "Toast when a downloaded app update can be installed."
+  },
+  "hubUpdateRestart": "Restart",
+  "@hubUpdateRestart": {
+    "description": "Action on the update toast: restarts the app to install the update. Short."
+  },
+  "hubSpanSeconds": "{seconds}s",
+  "@hubSpanSeconds": {
+    "description": "Compact duration, seconds only, e.g. '44s'. Statistics and the level clock.",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "hubSpanMinutes": "{minutes}m",
+  "@hubSpanMinutes": {
+    "description": "Compact duration, whole minutes, e.g. '12m'.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "hubSpanMinutesSeconds": "{minutes}m {seconds}s",
+  "@hubSpanMinutesSeconds": {
+    "description": "Compact duration, e.g. '12m 30s'.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "hubSpanHours": "{hours}h",
+  "@hubSpanHours": {
+    "description": "Compact duration, whole hours, e.g. '4h'.",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "hubSpanHoursMinutes": "{hours}h {minutes}m",
+  "@hubSpanHoursMinutes": {
+    "description": "Compact duration, e.g. '4h 12m'.",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "hubParOn": "on par",
+  "@hubParOn": {
+    "description": "A solve time exactly at the target ('par') time."
+  },
+  "hubParUnder": "{percent}% under par",
+  "@hubParUnder": {
+    "description": "A solve time faster than the target ('par') time, e.g. '18% under par'.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "hubParOver": "{percent}% over par",
+  "@hubParOver": {
+    "description": "A solve time slower than the target ('par') time, e.g. '40% over par'.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyTitle": "Daily Pour",
+  "@dailyTitle": {
+    "description": "Name of the daily challenge, the title of its card on the hub. A product name: keep it short."
+  },
+  "dailyCardSemantic": "Today's challenge",
+  "@dailyCardSemantic": {
+    "description": "Hub, accessibility label of the Daily Pour card."
+  },
+  "dailyCardUnavailable": "can't reach today's board",
+  "@dailyCardUnavailable": {
+    "description": "Hub daily card subtitle when today's board could not be fetched. Lowercase, one line."
+  },
+  "dailyCardSolved": "solved",
+  "@dailyCardSolved": {
+    "description": "Hub daily card subtitle once today's board is solved, followed by stars and a countdown. Lowercase, one word."
+  },
+  "dailyCardNextIn": "next in {time}",
+  "@dailyCardNextIn": {
+    "description": "Hub daily card: countdown to tomorrow's board. {time} is a ticking clock like '19:23:02'. Lowercase, short.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dailyCardEndsIn": "ends in {time}",
+  "@dailyCardEndsIn": {
+    "description": "Hub daily card: countdown until today's board ends. {time} is a ticking clock like '19:23:02'. Lowercase, short.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dailyStreakDays": "{count, plural, other{{count}-day streak}}",
+  "@dailyStreakDays": {
+    "description": "A daily streak, e.g. '12-day streak'. Streak dialog title and the accessibility label of the flame chip.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyStreakMilestone": "{count, plural, other{{count}-day streak!}}",
+  "@dailyStreakMilestone": {
+    "description": "Celebration on the Daily Pour result when the streak reaches a milestone, e.g. '7-day streak!'. Large text, one line.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyRankSemantic": "Leaderboard",
+  "@dailyRankSemantic": {
+    "description": "Hub, accessibility label of the rank sticker on the daily card, when the player has no rank."
+  },
+  "dailyRankSemanticRanked": "Leaderboard, rank {rank}",
+  "@dailyRankSemanticRanked": {
+    "description": "Hub, accessibility label of the rank sticker on the daily card.",
+    "placeholders": {
+      "rank": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyRankSticker": "RANK",
+  "@dailyRankSticker": {
+    "description": "Small caption on the tilted rank sticker on the hub's daily card. All caps, very short (about 5 characters)."
+  },
+  "dailyLeaveLost": "Your moves on today's Daily Pour won't be saved. You can start it again any time today.",
+  "@dailyLeaveLost": {
+    "description": "Leave-the-board confirmation on the Daily Pour: what is lost by leaving."
+  },
+  "dailySubmitRefused": "The server would not accept that result.",
+  "@dailySubmitRefused": {
+    "description": "Daily Pour result card when the server refused the submitted result."
+  },
+  "dailySubmitFailed": "Solved — but the result could not be sent. Try again later.",
+  "@dailySubmitFailed": {
+    "description": "Daily Pour result card when the result could not be sent (network)."
+  },
+  "dailyHudLabel": "Daily",
+  "@dailyHudLabel": {
+    "description": "Daily Pour board header, first word of the title (shown before dailyHudValue, together reading 'Daily Pour'). The header capitalizes it."
+  },
+  "dailyHudValue": "Pour",
+  "@dailyHudValue": {
+    "description": "Daily Pour board header, second word of the title (after dailyHudLabel), shown in the large style. Very short."
+  },
+  "dailyDeadEndRestart": "No way to finish from here. Restart to try another line.",
+  "@dailyDeadEndRestart": {
+    "description": "Toast after asking for a hint in a position that cannot be solved, when undoing would not help."
+  },
+  "dailyDeadEndUndo": "{count, plural, =1{No way to finish from here. Undo 1 move to get back on track.} other{No way to finish from here. Undo {count} moves to get back on track.}}",
+  "@dailyDeadEndUndo": {
+    "description": "Daily Pour toast after asking for a hint in a position that cannot be solved: how many moves to undo.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyActionRestart": "Restart",
+  "@dailyActionRestart": {
+    "description": "Toast action that restarts the board. Short."
+  },
+  "dailyActionUndo": "Undo {count}",
+  "@dailyActionUndo": {
+    "description": "Toast action that undoes that many moves. Short.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyNoHint": "No hint for this position.",
+  "@dailyNoHint": {
+    "description": "Daily Pour toast when no hint can be found."
+  },
+  "dailyLoadingTitle": "Loading today’s board",
+  "@dailyLoadingTitle": {
+    "description": "Daily Pour screen title while today's board loads."
+  },
+  "dailyOffTitle": "Daily challenges are off in this build",
+  "@dailyOffTitle": {
+    "description": "Daily Pour screen title in a build with no server."
+  },
+  "dailyOffDetail": "The campaign is unaffected — every level is on this device.",
+  "@dailyOffDetail": {
+    "description": "Daily Pour screen text under dailyOffTitle."
+  },
+  "dailyNoBoardTitle": "No board today",
+  "@dailyNoBoardTitle": {
+    "description": "Daily Pour screen title when today's board could not be fetched."
+  },
+  "dailyNoBoardDetail": "Today’s challenge comes from the server and it could not be reached. The campaign does not need it.",
+  "@dailyNoBoardDetail": {
+    "description": "Daily Pour screen text under dailyNoBoardTitle."
+  },
+  "dailyLoaderCaption": "Pouring today’s board…",
+  "@dailyLoaderCaption": {
+    "description": "Caption under the loading animation while today's board is fetched."
+  },
+  "dailyBackToLevels": "Back to levels",
+  "@dailyBackToLevels": {
+    "description": "Button leaving the Daily Pour screen when there is no board."
+  },
+  "dailyWeekSemantic": "Your streak: {count, plural, =1{1 day} other{{count} days}}. Open",
+  "@dailyWeekSemantic": {
+    "description": "Accessibility label of the week strip on the Daily Pour screen; tapping opens the streak.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyDaySemantic": "{weekday}, {state}",
+  "@dailyDaySemantic": {
+    "description": "Accessibility label of one day in the Daily Pour week strip, e.g. 'Monday, played'. {state} is one of the dailyDay* texts.",
+    "placeholders": {
+      "weekday": {
+        "type": "String"
+      },
+      "state": {
+        "type": "String"
+      }
+    }
+  },
+  "dailyDayFrozen": "missed, covered by a freeze",
+  "@dailyDayFrozen": {
+    "description": "Accessibility: a missed day that a streak freeze covered. Lowercase."
+  },
+  "dailyDayPlayedToday": "played today",
+  "@dailyDayPlayedToday": {
+    "description": "Accessibility: today's Daily Pour is solved. Lowercase."
+  },
+  "dailyDayPlayed": "played",
+  "@dailyDayPlayed": {
+    "description": "Accessibility: that day's Daily Pour was solved. Lowercase."
+  },
+  "dailyDayToday": "today, not played yet",
+  "@dailyDayToday": {
+    "description": "Accessibility: today, not yet solved. Lowercase."
+  },
+  "dailyDayMissed": "not played",
+  "@dailyDayMissed": {
+    "description": "Accessibility: a past day that was not played. Lowercase."
+  },
+  "dailyDayFuture": "still to come",
+  "@dailyDayFuture": {
+    "description": "Accessibility: a day later this week. Lowercase."
+  },
+  "dailyOutcomeBest": "A new best",
+  "@dailyOutcomeBest": {
+    "description": "Daily Pour result title when the player beat their own best. Large, one line."
+  },
+  "dailyOutcomeSolved": "Solved",
+  "@dailyOutcomeSolved": {
+    "description": "Daily Pour result title. Large, one line."
+  },
+  "dailyFigureMoves": "moves",
+  "@dailyFigureMoves": {
+    "description": "Caption under the move count on the Daily Pour result. Lowercase, one word."
+  },
+  "dailyFigureStreak": "streak",
+  "@dailyFigureStreak": {
+    "description": "Caption under the streak on the Daily Pour result. Lowercase, one word."
+  },
+  "dailyUnranked": "unranked",
+  "@dailyUnranked": {
+    "description": "Caption on the Daily Pour result when the player has no leaderboard rank. Lowercase, one word."
+  },
+  "dailyOfPlayers": "of {count}",
+  "@dailyOfPlayers": {
+    "description": "Caption under a rank: out of how many players, e.g. 'of 1204'. Lowercase, short.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyReminderOn": "You will get one reminder tomorrow evening.",
+  "@dailyReminderOn": {
+    "description": "Daily Pour result, once the player asked to be reminded tomorrow."
+  },
+  "dailyRemindMe": "Remind me tomorrow",
+  "@dailyRemindMe": {
+    "description": "Button on the Daily Pour result that turns on a reminder for tomorrow's board."
+  },
+  "dailyDone": "DONE",
+  "@dailyDone": {
+    "description": "Big button closing a finished daily or weekly-event board. All caps, one short word."
+  },
+  "dailyFreezeVideoUnfinished": "No freeze — the video was not finished.",
+  "@dailyFreezeVideoUnfinished": {
+    "description": "Toast: a rewarded video for a streak freeze was closed early."
+  },
+  "dailyFreezeNoVideo": "No video available right now.",
+  "@dailyFreezeNoVideo": {
+    "description": "Toast: no rewarded video could be loaded."
+  },
+  "dailyFreezeError": "Something went wrong. Try again later.",
+  "@dailyFreezeError": {
+    "description": "Toast: the rewarded video failed for another reason."
+  },
+  "dailyFreezeAdded": "Freeze added. A missed day is covered.",
+  "@dailyFreezeAdded": {
+    "description": "Toast: a streak freeze was earned. A freeze protects the streak for one missed day."
+  },
+  "dailyFreezeNoRoom": "No room for another freeze today.",
+  "@dailyFreezeNoRoom": {
+    "description": "Toast: the server would not add another streak freeze today."
+  },
+  "dailyFreezeLoadingVideo": "Loading video…",
+  "@dailyFreezeLoadingVideo": {
+    "description": "Streak dialog button label while the rewarded video loads."
+  },
+  "dailyFreezeWatch": "Watch a video for a freeze",
+  "@dailyFreezeWatch": {
+    "description": "Streak dialog button: watch a rewarded video ad to earn a streak freeze. One line in a dialog."
+  },
+  "dailyFreezesFull": "Freezes full. Each one covers a day you miss.",
+  "@dailyFreezesFull": {
+    "description": "Streak dialog, when the player holds the most freezes allowed."
+  },
+  "dailyFreezeTomorrow": "One freeze from a video a day. Back tomorrow.",
+  "@dailyFreezeTomorrow": {
+    "description": "Streak dialog, when today's video freeze was already earned."
+  },
+  "dailyStreakTitle": "Your streak",
+  "@dailyStreakTitle": {
+    "description": "Streak dialog title while the streak loads."
+  },
+  "dailyStreakNone": "No streak yet",
+  "@dailyStreakNone": {
+    "description": "Streak dialog title when the streak is zero."
+  },
+  "dailyStreakStart": "Play today's Daily Pour to start one.",
+  "@dailyStreakStart": {
+    "description": "Streak dialog subtitle when the streak is zero."
+  },
+  "dailyStreakBest": "{count, plural, =1{Best: 1 day} other{Best: {count} days}}",
+  "@dailyStreakBest": {
+    "description": "Streak dialog subtitle: the longest streak ever.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyFreezesSemantic": "{count} of {max} streak freezes",
+  "@dailyFreezesSemantic": {
+    "description": "Accessibility label of the streak freezes row: how many are held out of the most allowed.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyFreezesTitle": "Streak freezes",
+  "@dailyFreezesTitle": {
+    "description": "Streak dialog, heading beside the freeze icons."
+  },
+  "dailyFreezesEach": "Each covers a missed day.",
+  "@dailyFreezesEach": {
+    "description": "Streak dialog, under 'Streak freezes' when the freezes are full."
+  },
+  "dailyFreezeWeekly": "{days, plural, =1{A free one every Monday, tomorrow.} other{A free one every Monday, in {days} days.}}",
+  "@dailyFreezeWeekly": {
+    "description": "Streak dialog, under 'Streak freezes': a free freeze arrives every Monday, and when the next one comes.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyCalendarPrevious": "Previous month",
+  "@dailyCalendarPrevious": {
+    "description": "Accessibility label of the streak calendar's back arrow."
+  },
+  "dailyCalendarNext": "Next month",
+  "@dailyCalendarNext": {
+    "description": "Accessibility label of the streak calendar's forward arrow."
+  },
+  "dailyCalendarCellSemantic": "{date}, {state}",
+  "@dailyCalendarCellSemantic": {
+    "description": "Accessibility label of one streak calendar day, e.g. 'October 6, frozen'. {date} is a localized month and day.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "state": {
+        "type": "String"
+      }
+    }
+  },
+  "dailyCalendarPlayed": "played",
+  "@dailyCalendarPlayed": {
+    "description": "Accessibility: a calendar day whose Daily Pour was solved. Lowercase."
+  },
+  "dailyCalendarFrozen": "frozen",
+  "@dailyCalendarFrozen": {
+    "description": "Accessibility: a calendar day covered by a streak freeze. Lowercase."
+  },
+  "dailyCalendarFuture": "to come",
+  "@dailyCalendarFuture": {
+    "description": "Accessibility: a calendar day still in the future. Lowercase."
+  },
+  "dailyLegendPlayed": "Played",
+  "@dailyLegendPlayed": {
+    "description": "Streak calendar legend: a solved day. One short word."
+  },
+  "dailyLegendFrozen": "Frozen",
+  "@dailyLegendFrozen": {
+    "description": "Streak calendar legend: a day covered by a freeze. One short word."
+  },
+  "dailyLegendToday": "Today",
+  "@dailyLegendToday": {
+    "description": "Streak calendar legend: today. One short word."
+  },
+  "eventTitle": "Weekly event",
+  "@eventTitle": {
+    "description": "Header of the weekly event screen."
+  },
+  "eventUnreachable": "Can't reach this week's event right now.",
+  "@eventUnreachable": {
+    "description": "Weekly event screen when the event could not be fetched."
+  },
+  "eventEnded": "ended",
+  "@eventEnded": {
+    "description": "The weekly event is over. Lowercase, shown where the time left would be."
+  },
+  "eventEndsIn": "ends in {timeLeft}",
+  "@eventEndsIn": {
+    "description": "Time left in the weekly event, e.g. 'ends in 2d 4h'. {timeLeft} is one of eventTimeLeft*. Lowercase.",
+    "placeholders": {
+      "timeLeft": {
+        "type": "String"
+      }
+    }
+  },
+  "eventTimeLeftDaysHours": "{days}d {hours}h",
+  "@eventTimeLeftDaysHours": {
+    "description": "Compact time left, days and hours, e.g. '2d 4h'.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "eventTimeLeftHours": "{hours}h",
+  "@eventTimeLeftHours": {
+    "description": "Compact time left, hours, e.g. '3h'.",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "eventTimeLeftMinutes": "{minutes}m",
+  "@eventTimeLeftMinutes": {
+    "description": "Compact time left, minutes, e.g. '12m'.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "eventSummary": "{cleared} of {total} boards · {endsIn}",
+  "@eventSummary": {
+    "description": "Weekly event screen, under the event's name, e.g. '3 of 7 boards · ends in 2d 4h'. {endsIn} is eventEndsIn or eventEnded.",
+    "placeholders": {
+      "cleared": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "endsIn": {
+        "type": "String"
+      }
+    }
+  },
+  "eventFigurePoints": "points",
+  "@eventFigurePoints": {
+    "description": "Caption under the weekly event point total. Lowercase, one word."
+  },
+  "eventRankOf": "of {count}",
+  "@eventRankOf": {
+    "description": "Caption under the weekly event rank: out of how many players. Lowercase, short.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventRankPlay": "play a board to rank",
+  "@eventRankPlay": {
+    "description": "Caption where the weekly event rank would be, before any board is played. Lowercase, short."
+  },
+  "eventRankSetName": "set a name to rank",
+  "@eventRankSetName": {
+    "description": "Caption where the weekly event rank would be, when the player has no leaderboard name. Lowercase, short."
+  },
+  "eventTileSemanticDone": "Board {slot}, {stars, plural, =1{1 star} other{{stars} stars}}, {points} points",
+  "@eventTileSemanticDone": {
+    "description": "Accessibility label of a played weekly event board tile.",
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      },
+      "stars": {
+        "type": "int"
+      },
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "eventTileSemanticNew": "Board {slot}, not played",
+  "@eventTileSemanticNew": {
+    "description": "Accessibility label of an unplayed weekly event board tile.",
+    "placeholders": {
+      "slot": {
+        "type": "int"
+      }
+    }
+  },
+  "eventTilePoints": "{points} pts",
+  "@eventTilePoints": {
+    "description": "Weekly event board tile: points scored. Abbreviated, very short (tile is a seventh of the width).",
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "eventStandingsTitle": "This week's board",
+  "@eventStandingsTitle": {
+    "description": "Heading of the weekly event leaderboard ('board' meaning leaderboard here)."
+  },
+  "eventStandingsEmpty": "Nobody on the board yet. Be the first.",
+  "@eventStandingsEmpty": {
+    "description": "Weekly event leaderboard with nobody on it."
+  },
+  "eventStandingsCleared": " · {cleared}/7",
+  "@eventStandingsCleared": {
+    "description": "Weekly event leaderboard row, after the points: boards cleared out of seven. Keep the leading space and dot.",
+    "placeholders": {
+      "cleared": {
+        "type": "int"
+      }
+    }
+  },
+  "eventSubmitRefused": "The server would not take that result — the event may have ended.",
+  "@eventSubmitRefused": {
+    "description": "Weekly event board when the server refused the result."
+  },
+  "eventSubmitFailed": "Solved — but the result could not be sent. Try again.",
+  "@eventSubmitFailed": {
+    "description": "Weekly event board when the result could not be sent (network)."
+  },
+  "eventDeadEndUndo": "{count, plural, =1{No way to finish from here. Undo 1 move.} other{No way to finish from here. Undo {count} moves.}}",
+  "@eventDeadEndUndo": {
+    "description": "Weekly event toast after asking for a hint in a position that cannot be solved: how many moves to undo.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventNoHint": "No hint for this position right now.",
+  "@eventNoHint": {
+    "description": "Weekly event toast when no hint can be found."
+  },
+  "eventHudLabel": "Board",
+  "@eventHudLabel": {
+    "description": "Weekly event board header, the word before the board number (e.g. 'Board 3'). The header capitalizes it."
+  },
+  "eventHudBand": "{event} · {endsIn}",
+  "@eventHudBand": {
+    "description": "Weekly event board header subtitle: the event's name (from the server) and the time left. One line.",
+    "placeholders": {
+      "event": {
+        "type": "String"
+      },
+      "endsIn": {
+        "type": "String"
+      }
+    }
+  },
+  "eventSending": "Sending…",
+  "@eventSending": {
+    "description": "Weekly event board while the result is being sent."
+  },
+  "eventResult": "{points} points · {total} this week",
+  "@eventResult": {
+    "description": "Weekly event board result: points for this board, and the week's total.",
+    "placeholders": {
+      "points": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "eventResultRanked": "{points} points · {total} this week · #{rank}",
+  "@eventResultRanked": {
+    "description": "Weekly event board result with the player's rank.",
+    "placeholders": {
+      "points": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "rank": {
+        "type": "int"
+      }
+    }
+  },
+  "journeyTitle": "Journey",
+  "@journeyTitle": {
+    "description": "Header of the level map screen. Same word as the hub dock button."
+  },
+  "journeyStarsSemantic": "{count, plural, =1{1 star} other{{count} stars}}",
+  "@journeyStarsSemantic": {
+    "description": "Accessibility label of the star total on the level map header.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "journeyWorldCardSemantic": "World {world} of {worlds}, {name}, {solved} of {total} solved",
+  "@journeyWorldCardSemantic": {
+    "description": "Accessibility label of the world card on the level map.",
+    "placeholders": {
+      "world": {
+        "type": "int"
+      },
+      "worlds": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      },
+      "solved": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "journeyWorldOf": "WORLD {world} OF {worlds}",
+  "@journeyWorldOf": {
+    "description": "Level map world card caption, e.g. 'WORLD 2 OF 4'. All caps, small.",
+    "placeholders": {
+      "world": {
+        "type": "int"
+      },
+      "worlds": {
+        "type": "int"
+      }
+    }
+  },
+  "journeyRibbonSemantic": "World {world}, {name}, {solved} of {total} solved. Scroll to it",
+  "@journeyRibbonSemantic": {
+    "description": "Accessibility label of the ribbon at the bottom of the level map; tapping scrolls to that world.",
+    "placeholders": {
+      "world": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      },
+      "solved": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "journeyRibbonLabel": "WORLD {world} · {name}",
+  "@journeyRibbonLabel": {
+    "description": "Ribbon at the bottom of the level map: world number and its name (already uppercased). All caps, one line.",
+    "placeholders": {
+      "world": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "journeyYouPin": "YOU",
+  "@journeyYouPin": {
+    "description": "Small pin over the player's current level on the level map. All caps, very short (about 4 characters)."
+  },
+  "journeyBandCaps": "WORLD {world} · {count}",
+  "@journeyBandCaps": {
+    "description": "Small all-caps caption over a world's name on the level map: the world number and how many levels it has, e.g. 'WORLD 2 · 45'. Very short.",
+    "placeholders": {
+      "world": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "journeyBandFirstPours": "First Pours",
+  "@journeyBandFirstPours": {
+    "description": "Name of world 1 (levels 1-15), the gentle opening. Short, title case; also shown in all caps."
+  },
+  "journeyBandFindingRhythm": "Finding Rhythm",
+  "@journeyBandFindingRhythm": {
+    "description": "Name of world 2 (levels 16-60). Short, title case; also shown in all caps."
+  },
+  "journeyBandDeepWater": "Deep Water",
+  "@journeyBandDeepWater": {
+    "description": "Name of world 3 (levels 61-120), where it gets hard. Short, title case; also shown in all caps."
+  },
+  "journeyBandMastery": "Mastery",
+  "@journeyBandMastery": {
+    "description": "Name of world 4 (levels 121-150), the hardest bundled levels. Short, title case; also shown in all caps."
+  },
+  "notifSoftAskTitle": "Want a nudge?",
+  "@notifSoftAskTitle": {
+    "description": "Title of the dialog offering notifications after a win."
+  },
+  "notifSoftAskBody": "A heads-up when today's Daily Pour is out, or your next level is waiting. Never more than two a day, and you can switch them off any time in Settings.",
+  "@notifSoftAskBody": {
+    "description": "Body of the notification offer dialog."
+  },
+  "notifSoftAskBodyDenied": "Notifications are off for Pourfect. Turn them on in your phone's settings for a heads-up when the Daily Pour is out or a new world arrives. Never more than two a day.",
+  "@notifSoftAskBodyDenied": {
+    "description": "Body of the notification offer dialog when the system has already blocked notifications. 'Pourfect' is the game's name."
+  },
+  "notifSoftAskOpenSettings": "Open settings",
+  "@notifSoftAskOpenSettings": {
+    "description": "Dialog button opening the phone's notification settings. Short."
+  },
+  "notifSoftAskYes": "Yes please",
+  "@notifSoftAskYes": {
+    "description": "Dialog button accepting notifications. Short."
+  },
+  "notifChannelName": "Reminders",
+  "@notifChannelName": {
+    "description": "Android notification channel name, shown in the phone's notification settings for the app. One or two words."
+  },
+  "notifChannelDescription": "The Daily Pour, your next level and new worlds. Never more than two a day.",
+  "@notifChannelDescription": {
+    "description": "Android notification channel description, shown in the phone's notification settings."
+  },
   "playHudLevel": "Level",
   "@playHudLevel": {
     "description": "Game screen header title word when no level number follows. Short: it sits in the HUD."
