@@ -17,6 +17,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import '../../engine/board.dart';
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import '../transitions.dart';
 import 'board_preview.dart';
@@ -58,6 +59,7 @@ class NextLevelHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return ToyBox(
       radius: Toy.rHero,
       shadow: 5,
@@ -72,12 +74,12 @@ class NextLevelHero extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Level $levelId', style: Toy.display(28)),
+                    Text(l10n.commonLevelN(levelId), style: Toy.display(28)),
                     const SizedBox(height: 2),
                     Text(
                       bandName.isEmpty
-                          ? 'World $world'
-                          : 'World $world · $bandName',
+                          ? l10n.hubHeroWorld(world)
+                          : l10n.hubHeroWorldBand(world, bandName),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Toy.ui(13, color: Toy.inkMuted),
@@ -86,7 +88,7 @@ class NextLevelHero extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              ToyChip.text('par $par'),
+              ToyChip.text(l10n.hubHeroPar(par)),
             ],
           ),
           const SizedBox(height: 14),
@@ -110,8 +112,8 @@ class NextLevelHero extends StatelessWidget {
           const SizedBox(height: 14),
           Builder(
             builder: (context) => ToyButton(
-              label: 'PLAY',
-              semanticLabel: 'Play level $levelId',
+              label: l10n.hubPlay,
+              semanticLabel: l10n.hubPlaySemantic(levelId),
               icon: const _NudgingPlay(),
               onPressed: () => onPlay(globalRectOf(context)),
             ),

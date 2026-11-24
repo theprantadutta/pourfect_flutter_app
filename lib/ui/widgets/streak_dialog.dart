@@ -14,6 +14,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/ads/ad_service.dart';
 import '../../services/api/daily_api.dart';
 import '../../state/streak_controller.dart';
+import '../../l10n/l10n.dart';
+import '../format.dart';
 import '../theme/toy.dart';
 import 'streak_glyphs.dart';
 import 'toy_kit.dart';
@@ -68,9 +70,9 @@ class _StreakCardState extends ConsumerState<_StreakCard> {
       if (!mounted) return;
       if (outcome != RewardOutcome.earned) {
         showToyToast(context, switch (outcome) {
-          RewardOutcome.dismissed => 'No freeze — the video was not finished.',
-          RewardOutcome.unavailable => 'No video available right now.',
-          _ => 'Something went wrong. Try again later.',
+          RewardOutcome.dismissed => context.l10n.dailyFreezeVideoUnfinished,
+          RewardOutcome.unavailable => context.l10n.dailyFreezeNoVideo,
+          _ => context.l10n.dailyFreezeError,
         });
         return;
       }
@@ -78,9 +80,7 @@ class _StreakCardState extends ConsumerState<_StreakCard> {
       if (!mounted) return;
       showToyToast(
         context,
-        added
-            ? 'Freeze added. A missed day is covered.'
-            : 'No room for another freeze today.',
+        added ? context.l10n.dailyFreezeAdded : context.l10n.dailyFreezeNoRoom,
       );
     } finally {
       if (mounted) setState(() => _watching = false);
@@ -116,8 +116,8 @@ class _StreakCardState extends ConsumerState<_StreakCard> {
                 if (info.canEarnFreeze)
                   ToyButton(
                     label: _watching
-                        ? 'Loading video…'
-                        : 'Watch a video for a freeze',
+                        ? context.l10n.dailyFreezeLoadingVideo
+                        : context.l10n.dailyFreezeWatch,
                     color: Toy.blue,
                     height: 50,
                     radius: 16,
@@ -128,8 +128,8 @@ class _StreakCardState extends ConsumerState<_StreakCard> {
                 else
                   Text(
                     info.freezes >= info.maxFreezes
-                        ? 'Freezes full. Each one covers a day you miss.'
-                        : 'One freeze from a video a day. Back tomorrow.',
+                        ? context.l10n.dailyFreezesFull
+                        : context.l10n.dailyFreezeTomorrow,
                     textAlign: TextAlign.center,
                     style: Toy.ui(13, color: Toy.inkMuted),
                   ),
@@ -175,6 +175,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = info?.current ?? 0;
+    final l10n = context.l10n;
     return Row(
       children: [
         StreakFlame(size: 40, lit: current > 0),
@@ -186,19 +187,17 @@ class _Header extends StatelessWidget {
             children: [
               Text(
                 info == null
-                    ? 'Your streak'
+                    ? l10n.dailyStreakTitle
                     : current == 0
-                    ? 'No streak yet'
-                    : current == 1
-                    ? '1-day streak'
-                    : '$current-day streak',
+                    ? l10n.dailyStreakNone
+                    : l10n.dailyStreakDays(current),
                 style: Toy.display(24, color: Colors.white, height: 1.05),
               ),
               if (info != null)
                 Text(
                   current == 0
-                      ? 'Play today\'s Daily Pour to start one.'
-                      : 'Best: ${info!.best} days',
+                      ? l10n.dailyStreakStart
+                      : l10n.dailyStreakBest(info!.best),
                   style: Toy.ui(
                     13,
                     color: Colors.white,
@@ -210,7 +209,7 @@ class _Header extends StatelessWidget {
         ),
         Pressable(
           onPressed: onClose,
-          semanticLabel: 'Close',
+          semanticLabel: l10n.commonClose,
           child: const Padding(
             padding: EdgeInsets.all(6),
             child: ToyIcon(ToyGlyph.close, size: 18, color: Colors.white),
@@ -230,10 +229,10 @@ class _Freezes extends StatelessWidget {
   Widget build(BuildContext context) {
     final next = info.nextWeeklyFreezeOn;
     final days = next.difference(info.today).inDays;
-    final when = days <= 1 ? 'tomorrow' : 'in $days days';
+    final l10n = context.l10n;
 
     return Semantics(
-      label: '${info.freezes} of ${info.maxFreezes} streak freezes',
+      label: l10n.dailyFreezesSemantic(info.freezes, info.maxFreezes),
       excludeSemantics: true,
       child: Row(
         children: [
@@ -259,13 +258,14 @@ class _Freezes extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Streak freezes',
+                  l10n.dailyFreezesTitle,
                   style: Toy.ui(15, weight: FontWeight.w800),
                 ),
                 Text(
                   info.freezes >= info.maxFreezes
-                      ? 'Each covers a missed day.'
-                      : 'A free one every Monday, $when.',
+                      ? l10n.dailyFreezesEach
+                      // 1 or less reads as "tomorrow".
+                      : l10n.dailyFreezeWeekly(days <= 1 ? 1 : days),
                   style: Toy.ui(12, color: Toy.inkMuted),
                 ),
               ],
@@ -294,29 +294,15 @@ class _Calendar extends StatelessWidget {
     required this.onNext,
   });
 
-  static const _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final daysInMonth = DateTime.utc(month.year, month.month + 1, 0).day;
     final lead = month.weekday - 1; // Monday first.
 
     Widget arrow(bool back, VoidCallback? onPressed) => Pressable(
       onPressed: onPressed,
-      semanticLabel: back ? 'Previous month' : 'Next month',
+      semanticLabel: back ? l10n.dailyCalendarPrevious : l10n.dailyCalendarNext,
       child: Opacity(
         opacity: onPressed == null ? 0.25 : 1,
         child: Padding(
@@ -337,7 +323,7 @@ class _Calendar extends StatelessWidget {
             arrow(true, onPrevious),
             Expanded(
               child: Text(
-                '${_months[month.month - 1]} ${month.year}',
+                formatMonthYear(l10n, month),
                 textAlign: TextAlign.center,
                 style: Toy.ui(15, weight: FontWeight.w800),
               ),
@@ -348,7 +334,7 @@ class _Calendar extends StatelessWidget {
         const SizedBox(height: 6),
         Row(
           children: [
-            for (final l in const ['M', 'T', 'W', 'T', 'F', 'S', 'S'])
+            for (final l in weekdayInitials(l10n))
               Expanded(
                 child: Text(
                   l,
@@ -367,7 +353,9 @@ class _Calendar extends StatelessWidget {
           Row(
             children: [
               for (var col = 0; col < 7; col++)
-                Expanded(child: _cell(week * 7 + col - lead + 1, daysInMonth)),
+                Expanded(
+                  child: _cell(l10n, week * 7 + col - lead + 1, daysInMonth),
+                ),
             ],
           ),
         const SizedBox(height: 8),
@@ -376,7 +364,7 @@ class _Calendar extends StatelessWidget {
     );
   }
 
-  Widget _cell(int day, int daysInMonth) {
+  Widget _cell(AppLocalizations l10n, int day, int daysInMonth) {
     if (day < 1 || day > daysInMonth) return const SizedBox(height: 36);
     final date = DateTime.utc(month.year, month.month, day);
     final played = info.played.contains(date);
@@ -390,11 +378,11 @@ class _Calendar extends StatelessWidget {
     if (played) {
       fill = Toy.mint;
       content = const ToyIcon(ToyGlyph.check, size: 13);
-      label = 'played';
+      label = l10n.dailyCalendarPlayed;
     } else if (frozen) {
       fill = Toy.blue;
       content = const StreakSnowflake(size: 14, color: Colors.white);
-      label = 'frozen';
+      label = l10n.dailyCalendarFrozen;
     } else {
       fill = isToday ? Toy.yellow : Toy.card;
       content = Text(
@@ -402,12 +390,12 @@ class _Calendar extends StatelessWidget {
         style: Toy.numbers(12, color: future ? Toy.inkDim : Toy.ink),
       );
       label = isToday
-          ? 'today, not played yet'
-          : (future ? 'to come' : 'not played');
+          ? l10n.dailyDayToday
+          : (future ? l10n.dailyCalendarFuture : l10n.dailyDayMissed);
     }
 
     return Semantics(
-      label: '${_months[month.month - 1]} $day, $label',
+      label: l10n.dailyCalendarCellSemantic(formatMonthDay(l10n, date), label),
       excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.all(2.5),
@@ -439,6 +427,7 @@ class _Legend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     Widget item(Color color, Widget icon, String label) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -463,13 +452,17 @@ class _Legend extends StatelessWidget {
       spacing: 14,
       runSpacing: 6,
       children: [
-        item(Toy.mint, const ToyIcon(ToyGlyph.check, size: 9), 'Played'),
+        item(
+          Toy.mint,
+          const ToyIcon(ToyGlyph.check, size: 9),
+          l10n.dailyLegendPlayed,
+        ),
         item(
           Toy.blue,
           const StreakSnowflake(size: 11, color: Colors.white),
-          'Frozen',
+          l10n.dailyLegendFrozen,
         ),
-        item(Toy.yellow, const SizedBox.shrink(), 'Today'),
+        item(Toy.yellow, const SizedBox.shrink(), l10n.dailyLegendToday),
       ],
     );
   }

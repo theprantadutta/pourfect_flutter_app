@@ -21,6 +21,7 @@ import '../../state/event_controller.dart';
 import '../../state/game_controller.dart';
 import '../../state/hint_controller.dart';
 import '../../state/providers.dart';
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import '../transitions.dart';
 import '../widgets/board_view.dart';
@@ -29,13 +30,26 @@ import '../widgets/leave_board_prompt.dart';
 import '../widgets/level_clock.dart';
 import '../widgets/toy_kit.dart';
 
-/// "ends in 2d 4h", "ends in 3h", "ends in 12m".
-String eventEndsIn(DateTime endsAt, {DateTime? now}) {
+/// "2d 4h", "3h", "12m", or "ended".
+///
+/// [l10n] defaults to the device's language, for callers with no context.
+String eventTimeLeft(DateTime endsAt, {DateTime? now, AppLocalizations? l10n}) {
+  final strings = l10n ?? appL10n();
   final left = endsAt.difference((now ?? DateTime.now()).toUtc());
-  if (left.isNegative) return 'ended';
-  if (left.inDays >= 1) return 'ends in ${left.inDays}d ${left.inHours % 24}h';
-  if (left.inHours >= 1) return 'ends in ${left.inHours}h';
-  return 'ends in ${left.inMinutes.clamp(1, 59)}m';
+  if (left.isNegative) return strings.eventEnded;
+  if (left.inDays >= 1) {
+    return strings.eventTimeLeftDaysHours(left.inDays, left.inHours % 24);
+  }
+  if (left.inHours >= 1) return strings.eventTimeLeftHours(left.inHours);
+  return strings.eventTimeLeftMinutes(left.inMinutes.clamp(1, 59));
+}
+
+/// "ends in 2d 4h", "ends in 3h", "ends in 12m", or "ended".
+String eventEndsIn(DateTime endsAt, {DateTime? now, AppLocalizations? l10n}) {
+  final strings = l10n ?? appL10n();
+  final left = endsAt.difference((now ?? DateTime.now()).toUtc());
+  if (left.isNegative) return strings.eventEnded;
+  return strings.eventEndsIn(eventTimeLeft(endsAt, now: now, l10n: strings));
 }
 
 class EventScreen extends ConsumerStatefulWidget {
@@ -92,7 +106,7 @@ class _EventScreenState extends ConsumerState<EventScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ToyHeader(title: 'Weekly event', onBack: widget.onClose),
+            ToyHeader(title: context.l10n.eventTitle, onBack: widget.onClose),
             const SizedBox(height: 12),
             Expanded(
               child: event == null
@@ -100,7 +114,7 @@ class _EventScreenState extends ConsumerState<EventScreen> {
                       child: state.loading || state.failure == null
                           ? const CircularProgressIndicator(color: Toy.ink)
                           : Text(
-                              "Can't reach this week's event right now.",
+                              context.l10n.eventUnreachable,
                               style: Toy.ui(15, color: Toy.inkMuted),
                             ),
                     )
@@ -148,39 +162,50 @@ class _Summary extends StatelessWidget {
   const _Summary({required this.event});
 
   @override
-  Widget build(BuildContext context) => ToyBox(
-    color: Toy.mint,
-    radius: Toy.rHero,
-    shadow: 5,
-    padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(event.name, style: Toy.display(26, height: 1.05)),
-        const SizedBox(height: 2),
-        Text(
-          '${event.cleared} of ${event.boards.length} boards · '
-          '${eventEndsIn(event.endsAt)}',
-          style: Toy.ui(14, weight: FontWeight.w800),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _Figure(value: '${event.totalPoints}', label: 'points'),
-            const SizedBox(width: 10),
-            _Figure(
-              value: event.rank == null ? '—' : '#${event.rank}',
-              label: event.rank != null
-                  ? 'of ${event.players}'
-                  : event.cleared == 0
-                  ? 'play a board to rank'
-                  : 'set a name to rank',
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return ToyBox(
+      color: Toy.mint,
+      radius: Toy.rHero,
+      shadow: 5,
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(event.name, style: Toy.display(26, height: 1.05)),
+          const SizedBox(height: 2),
+          Text(
+            l10n.eventSummary(
+              event.cleared,
+              event.boards.length,
+              eventEndsIn(event.endsAt, l10n: l10n),
             ),
-          ],
-        ),
-      ],
-    ),
-  );
+            style: Toy.ui(14, weight: FontWeight.w800),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _Figure(
+                value: '${event.totalPoints}',
+                label: l10n.eventFigurePoints,
+              ),
+              const SizedBox(width: 10),
+              _Figure(
+                value: event.rank == null
+                    ? '—'
+                    : l10n.hubRankNumber(event.rank!),
+                label: event.rank != null
+                    ? l10n.eventRankOf(event.players)
+                    : event.cleared == 0
+                    ? l10n.eventRankPlay
+                    : l10n.eventRankSetName,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Figure extends StatelessWidget {
@@ -255,11 +280,16 @@ class _Tile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final done = result != null;
+    final l10n = context.l10n;
     return Pressable(
       onPressed: onTap,
       semanticLabel: done
-          ? 'Board ${board.slot}, ${result!.stars} stars, ${result!.points} points'
-          : 'Board ${board.slot}, not played',
+          ? l10n.eventTileSemanticDone(
+              board.slot,
+              result!.stars,
+              result!.points,
+            )
+          : l10n.eventTileSemanticNew(board.slot),
       child: ToyBox(
         color: done ? Toy.mint : Toy.card,
         radius: 16,
@@ -272,7 +302,9 @@ class _Tile extends StatelessWidget {
             ToyStars(earned: result?.stars ?? 0, size: 12, spacing: 1),
             const SizedBox(height: 4),
             Text(
-              done ? '${result!.points} pts' : 'par ${board.minMoves}',
+              done
+                  ? l10n.eventTilePoints(result!.points)
+                  : l10n.hubHeroPar(board.minMoves),
               style: Toy.ui(
                 11.5,
                 weight: FontWeight.w800,
@@ -302,7 +334,7 @@ class _Standings extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'This week\'s board',
+            context.l10n.eventStandingsTitle,
             style: Toy.ui(16, weight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
@@ -315,7 +347,7 @@ class _Standings extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Text(
-                'Nobody on the board yet. Be the first.',
+                context.l10n.eventStandingsEmpty,
                 style: Toy.ui(14, color: Toy.inkMuted),
               ),
             )
@@ -327,7 +359,10 @@ class _Standings extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: 34,
-                      child: Text('#${row.rank}', style: Toy.numbers(14)),
+                      child: Text(
+                        context.l10n.hubRankNumber(row.rank),
+                        style: Toy.numbers(14),
+                      ),
                     ),
                     Expanded(
                       child: Text(
@@ -343,7 +378,7 @@ class _Standings extends StatelessWidget {
                     ),
                     Text('${row.value}', style: Toy.numbers(14)),
                     Text(
-                      ' · ${row.tieBreak ?? 0}/7',
+                      context.l10n.eventStandingsCleared(row.tieBreak ?? 0),
                       style: Toy.ui(12, color: Toy.inkMuted),
                     ),
                   ],
@@ -505,8 +540,8 @@ class _EventPlayScreenState extends ConsumerState<EventPlayScreen>
           _answer = value;
         case ApiFailure(:final kind):
           _error = kind == ApiFailureKind.refused
-              ? 'The server would not take that result — the event may have ended.'
-              : 'Solved — but the result could not be sent. Try again.';
+              ? context.l10n.eventSubmitRefused
+              : context.l10n.eventSubmitFailed;
       }
     });
   }
@@ -531,12 +566,11 @@ class _EventPlayScreenState extends ConsumerState<EventPlayScreen>
         showToyToast(
           context,
           back == null
-              ? 'No way to finish from here. Restart to try another line.'
-              : 'No way to finish from here. Undo '
-                    '${back == 1 ? '1 move' : '$back moves'}.',
+              ? context.l10n.dailyDeadEndRestart
+              : context.l10n.eventDeadEndUndo(back),
         );
       default:
-        showToyToast(context, 'No hint for this position right now.');
+        showToyToast(context, context.l10n.eventNoHint);
     }
   }
 
@@ -546,7 +580,7 @@ class _EventPlayScreenState extends ConsumerState<EventPlayScreen>
     final state = live?.level.id == 0 ? live : null;
     final answer = _answer;
     final result = answer?.results[widget.board.slot];
-
+    final l10n = context.l10n;
     return PopScope(
       canPop: _leaving || !_midGame,
       onPopInvokedWithResult: (didPop, _) {
@@ -558,10 +592,12 @@ class _EventPlayScreenState extends ConsumerState<EventPlayScreen>
           children: [
             BoardHud(
               levelId: 0,
-              titleLabel: 'Board',
+              titleLabel: l10n.eventHudLabel,
               titleValue: '${widget.board.slot}',
-              bandName:
-                  '${widget.event.name} · ${eventEndsIn(widget.event.endsAt)}',
+              bandName: l10n.eventHudBand(
+                widget.event.name,
+                eventEndsIn(widget.event.endsAt, l10n: l10n),
+              ),
               movesUsed: state?.movesUsed ?? 0,
               minMoves: widget.board.minMoves,
               clock: state == null
@@ -613,7 +649,7 @@ class _EventPlayScreenState extends ConsumerState<EventPlayScreen>
                     children: [
                       if (_submitting)
                         Text(
-                          'Sending…',
+                          l10n.eventSending,
                           style: Toy.ui(15, weight: FontWeight.w800),
                         )
                       else if (_error != null) ...[
@@ -624,15 +660,23 @@ class _EventPlayScreenState extends ConsumerState<EventPlayScreen>
                         ),
                         const SizedBox(height: 10),
                         ToyButton.secondary(
-                          label: 'Try again',
+                          label: l10n.commonRetry,
                           onPressed: _submit,
                         ),
                       ] else ...[
                         ToyStars(earned: result!.stars, size: 26, spacing: 4),
                         const SizedBox(height: 6),
                         Text(
-                          '${result.points} points · ${answer!.totalPoints} this week'
-                          '${answer.rank == null ? '' : ' · #${answer.rank}'}',
+                          answer!.rank == null
+                              ? l10n.eventResult(
+                                  result.points,
+                                  answer.totalPoints,
+                                )
+                              : l10n.eventResultRanked(
+                                  result.points,
+                                  answer.totalPoints,
+                                  answer.rank!,
+                                ),
                           textAlign: TextAlign.center,
                           style: Toy.ui(15, weight: FontWeight.w800),
                         ),
@@ -641,7 +685,7 @@ class _EventPlayScreenState extends ConsumerState<EventPlayScreen>
                       SizedBox(
                         width: double.infinity,
                         child: ToyButton(
-                          label: 'DONE',
+                          label: l10n.dailyDone,
                           onPressed: _submitting ? null : widget.onExit,
                           height: 50,
                           fontSize: 22,

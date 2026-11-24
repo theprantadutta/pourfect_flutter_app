@@ -13,6 +13,7 @@ library;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/l10n.dart';
 import '../../state/campaign_worlds.dart';
 import '../theme/toy.dart';
 import 'ball.dart';
@@ -24,27 +25,22 @@ class MoreLevelsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final worlds = ref.watch(campaignWorldsProvider);
+    final l10n = context.l10n;
 
     final (title, body) = switch (worlds) {
       CampaignWorldsState(updateRequired: true) => (
-        'Update for more levels',
-        'A new world is out, and it needs the latest Pourfect. Update the '
-            'game to keep pouring.',
+        l10n.hubMoreUpdateTitle,
+        l10n.hubMoreUpdateBody,
       ),
       CampaignWorldsState(fetch: WorldsFetch.fetching) => (
-        'New levels on the way',
-        'The next world is downloading. It only takes a moment.',
+        l10n.hubMoreDownloadingTitle,
+        l10n.hubMoreDownloadingBody,
       ),
       CampaignWorldsState(fetch: WorldsFetch.failed) => (
-        'You poured them all!',
-        'Connect to the internet and more levels download in the '
-            'background. Today\'s Daily Pour is waiting in the meantime.',
+        l10n.hubMoreAllDoneTitle,
+        l10n.hubMoreOfflineBody,
       ),
-      _ => (
-        'You poured them all!',
-        'More levels download in the background whenever you\'re online. '
-            'Today\'s Daily Pour is waiting in the meantime.',
-      ),
+      _ => (l10n.hubMoreAllDoneTitle, l10n.hubMoreOnlineBody),
     };
 
     final retry = worlds.fetch == WorldsFetch.failed && !worlds.updateRequired;
@@ -89,7 +85,7 @@ class MoreLevelsCard extends ConsumerWidget {
           if (retry) ...[
             const SizedBox(height: 14),
             ToyButton.secondary(
-              label: 'Check again',
+              label: l10n.hubMoreCheckAgain,
               onPressed: () => ref
                   .read(campaignWorldsProvider.notifier)
                   .maybeFetch(force: true),

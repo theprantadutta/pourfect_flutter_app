@@ -20,6 +20,7 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../l10n/l10n.dart';
 import '../theme/toy.dart';
 import 'streak_glyphs.dart';
 import 'toy_kit.dart';
@@ -63,31 +64,32 @@ class DailyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final white = Toy.ui(13, color: Colors.white);
+    final l10n = context.l10n;
 
     // Unavailable still opens the challenge screen, which owns the retry.
     // A dead card would leave the player no way to ask again.
     final Widget detail = switch ((unavailable, played)) {
-      (true, _) => Text("can't reach today's board", style: white),
+      (true, _) => Text(l10n.dailyCardUnavailable, style: white),
       (_, true) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('solved', style: white),
+          Text(l10n.dailyCardSolved, style: white),
           const SizedBox(width: 6),
           ToyStars(earned: stars ?? 0, size: 14, spacing: 1),
           const SizedBox(width: 6),
           Flexible(
-            child: _Countdown(prefix: 'next in ', style: white),
+            child: _Countdown(message: l10n.dailyCardNextIn, style: white),
           ),
         ],
       ),
       // Loading and not-yet-played both have a live clock: it counts to the
       // server's rollover, not to anything the fetch decides.
-      _ => _Countdown(prefix: 'ends in ', style: white),
+      _ => _Countdown(message: l10n.dailyCardEndsIn, style: white),
     };
 
     return Pressable(
       onPressed: onOpenDaily,
-      semanticLabel: "Today's challenge",
+      semanticLabel: l10n.dailyCardSemantic,
       child: ToyBox(
         color: Toy.blue,
         radius: 22,
@@ -107,7 +109,7 @@ class DailyCard extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          'Daily Pour',
+                          l10n.dailyTitle,
                           style: Toy.display(
                             21,
                             color: Colors.white,
@@ -145,7 +147,7 @@ class _StreakChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Pressable(
     onPressed: onPressed,
-    semanticLabel: '$streak-day streak',
+    semanticLabel: context.l10n.dailyStreakDays(streak),
     child: ToyBox(
       color: Toy.card,
       radius: 12,
@@ -174,7 +176,9 @@ class _RankSticker extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Pressable(
     onPressed: onPressed,
-    semanticLabel: rank == null ? 'Leaderboard' : 'Leaderboard, rank $rank',
+    semanticLabel: rank == null
+        ? context.l10n.dailyRankSemantic
+        : context.l10n.dailyRankSemanticRanked(rank!),
     child: ToySticker(
       color: Toy.yellow,
       angle: 4,
@@ -184,10 +188,16 @@ class _RankSticker extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('RANK', style: Toy.ui(11, weight: FontWeight.w800)),
+          Text(
+            context.l10n.dailyRankSticker,
+            style: Toy.ui(11, weight: FontWeight.w800),
+          ),
           // An em dash is the honest answer to every reason there is no
           // position, and it keeps the sticker the same size either way.
-          Text(rank == null ? '—' : '#$rank', style: Toy.display(22)),
+          Text(
+            rank == null ? '—' : context.l10n.hubRankNumber(rank!),
+            style: Toy.display(22),
+          ),
         ],
       ),
     ),
@@ -203,10 +213,12 @@ class _RankSticker extends StatelessWidget {
 /// Its own widget so the per-second rebuild is confined to eight characters
 /// rather than dragging the hub through a frame.
 class _Countdown extends StatefulWidget {
-  final String prefix;
+  /// The sentence around the clock, e.g. "ends in {time}". The clock is set
+  /// in tabular figures, so the sentence is split around it.
+  final String Function(String time) message;
   final TextStyle style;
 
-  const _Countdown({required this.prefix, required this.style});
+  const _Countdown({required this.message, required this.style});
 
   @override
   State<_Countdown> createState() => _CountdownState();
@@ -243,17 +255,26 @@ class _CountdownState extends State<_Countdown> {
         '${two(_left.inHours)}:${two(_left.inMinutes % 60)}'
         ':${two(_left.inSeconds % 60)}';
 
+    // The translated sentence may put the clock anywhere in it, so it is
+    // built around a marker and cut there.
+    const marker = '\u{E000}';
+    final sentence = widget.message(marker);
+    final at = sentence.indexOf(marker);
+    final before = at < 0 ? sentence : sentence.substring(0, at);
+    final after = at < 0 ? '' : sentence.substring(at + marker.length);
+
     // Its own layer, so a tick once a second repaints eight characters and
     // not the hub around them.
     return RepaintBoundary(
       child: Text.rich(
         TextSpan(
-          text: widget.prefix,
+          text: before,
           children: [
             TextSpan(
               text: clock,
               style: Toy.numbers(13, color: widget.style.color ?? Toy.ink),
             ),
+            if (after.isNotEmpty) TextSpan(text: after),
           ],
         ),
         maxLines: 1,

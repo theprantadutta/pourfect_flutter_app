@@ -14,6 +14,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/ads/ad_service.dart';
 import '../../services/audio/audio_service.dart';
 import '../../services/analytics/analytics_service.dart';
@@ -159,9 +160,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
     try {
       final leave = await confirmLeaveBoard(
         context,
-        lost:
-            "Your moves on today's Daily Pour won't be saved. You can start "
-            'it again any time today.',
+        lost: context.l10n.dailyLeaveLost,
       );
       if (!mounted) return;
       if (leave) {
@@ -298,8 +297,8 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
           // take it back. Only the ranking is missing, and saying so is more
           // honest than a spinner that never resolves.
           _submitError = kind == ApiFailureKind.refused
-              ? 'The server would not accept that result.'
-              : 'Solved — but the result could not be sent. Try again later.';
+              ? context.l10n.dailySubmitRefused
+              : context.l10n.dailySubmitFailed;
       }
     });
   }
@@ -363,10 +362,10 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
           levelId: 0,
           // "Daily Pour". The HUD capitalizes the label and appends the value;
           // a daily board has no level id, and "Level 0" reads as a bug.
-          titleLabel: 'Daily',
-          titleValue: 'Pour',
+          titleLabel: context.l10n.dailyHudLabel,
+          titleValue: context.l10n.dailyHudValue,
           titleColor: Colors.white,
-          bandName: _dateLabel(challenge.date),
+          bandName: formatShortDate(context.l10n, challenge.date),
           movesUsed: state?.movesUsed ?? 0,
           minMoves: challenge.minMoves,
           clock: state == null
@@ -510,11 +509,11 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
         showToyToast(
           context,
           back == null
-              ? 'No way to finish from here. Restart to try another line.'
-              : 'No way to finish from here. Undo '
-                    '${back == 1 ? '1 move' : '$back moves'} to get back on '
-                    'track.',
-          actionLabel: back == null ? 'Restart' : 'Undo $back',
+              ? context.l10n.dailyDeadEndRestart
+              : context.l10n.dailyDeadEndUndo(back),
+          actionLabel: back == null
+              ? context.l10n.dailyActionRestart
+              : context.l10n.dailyActionUndo(back),
           onAction: () {
             if (back == null) return _onRestart();
             for (var i = 0; i < back; i++) {
@@ -524,32 +523,12 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen>
           duration: const Duration(seconds: 6),
         );
       case HintAvailability.unavailable:
-        showToyToast(context, 'No hint for this position.');
+        showToyToast(context, context.l10n.dailyNoHint);
       case HintAvailability.cancelled:
       case HintAvailability.notApplicable:
         break;
     }
   }
-}
-
-/// "Sun, Sep 27" — the date the board belongs to, under the title.
-String _dateLabel(DateTime date) {
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  return '${days[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
 }
 
 /// What the player sees when there is no board to play.
@@ -563,18 +542,12 @@ class _Unavailable extends StatelessWidget {
   Widget build(BuildContext context) {
     // Three different reasons, three different sentences. "Something went
     // wrong" would cover all of them and help with none.
+    final l10n = context.l10n;
     final (title, detail) = state.loading
-        ? ('Loading today’s board', '')
+        ? (l10n.dailyLoadingTitle, '')
         : state.isOff
-        ? (
-            'Daily challenges are off in this build',
-            'The campaign is unaffected — every level is on this device.',
-          )
-        : (
-            'No board today',
-            'Today’s challenge comes from the server and it could not be '
-                'reached. The campaign does not need it.',
-          );
+        ? (l10n.dailyOffTitle, l10n.dailyOffDetail)
+        : (l10n.dailyNoBoardTitle, l10n.dailyNoBoardDetail);
 
     final back = Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
@@ -587,11 +560,11 @@ class _Unavailable extends StatelessWidget {
       return Column(
         children: [
           back,
-          const Expanded(
+          Expanded(
             child: Center(
               child: PourLoader(
                 ballSize: 30,
-                caption: 'Pouring today’s board…',
+                caption: l10n.dailyLoaderCaption,
                 captionColor: Colors.white,
               ),
             ),
@@ -626,7 +599,10 @@ class _Unavailable extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 24),
-                ToyButton.secondary(label: 'Back to levels', onPressed: onBack),
+                ToyButton.secondary(
+                  label: l10n.dailyBackToLevels,
+                  onPressed: onBack,
+                ),
               ],
             ),
           ),
@@ -698,7 +674,8 @@ class _WeekStripState extends State<_WeekStrip>
 
   @override
   Widget build(BuildContext context) {
-    const letters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final l10n = context.l10n;
+    final letters = weekdayInitials(l10n);
     final today = DateTime.utc(
       widget.today.year,
       widget.today.month,
@@ -710,7 +687,7 @@ class _WeekStripState extends State<_WeekStrip>
 
     return Pressable(
       onPressed: widget.onTap,
-      semanticLabel: 'Your streak: ${plural(streak, 'day')}. Open',
+      semanticLabel: l10n.dailyWeekSemantic(streak),
       child: ToyBox(
         radius: Toy.rControl,
         shadow: 4,
@@ -749,6 +726,7 @@ class _WeekStripState extends State<_WeekStrip>
   }
 
   Widget _day(String letter, DateTime day, DateTime today, int streak) {
+    final l10n = context.l10n;
     final ago = today.difference(day).inDays;
     final isToday = ago == 0;
     final info = widget.info;
@@ -764,28 +742,28 @@ class _WeekStripState extends State<_WeekStrip>
     final Widget stamp;
     final String state;
     if (frozen) {
-      state = 'missed, covered by a freeze';
+      state = l10n.dailyDayFrozen;
       stamp = const _Stamp(
         color: Toy.blue,
         child: StreakSnowflake(size: 16, color: Colors.white),
       );
     } else if (done) {
-      state = isToday ? 'played today' : 'played';
+      state = isToday ? l10n.dailyDayPlayedToday : l10n.dailyDayPlayed;
       stamp = _Stamp(
         color: Toy.mint,
         child: const ToyIcon(ToyGlyph.check, size: 16),
       );
     } else if (isToday) {
-      state = 'today, not played yet';
+      state = l10n.dailyDayToday;
       stamp = _Stamp(
         color: Toy.yellow,
         child: Text('${day.day}', style: Toy.numbers(14)),
       );
     } else if (ago > 0) {
-      state = 'not played';
+      state = l10n.dailyDayMissed;
       stamp = const _Stamp(dashed: true);
     } else {
-      state = 'still to come';
+      state = l10n.dailyDayFuture;
       stamp = const _Stamp(faint: true);
     }
 
@@ -804,7 +782,7 @@ class _WeekStripState extends State<_WeekStrip>
         : stamp;
 
     return Semantics(
-      label: '${_weekdayName(day.weekday)}, $state',
+      label: l10n.dailyDaySemantic(formatWeekday(l10n, day.weekday), state),
       excludeSemantics: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -819,16 +797,6 @@ class _WeekStripState extends State<_WeekStrip>
       ),
     );
   }
-
-  static String _weekdayName(int weekday) => const [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ][weekday - 1];
 }
 
 /// One 32px day stamp.
@@ -930,6 +898,7 @@ class _Outcome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final outcome = result;
+    final l10n = context.l10n;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
@@ -945,7 +914,7 @@ class _Outcome extends StatelessWidget {
               if (onRetry != null) ...[
                 const SizedBox(height: 12),
                 ToyButton.secondary(
-                  label: 'Try again',
+                  label: l10n.commonRetry,
                   onPressed: onRetry,
                   height: 44,
                 ),
@@ -958,34 +927,41 @@ class _Outcome extends StatelessWidget {
                     const StreakFlame(size: 28),
                     const SizedBox(width: 8),
                     Text(
-                      '${outcome.dailyStreak}-day streak!',
+                      l10n.dailyStreakMilestone(outcome.dailyStreak),
                       style: Toy.display(24, color: Toy.tomato),
                     ),
                   ],
                 )
               else
                 Text(
-                  outcome.isPersonalBest ? 'A new best' : 'Solved',
+                  outcome.isPersonalBest
+                      ? l10n.dailyOutcomeBest
+                      : l10n.dailyOutcomeSolved,
                   style: Toy.display(24),
                 ),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _Figure(value: '${outcome.moves}', label: 'moves'),
                   _Figure(
-                    value: plural(outcome.dailyStreak, 'day'),
-                    label: 'streak',
+                    value: '${outcome.moves}',
+                    label: l10n.dailyFigureMoves,
+                  ),
+                  _Figure(
+                    value: l10n.hubStreakDays(outcome.dailyStreak),
+                    label: l10n.dailyFigureStreak,
                     warm: outcome.dailyStreak > 1,
                   ),
                   // No name means no board, and no rank. Saying "unranked" is
                   // the honest answer rather than a number the leaderboard
                   // would contradict a moment later.
                   _Figure(
-                    value: outcome.rank == null ? '—' : '#${outcome.rank}',
+                    value: outcome.rank == null
+                        ? '—'
+                        : l10n.hubRankNumber(outcome.rank!),
                     label: outcome.rank == null
-                        ? 'unranked'
-                        : 'of ${outcome.totalPlayers}',
+                        ? l10n.dailyUnranked
+                        : l10n.dailyOfPlayers(outcome.totalPlayers),
                   ),
                 ],
               ),
@@ -993,14 +969,14 @@ class _Outcome extends StatelessWidget {
             if (reminderOn) ...[
               const SizedBox(height: 12),
               Text(
-                'You will get one reminder tomorrow evening.',
+                l10n.dailyReminderOn,
                 textAlign: TextAlign.center,
                 style: Toy.ui(12.5, color: Toy.inkMuted),
               ),
             ] else if (onRemindMe != null) ...[
               const SizedBox(height: 12),
               ToyButton.secondary(
-                label: 'Remind me tomorrow',
+                label: l10n.dailyRemindMe,
                 onPressed: onRemindMe,
                 height: 44,
               ),
@@ -1009,7 +985,7 @@ class _Outcome extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ToyButton(
-                label: 'DONE',
+                label: l10n.dailyDone,
                 onPressed: onDone,
                 height: 50,
                 fontSize: 22,

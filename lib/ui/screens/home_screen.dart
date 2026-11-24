@@ -22,6 +22,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/ads/ad_service.dart';
 import '../../state/account_controller.dart';
 import '../../state/daily_controller.dart';
@@ -33,6 +34,7 @@ import '../../state/play_history.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
 import '../../state/streak_controller.dart';
+import '../format.dart';
 import '../theme/ball_palette.dart';
 import '../theme/toy.dart';
 import '../transitions.dart';
@@ -84,7 +86,7 @@ class HomeScreen extends ConsumerWidget {
       board: level!.board,
       par: level.minMoves,
       world: (band?.index ?? 0) + 1,
-      bandName: band?.name ?? '',
+      bandName: band == null ? '' : worldDisplayName(context.l10n, band.name),
       boldGlyphs: ref.watch(settingsProvider).boldSymbols,
       onPlay: (origin) => onOpenLevel(current, origin),
       expand: expand,
@@ -247,8 +249,8 @@ class _TopRow extends ConsumerWidget {
                 : Pressable(
                     onPressed: onOpenAccount,
                     semanticLabel: account.signedIn
-                        ? 'Your account'
-                        : 'Save your progress',
+                        ? context.l10n.hubAccountYours
+                        : context.l10n.hubAccountSave,
                     child: ToyBox(
                       radius: Toy.rButton,
                       shadow: 3,
@@ -267,7 +269,7 @@ class _TopRow extends ConsumerWidget {
                             child: Text(
                               // The server names every account at creation, so a
                               // null handle only ever means "not loaded yet".
-                              account.handle ?? 'Player',
+                              account.handle ?? context.l10n.hubPlayerFallback,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: Toy.ui(14, weight: FontWeight.w700),
@@ -281,7 +283,7 @@ class _TopRow extends ConsumerWidget {
         ),
         const SizedBox(width: 12),
         ToySquareButton(
-          semanticLabel: 'Settings',
+          semanticLabel: context.l10n.hubSettings,
           onPressed: onOpenSettings,
           child: const _MenuBars(),
         ),
@@ -425,7 +427,7 @@ class _WordmarkState extends State<_Wordmark>
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                'POUR · SORT · RELAX',
+                context.l10n.hubTagline,
                 style: Toy.ui(
                   13,
                   weight: FontWeight.w800,
@@ -461,11 +463,12 @@ class _StatChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     Widget chip(Color color, String value, String label, {bool star = false}) =>
         Expanded(
           child: Pressable(
             onPressed: onOpenStatistics,
-            semanticLabel: '$value $label. Statistics',
+            semanticLabel: l10n.hubStatChipSemantic(value, label),
             child: ToyBox(
               color: color,
               radius: Toy.rButton,
@@ -506,13 +509,13 @@ class _StatChips extends StatelessWidget {
 
     return Row(
       children: [
-        chip(Toy.yellow, '$solved', 'solved'),
+        chip(Toy.yellow, '$solved', l10n.hubStatSolved),
         const SizedBox(width: 8),
-        chip(Toy.pink, '$stars', 'stars', star: true),
+        chip(Toy.pink, '$stars', l10n.hubStatStars, star: true),
         const SizedBox(width: 8),
         // Always shown, zero included. The old row dropped the streak at 0,
         // which here would leave a hole in a row of three.
-        chip(Toy.mint, streak == 1 ? '1 day' : '$streak days', 'streak'),
+        chip(Toy.mint, l10n.hubStreakDays(streak), l10n.hubStatStreak),
       ],
     );
   }
@@ -594,7 +597,8 @@ class _Event extends ConsumerWidget {
       // No server or no event yet: keep the slot so Zen does not stretch.
       return const SizedBox.shrink();
     }
-
+    final l10n = context.l10n;
+    final timeLeft = eventTimeLeft(event.endsAt, l10n: l10n);
     return Pressable(
       onPressed: () => Navigator.of(context).push(
         PourfectPageRoute<void>(
@@ -603,7 +607,7 @@ class _Event extends ConsumerWidget {
               EventScreen(onClose: () => Navigator.of(route).maybePop()),
         ),
       ),
-      semanticLabel: 'Weekly event, ${event.cleared} of 7 boards',
+      semanticLabel: l10n.hubEventSemantic(event.cleared, event.boards.length),
       child: ToyBox(
         color: Toy.mint,
         radius: 20,
@@ -621,9 +625,18 @@ class _Event extends ConsumerWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              '${event.cleared}/${event.boards.length}'
-              '${event.rank == null ? '' : ' · #${event.rank}'}'
-              ' · ${eventEndsIn(event.endsAt).replaceFirst('ends in ', '')}',
+              event.rank == null
+                  ? l10n.hubEventProgress(
+                      event.cleared,
+                      event.boards.length,
+                      timeLeft,
+                    )
+                  : l10n.hubEventProgressRanked(
+                      event.cleared,
+                      event.boards.length,
+                      event.rank!,
+                      timeLeft,
+                    ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Toy.ui(12, weight: FontWeight.w800),
@@ -643,7 +656,7 @@ class _Zen extends ConsumerWidget {
     final cleared = ref.watch(progressProvider).length;
     final open = cleared >= kZenUnlockLevel;
     final ink = open ? Colors.white : Toy.inkMuted;
-
+    final l10n = context.l10n;
     return Pressable(
       onPressed: open
           ? () => Navigator.of(context).push(
@@ -655,8 +668,8 @@ class _Zen extends ConsumerWidget {
             )
           : null,
       semanticLabel: open
-          ? 'Zen mode'
-          : 'Zen mode unlocks at level $kZenUnlockLevel',
+          ? l10n.hubZenSemantic
+          : l10n.hubZenLockedSemantic(kZenUnlockLevel),
       child: ToyBox(
         color: open ? Toy.lilac : Toy.card,
         radius: 20,
@@ -670,7 +683,7 @@ class _Zen extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Zen',
+                    l10n.hubZen,
                     style: Toy.display(17, height: 1.1, color: ink),
                   ),
                 ),
@@ -680,8 +693,11 @@ class _Zen extends ConsumerWidget {
             const SizedBox(height: 2),
             Text(
               open
-                  ? 'Endless, no clock'
-                  : 'Level $kZenUnlockLevel · ${kZenUnlockLevel - cleared} to go',
+                  ? l10n.hubZenOpen
+                  : l10n.hubZenLocked(
+                      kZenUnlockLevel,
+                      kZenUnlockLevel - cleared,
+                    ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Toy.ui(12, weight: FontWeight.w800, color: ink),
@@ -741,11 +757,26 @@ class _Dock extends StatelessWidget {
 
     return Row(
       children: [
-        button('Journey', Toy.mint, BallGlyph.square, onOpenJourney),
+        button(
+          context.l10n.hubDockJourney,
+          Toy.mint,
+          BallGlyph.square,
+          onOpenJourney,
+        ),
         const SizedBox(width: 10),
-        button('Rankings', Toy.yellow, BallGlyph.diamond, onOpenLeaderboard),
+        button(
+          context.l10n.hubDockRankings,
+          Toy.yellow,
+          BallGlyph.diamond,
+          onOpenLeaderboard,
+        ),
         const SizedBox(width: 10),
-        button('Stats', Toy.pink, BallGlyph.bar, onOpenStatistics),
+        button(
+          context.l10n.hubDockStats,
+          Toy.pink,
+          BallGlyph.bar,
+          onOpenStatistics,
+        ),
       ],
     );
   }
@@ -805,12 +836,7 @@ class _HubTipState extends ConsumerState<_HubTip> {
             ? Duration.zero
             : const Duration(milliseconds: 220),
         opacity: _showing ? 1 : 0,
-        child: TipBubble(
-          text:
-              'Nice! Journey maps every level, and there\'s a new '
-              'Daily Pour to play each day.',
-          onDismiss: _dismiss,
-        ),
+        child: TipBubble(text: context.l10n.hubTip, onDismiss: _dismiss),
       ),
     );
   }

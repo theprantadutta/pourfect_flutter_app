@@ -261,8 +261,8 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
         showToyToast(
           context,
           fresh.length == 1
-              ? 'Achievement unlocked: ${fresh.single.title}'
-              : '${fresh.length} achievements unlocked!',
+              ? context.l10n.hubAchievementOne(fresh.single.title)
+              : context.l10n.hubAchievementMany(fresh.length),
           cue: UiCue.achievement,
         );
       });
@@ -451,8 +451,8 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     // not a Scaffold, so a SnackBar here would never have appeared.
     showToyToast(
       context,
-      'An update is ready to install.',
-      actionLabel: 'Restart',
+      context.l10n.hubUpdateReady,
+      actionLabel: context.l10n.hubUpdateRestart,
       onAction: _updater.install,
       duration: const Duration(seconds: 10),
     );
@@ -571,16 +571,14 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
 
     final yes = await showToyConfirm(
       context: context,
-      title: 'Want a nudge?',
+      title: context.l10n.notifSoftAskTitle,
       body: declinedBefore
-          ? 'Notifications are off for Pourfect. Turn them on in your '
-                "phone's settings for a heads-up when the Daily Pour is out "
-                'or a new world arrives. Never more than two a day.'
-          : "A heads-up when today's Daily Pour is out, or your next level "
-                'is waiting. Never more than two a day, and you can switch '
-                'them off any time in Settings.',
-      cancelLabel: 'Not now',
-      confirmLabel: declinedBefore ? 'Open settings' : 'Yes please',
+          ? context.l10n.notifSoftAskBodyDenied
+          : context.l10n.notifSoftAskBody,
+      cancelLabel: context.l10n.commonNotNow,
+      confirmLabel: declinedBefore
+          ? context.l10n.notifSoftAskOpenSettings
+          : context.l10n.notifSoftAskYes,
       confirmColor: Toy.mint,
     );
     if (!yes) return true;

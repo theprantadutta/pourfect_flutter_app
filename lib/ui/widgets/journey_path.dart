@@ -122,10 +122,19 @@ class JourneyPainter extends CustomPainter {
     required this.pulse,
     required this.visibleTop,
     required this.visibleBottom,
+    required this.youLabel,
+    required this.bandCaps,
   });
 
   final List<JourneyLevel> levels;
   final List<JourneyBand> bands;
+
+  /// The pin over the current level ("YOU"), translated by the caller.
+  final String youLabel;
+
+  /// The caption over a world's name ("WORLD 2 · 45"), from its number and
+  /// its level count. Translated by the caller: a painter has no context.
+  final String Function(int world, int length) bandCaps;
 
   /// Unused by the Toybox path, which reads [Toy] directly. Kept optional so
   /// older callers compile.
@@ -316,8 +325,8 @@ class JourneyPainter extends CustomPainter {
 
     // The YOU pin, 6px above the tile.
     final you = _text(
-      'you',
-      'YOU',
+      'you$youLabel',
+      youLabel,
       Toy.ui(
         11,
         weight: FontWeight.w800,
@@ -385,13 +394,14 @@ class JourneyPainter extends CustomPainter {
         : size.width - centre.dx - kJourneyTile / 2 - 14 - 8;
     if (room < 60) return;
 
+    final capsText = bandCaps(world, band.length);
     final caps = _text(
-      'bandc$world${band.reached}',
-      'WORLD $world · ${band.length}',
+      'bandc$world${band.reached}$capsText',
+      capsText,
       Toy.caps(size: 9.5, color: band.reached ? Toy.blue : Toy.inkDim),
     );
     final name = _text(
-      'bandn$world${band.reached}',
+      'bandn$world${band.reached}${band.name}',
       band.name.toUpperCase(),
       Toy.ui(
         12.5,
@@ -509,7 +519,8 @@ class JourneyPainter extends CustomPainter {
       old.levels != levels ||
       old.bands != bands ||
       old.visibleTop != visibleTop ||
-      old.visibleBottom != visibleBottom;
+      old.visibleBottom != visibleBottom ||
+      old.youLabel != youLabel;
 }
 
 enum _TileText { done, locked, current }
