@@ -33,6 +33,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../../l10n/l10n.dart';
 import '../analytics/analytics_service.dart' show firebaseReady;
 
 /// Where a tapped notification takes the player.
@@ -140,9 +141,12 @@ class NotificationService {
   /// permanent and a change of mind means a NEW id — which resets whatever the
   /// player had configured. Worth getting right once.
   static const _channelId = 'pourfect.reminders';
-  static const _channelName = 'Reminders';
-  static const _channelDescription =
-      'The Daily Pour, your next level and new worlds. Never more than two a day.';
+
+  ///
+  /// The name and description are the player's language AT CREATION, for the
+  /// same reason: a later change of phone language leaves them as they were.
+  static String get _channelName => appL10n().notifChannelName;
+  static String get _channelDescription => appL10n().notifChannelDescription;
 
   /// White-on-transparent, tinted by Android. NOT the launcher icon.
   static const _smallIcon = 'ic_notification';
@@ -239,7 +243,7 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin
           >()
           ?.createNotificationChannel(
-            const AndroidNotificationChannel(
+            AndroidNotificationChannel(
               _channelId,
               _channelName,
               description: _channelDescription,
@@ -278,7 +282,7 @@ class NotificationService {
         id: message.messageId.hashCode,
         title: notification.title,
         body: notification.body,
-        notificationDetails: const NotificationDetails(
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             _channelId,
             _channelName,
@@ -287,7 +291,7 @@ class NotificationService {
             priority: Priority.high,
             icon: _smallIcon,
           ),
-          iOS: DarwinNotificationDetails(),
+          iOS: const DarwinNotificationDetails(),
         ),
         payload: jsonEncode(message.data),
       );

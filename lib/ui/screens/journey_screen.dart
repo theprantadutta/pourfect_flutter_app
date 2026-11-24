@@ -18,10 +18,12 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/l10n.dart';
 import '../../state/chest_controller.dart';
 import '../../state/level_repository.dart';
 import '../../state/progress_repository.dart';
 import '../../state/providers.dart';
+import '../format.dart';
 import '../theme/ball_palette.dart';
 import '../theme/toy.dart';
 import '../widgets/chest_dialog.dart';
@@ -238,11 +240,12 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen>
         ),
     ];
 
+    final l10n = context.l10n;
     final bands = [
       for (final band in _bands)
         JourneyBand(
           firstLevel: band.firstLevel,
-          name: band.name,
+          name: worldDisplayName(l10n, band.name),
           length: band.length,
           reached: current >= band.firstLevel,
         ),
@@ -258,7 +261,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen>
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
             child: ToyHeader(
-              title: 'Journey',
+              title: l10n.journeyTitle,
               centerTitle: true,
               onBack: widget.onBack,
               trailing: _StarTotal(stars: progressOps.totalStars),
@@ -274,7 +277,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen>
                 return _WorldCard(
                   world: band.index + 1,
                   worlds: _bands.length,
-                  name: band.name,
+                  name: worldDisplayName(l10n, band.name),
                   solved: solvedIn(band),
                   total: band.length,
                 );
@@ -332,6 +335,8 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen>
                                     pulse: _pulse.value,
                                     visibleTop: offset,
                                     visibleBottom: offset + _viewport,
+                                    youLabel: l10n.journeyYouPin,
+                                    bandCaps: l10n.journeyBandCaps,
                                   ),
                                 );
                               },
@@ -355,7 +360,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen>
                       final band = _bands[index - 1];
                       return _WorldRibbon(
                         world: band.index + 1,
-                        name: band.name,
+                        name: worldDisplayName(l10n, band.name),
                         solved: solvedIn(band),
                         total: band.length,
                         onTap: () => _goToLevel(band.lastLevel),
@@ -380,7 +385,7 @@ class _StarTotal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: '$stars stars',
+    label: context.l10n.journeyStarsSemantic(stars),
     excludeSemantics: true,
     child: ToyBox(
       height: 36,
@@ -419,9 +424,10 @@ class _WorldCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final glyph = _worldGlyphs[(world - 1) % _worldGlyphs.length];
+    final l10n = context.l10n;
 
     return Semantics(
-      label: 'World $world of $worlds, $name, $solved of $total solved',
+      label: l10n.journeyWorldCardSemantic(world, worlds, name, solved, total),
       excludeSemantics: true,
       child: Transform.rotate(
         angle: -1 * math.pi / 180,
@@ -444,7 +450,7 @@ class _WorldCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'WORLD $world OF $worlds',
+                            l10n.journeyWorldOf(world, worlds),
                             style: Toy.caps(color: Colors.white)
                                 .copyWith(letterSpacing: 1.5),
                           ),
@@ -507,11 +513,11 @@ class _WorldRibbon extends StatelessWidget {
   Widget build(BuildContext context) {
     final complete = solved >= total;
     final style = Toy.ui(13, weight: FontWeight.w800);
+    final l10n = context.l10n;
 
     return Pressable(
       onPressed: onTap,
-      semanticLabel:
-          'World $world, $name, $solved of $total solved. Scroll to it',
+      semanticLabel: l10n.journeyRibbonSemantic(world, name, solved, total),
       child: ToyBox(
         color: complete ? Toy.mint : Toy.card,
         radius: Toy.rButton,
@@ -521,7 +527,7 @@ class _WorldRibbon extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'WORLD $world · ${name.toUpperCase()}',
+                l10n.journeyRibbonLabel(world, name.toUpperCase()),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: style,

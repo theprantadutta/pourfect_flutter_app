@@ -24,6 +24,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../l10n/l10n.dart';
 import '../theme/ball_palette.dart';
 import '../theme/toy.dart';
 import 'toy_kit.dart';
@@ -39,12 +40,13 @@ class SplashHandoff extends StatefulWidget {
 
 class _SplashHandoffState extends State<SplashHandoff>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _t = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..addStatusListener((s) {
-      if (s == AnimationStatus.completed) widget.onDone();
-    });
+  late final AnimationController _t =
+      AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 900),
+      )..addStatusListener((s) {
+        if (s == AnimationStatus.completed) widget.onDone();
+      });
 
   bool _begun = false;
 
@@ -158,7 +160,9 @@ class _SplashHandoffState extends State<SplashHandoff>
                       painter: DotGridPainter.surface(ToySurface.splash),
                     ),
                   ),
-                  if (_fromIcon) ..._fromIconLayers(calm) else
+                  if (_fromIcon)
+                    ..._fromIconLayers(calm)
+                  else
                     Center(
                       child: Transform.translate(
                         offset: Offset(0, bounce),
@@ -196,7 +200,7 @@ class _SplashHandoffState extends State<SplashHandoff>
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'POUR · SORT · RELAX',
+                            context.l10n.hubTagline,
                             style: Toy.caps(size: 14, color: Toy.cream),
                           ),
                         ),
@@ -212,7 +216,9 @@ class _SplashHandoffState extends State<SplashHandoff>
                         children: [
                           for (final id in const [3, 1, 2])
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
                               child: ToyBall(
                                 color: Color(0xFF000000 | kBallPalette[id].rgb),
                                 glyph: kBallPalette[id].glyph,
